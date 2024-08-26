@@ -8,6 +8,7 @@
     <Description>
      Additional extensions leveraging Dapper.
     </Description>
+    <RepositoryUrl>https://github.com/mjczone/DapperMatic</RepositoryUrl>
   </PropertyGroup>
 
   <PropertyGroup>
