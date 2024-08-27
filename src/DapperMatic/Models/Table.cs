@@ -9,7 +9,7 @@ public class Table
     }
 
     public string Name { get; set; }
-    public string? Schema { get; set; }
+    public string? Schema { get; set; } 
     public PrimaryKey? PrimaryKey { get; set; }
     public Column[] Columns { get; set; } = [];
     public UniqueConstraint[] UniqueConstraints { get; set; } = [];

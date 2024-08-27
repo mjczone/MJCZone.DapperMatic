@@ -51,7 +51,13 @@ public abstract class MySqlDatabaseTests<TDatabaseFixture>(
 {
     public override async Task<IDbConnection> OpenConnectionAsync()
     {
-        var connection = new MySqlConnection(fixture.ConnectionString);
+        var connectionString = fixture.ConnectionString;
+        // Disable SSL for local testing and CI environments
+        if (!connectionString.Contains("SSL Mode", StringComparison.OrdinalIgnoreCase))
+        {
+            connectionString += ";SSL Mode=None";
+        }
+        var connection = new MySqlConnection(connectionString);
         await connection.OpenAsync();
         return connection;
     }
