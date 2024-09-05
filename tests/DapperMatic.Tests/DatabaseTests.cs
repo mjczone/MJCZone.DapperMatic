@@ -455,6 +455,9 @@ public abstract class DatabaseTests
         exists = await connection.IndexExistsAsync(tableName, indexName);
         Assert.True(exists);
 
+        var indexes = await connection.GetIndexesAsync(tableName);
+        Assert.Contains(indexes, i => i.Equals(indexName, StringComparison.OrdinalIgnoreCase));
+
         output.WriteLine($"Dropping index: {tableName}.{indexName}");
         await connection.DropIndexIfExistsAsync(tableName, indexName);
 
