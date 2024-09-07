@@ -6,22 +6,26 @@ public partial class SqliteExtensions : DatabaseExtensionsBase, IDatabaseExtensi
 {
     public async Task<bool> UniqueConstraintExistsAsync(
         IDbConnection db,
-        string table,
-        string uniqueConstraint,
-        string? schema = null,
+        string tableName,
+        string uniqueConstraintName,
+        string? schemaName = null,
         IDbTransaction? tx = null,
         CancellationToken cancellationToken = default
     )
     {
-        var (_, tableName, uniqueConstraintName) = NormalizeNames(schema, table, uniqueConstraint);
+        (_, tableName, uniqueConstraintName) = NormalizeNames(
+            schemaName,
+            tableName,
+            uniqueConstraintName
+        );
 
         if (string.IsNullOrWhiteSpace(uniqueConstraintName))
             throw new ArgumentException(
                 "Unique constraint name must be specified in SQLite.",
-                nameof(uniqueConstraint)
+                nameof(uniqueConstraintName)
             );
 
-        // this is the query to get all indexes for a table in SQLite
+        // this is the query to get all indexes for a tableName in SQLite
         // for DEBUGGING purposes
         // var fks = (
         //     await db.QueryAsync($@"select * from pragma_index_list('{tableName}')", tx)
@@ -45,25 +49,32 @@ public partial class SqliteExtensions : DatabaseExtensionsBase, IDatabaseExtensi
 
     public async Task<bool> CreateUniqueConstraintIfNotExistsAsync(
         IDbConnection db,
-        string table,
-        string uniqueConstraint,
-        string[] columns,
-        string? schema = null,
+        string tableName,
+        string uniqueConstraintName,
+        string[] columnNames,
+        string? schemaName = null,
         IDbTransaction? tx = null,
         CancellationToken cancellationToken = default
     )
     {
-        var (_, tableName, uniqueConstraintName) = NormalizeNames(schema, table, uniqueConstraint);
+        (_, tableName, uniqueConstraintName) = NormalizeNames(
+            schemaName,
+            tableName,
+            uniqueConstraintName
+        );
 
-        if (columns == null || columns.Length == 0)
-            throw new ArgumentException("At least one column must be specified.", nameof(columns));
+        if (columnNames == null || columnNames.Length == 0)
+            throw new ArgumentException(
+                "At least one columnName must be specified.",
+                nameof(columnNames)
+            );
 
         if (
             await UniqueConstraintExistsAsync(
                     db,
-                    table,
-                    uniqueConstraint,
-                    schema,
+                    tableName,
+                    uniqueConstraintName,
+                    schemaName,
                     tx,
                     cancellationToken
                 )
@@ -71,9 +82,9 @@ public partial class SqliteExtensions : DatabaseExtensionsBase, IDatabaseExtensi
         )
             return false;
 
-        // to create a unique index, you have to re-create the table in sqlite
+        // to create a unique index, you have to re-create the tableName in sqlite
         // so we will just create a regular index
-        var columnList = string.Join(", ", columns);
+        var columnList = string.Join(", ", columnNames);
         await ExecuteAsync(
                 db,
                 $@"
@@ -87,19 +98,19 @@ public partial class SqliteExtensions : DatabaseExtensionsBase, IDatabaseExtensi
 
     public Task<IEnumerable<string>> GetUniqueConstraintsAsync(
         IDbConnection db,
-        string? table,
-        string? filter = null,
-        string? schema = null,
+        string? tableName,
+        string? nameFilter = null,
+        string? schemaName = null,
         IDbTransaction? tx = null,
         CancellationToken cancellationToken = default
     )
     {
-        var (_, tableName, _) = NormalizeNames(schema, table);
+        (_, tableName, _) = NormalizeNames(schemaName, tableName);
 
         // can also query using
         // SELECT type, name, tbl_name, sql FROM sqlite_master WHERE type= 'index';
 
-        if (string.IsNullOrWhiteSpace(filter))
+        if (string.IsNullOrWhiteSpace(nameFilter))
         {
             return QueryAsync<string>(
                 db,
@@ -113,7 +124,7 @@ public partial class SqliteExtensions : DatabaseExtensionsBase, IDatabaseExtensi
         }
         else
         {
-            var where = $"{ToAlphaNumericString(filter)}".Replace("*", "%");
+            var where = $"{ToAlphaNumericString(nameFilter)}".Replace("*", "%");
             return QueryAsync<string>(
                 db,
                 $@"SELECT ""name"" INDEX_NAME
@@ -128,9 +139,9 @@ public partial class SqliteExtensions : DatabaseExtensionsBase, IDatabaseExtensi
 
     public async Task<bool> DropUniqueConstraintIfExistsAsync(
         IDbConnection db,
-        string table,
-        string uniqueConstraint,
-        string? schema = null,
+        string tableName,
+        string uniqueConstraintName,
+        string? schemaName = null,
         IDbTransaction? tx = null,
         CancellationToken cancellationToken = default
     )
@@ -138,9 +149,9 @@ public partial class SqliteExtensions : DatabaseExtensionsBase, IDatabaseExtensi
         if (
             !await UniqueConstraintExistsAsync(
                     db,
-                    table,
-                    uniqueConstraint,
-                    schema,
+                    tableName,
+                    uniqueConstraintName,
+                    schemaName,
                     tx,
                     cancellationToken
                 )
@@ -148,7 +159,11 @@ public partial class SqliteExtensions : DatabaseExtensionsBase, IDatabaseExtensi
         )
             return false;
 
-        var (_, tableName, uniqueConstraintName) = NormalizeNames(schema, table, uniqueConstraint);
+        (_, tableName, uniqueConstraintName) = NormalizeNames(
+            schemaName,
+            tableName,
+            uniqueConstraintName
+        );
 
         // if it's an index, we can delete it (ASSUME THIS FOR NOW)
         if (
@@ -176,7 +191,7 @@ public partial class SqliteExtensions : DatabaseExtensionsBase, IDatabaseExtensi
             return true;
         }
 
-        // if it's a true unique constraint, we have to drop the table and re-create it
+        // if it's a true unique constraint, we have to drop the tableName and re-create it
         return false;
     }
 }

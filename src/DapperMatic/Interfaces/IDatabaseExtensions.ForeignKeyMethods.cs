@@ -12,29 +12,29 @@ public partial interface IDatabaseExtensions
 
     Task<bool> ForeignKeyExistsAsync(
         IDbConnection db,
-        string table,
-        string column,
+        string tableName,
+        string columnName,
         string? foreignKey = null,
-        string? schema = null,
+        string? schemaName = null,
         IDbTransaction? tx = null,
         CancellationToken cancellationToken = default
     );
     Task<IEnumerable<string>> GetForeignKeysAsync(
         IDbConnection db,
-        string? table,
-        string? filter = null,
-        string? schema = null,
+        string? tableName,
+        string? nameFilter = null,
+        string? schemaName = null,
         IDbTransaction? tx = null,
         CancellationToken cancellationToken = default
     );
     Task<bool> CreateForeignKeyIfNotExistsAsync(
         IDbConnection db,
-        string table,
-        string column,
+        string tableName,
+        string columnName,
         string foreignKey,
         string referenceTable,
         string referenceColumn,
-        string? schema = null,
+        string? schemaName = null,
         string onDelete = "NO ACTION",
         string onUpdate = "NO ACTION",
         IDbTransaction? tx = null,
@@ -42,10 +42,10 @@ public partial interface IDatabaseExtensions
     );
     Task<bool> DropForeignKeyIfExistsAsync(
         IDbConnection db,
-        string table,
-        string column,
+        string tableName,
+        string columnName,
         string? foreignKey = null,
-        string? schema = null,
+        string? schemaName = null,
         IDbTransaction? tx = null,
         CancellationToken cancellationToken = default
     );

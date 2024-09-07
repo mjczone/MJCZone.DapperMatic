@@ -1,4 +1,5 @@
 using System.Data;
+using DapperMatic.Models;
 
 namespace DapperMatic.Providers.SqlServer;
 
@@ -6,14 +7,14 @@ public partial class SqlServerExtensions : DatabaseExtensionsBase, IDatabaseExte
 {
     public async Task<bool> IndexExistsAsync(
         IDbConnection db,
-        string table,
-        string index,
-        string? schema = null,
+        string tableName,
+        string indexName,
+        string? schemaName = null,
         IDbTransaction? tx = null,
         CancellationToken cancellationToken = default
     )
     {
-        var (schemaName, tableName, indexName) = NormalizeNames(schema, table, index);
+        (schemaName, tableName, indexName) = NormalizeNames(schemaName, tableName, indexName);
 
         var schemaAndTableName = "[" + schemaName + "].[" + tableName + "]";
         return 0
@@ -30,29 +31,32 @@ public partial class SqlServerExtensions : DatabaseExtensionsBase, IDatabaseExte
 
     public async Task<bool> CreateIndexIfNotExistsAsync(
         IDbConnection db,
-        string table,
-        string index,
-        string[] columns,
-        string? schema = null,
+        string tableName,
+        string indexName,
+        string[] columnNames,
+        string? schemaName = null,
         bool unique = false,
         IDbTransaction? tx = null,
         CancellationToken cancellationToken = default
     )
     {
-        var (schemaName, tableName, indexName) = NormalizeNames(schema, table, index);
+        (schemaName, tableName, indexName) = NormalizeNames(schemaName, tableName, indexName);
 
-        if (columns == null || columns.Length == 0)
-            throw new ArgumentException("At least one column must be specified.", nameof(columns));
+        if (columnNames == null || columnNames.Length == 0)
+            throw new ArgumentException(
+                "At least one columnName must be specified.",
+                nameof(columnNames)
+            );
 
         if (
-            await IndexExistsAsync(db, table, index, schema, tx, cancellationToken)
+            await IndexExistsAsync(db, tableName, indexName, schemaName, tx, cancellationToken)
                 .ConfigureAwait(false)
         )
             return false;
 
         var schemaAndTableName = "[" + schemaName + "].[" + tableName + "]";
         var uniqueString = unique ? "UNIQUE" : "";
-        var columnList = string.Join(", ", columns);
+        var columnList = string.Join(", ", columnNames);
         await ExecuteAsync(
                 db,
                 $@"
@@ -65,20 +69,32 @@ public partial class SqlServerExtensions : DatabaseExtensionsBase, IDatabaseExte
         return true;
     }
 
-    public Task<IEnumerable<string>> GetIndexesAsync(
+    public Task<IEnumerable<TableIndex>> GetIndexesAsync(
         IDbConnection db,
-        string? table,
-        string? filter = null,
-        string? schema = null,
+        string? tableName,
+        string? nameFilter = null,
+        string? schemaName = null,
         IDbTransaction? tx = null,
         CancellationToken cancellationToken = default
     )
     {
-        var (schemaName, tableName, _) = NormalizeNames(schema, table);
+        throw new NotImplementedException();
+    }
+
+    public Task<IEnumerable<string>> GetIndexNamesAsync(
+        IDbConnection db,
+        string? tableName,
+        string? nameFilter = null,
+        string? schemaName = null,
+        IDbTransaction? tx = null,
+        CancellationToken cancellationToken = default
+    )
+    {
+        (schemaName, tableName, _) = NormalizeNames(schemaName, tableName);
 
         var schemaAndTableName = "[" + schemaName + "].[" + tableName + "]";
 
-        if (string.IsNullOrWhiteSpace(filter))
+        if (string.IsNullOrWhiteSpace(nameFilter))
         {
             return QueryAsync<string>(
                 db,
@@ -92,7 +108,7 @@ public partial class SqlServerExtensions : DatabaseExtensionsBase, IDatabaseExte
         }
         else
         {
-            var where = $"{ToAlphaNumericString(filter)}".Replace("*", "%");
+            var where = $"{ToAlphaNumericString(nameFilter)}".Replace("*", "%");
             return QueryAsync<string>(
                 db,
                 $@"
@@ -109,17 +125,17 @@ public partial class SqlServerExtensions : DatabaseExtensionsBase, IDatabaseExte
 
     public async Task<bool> DropIndexIfExistsAsync(
         IDbConnection db,
-        string table,
-        string index,
-        string? schema = null,
+        string tableName,
+        string indexName,
+        string? schemaName = null,
         IDbTransaction? tx = null,
         CancellationToken cancellationToken = default
     )
     {
-        var (schemaName, tableName, indexName) = NormalizeNames(schema, table, index);
+        (schemaName, tableName, indexName) = NormalizeNames(schemaName, tableName, indexName);
 
         if (
-            !await IndexExistsAsync(db, table, index, schema, tx, cancellationToken)
+            !await IndexExistsAsync(db, tableName, indexName, schemaName, tx, cancellationToken)
                 .ConfigureAwait(false)
         )
             return false;

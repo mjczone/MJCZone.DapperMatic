@@ -6,17 +6,17 @@ public partial class SqlServerExtensions : DatabaseExtensionsBase, IDatabaseExte
 {
     public async Task<bool> UniqueConstraintExistsAsync(
         IDbConnection db,
-        string table,
-        string uniqueConstraint,
-        string? schema = null,
+        string tableName,
+        string uniqueConstraintName,
+        string? schemaName = null,
         IDbTransaction? tx = null,
         CancellationToken cancellationToken = default
     )
     {
-        var (schemaName, tableName, uniqueConstraintName) = NormalizeNames(
-            schema,
-            table,
-            uniqueConstraint
+        (schemaName, tableName, uniqueConstraintName) = NormalizeNames(
+            schemaName,
+            tableName,
+            uniqueConstraintName
         );
         var schemaAndTableName = "[" + schemaName + "].[" + tableName + "]";
 
@@ -34,29 +34,32 @@ public partial class SqlServerExtensions : DatabaseExtensionsBase, IDatabaseExte
 
     public async Task<bool> CreateUniqueConstraintIfNotExistsAsync(
         IDbConnection db,
-        string table,
-        string uniqueConstraint,
-        string[] columns,
-        string? schema = null,
+        string tableName,
+        string uniqueConstraintName,
+        string[] columnNames,
+        string? schemaName = null,
         IDbTransaction? tx = null,
         CancellationToken cancellationToken = default
     )
     {
-        var (schemaName, tableName, uniqueConstraintName) = NormalizeNames(
-            schema,
-            table,
-            uniqueConstraint
+        (schemaName, tableName, uniqueConstraintName) = NormalizeNames(
+            schemaName,
+            tableName,
+            uniqueConstraintName
         );
 
-        if (columns == null || columns.Length == 0)
-            throw new ArgumentException("At least one column must be specified.", nameof(columns));
+        if (columnNames == null || columnNames.Length == 0)
+            throw new ArgumentException(
+                "At least one columnName must be specified.",
+                nameof(columnNames)
+            );
 
         if (
             await UniqueConstraintExistsAsync(
                     db,
-                    table,
-                    uniqueConstraint,
-                    schema,
+                    tableName,
+                    uniqueConstraintName,
+                    schemaName,
                     tx,
                     cancellationToken
                 )
@@ -65,7 +68,7 @@ public partial class SqlServerExtensions : DatabaseExtensionsBase, IDatabaseExte
             return false;
 
         var schemaAndTableName = "[" + schemaName + "].[" + tableName + "]";
-        var columnList = string.Join(", ", columns);
+        var columnList = string.Join(", ", columnNames);
 
         await ExecuteAsync(
                 db,
@@ -82,18 +85,18 @@ public partial class SqlServerExtensions : DatabaseExtensionsBase, IDatabaseExte
 
     public Task<IEnumerable<string>> GetUniqueConstraintsAsync(
         IDbConnection db,
-        string? table,
-        string? filter = null,
-        string? schema = null,
+        string? tableName,
+        string? nameFilter = null,
+        string? schemaName = null,
         IDbTransaction? tx = null,
         CancellationToken cancellationToken = default
     )
     {
-        var (schemaName, tableName, _) = NormalizeNames(schema, table, null);
+        (schemaName, tableName, _) = NormalizeNames(schemaName, tableName, null);
 
         var schemaAndTableName = "[" + schemaName + "].[" + tableName + "]";
 
-        if (string.IsNullOrWhiteSpace(filter))
+        if (string.IsNullOrWhiteSpace(nameFilter))
         {
             return QueryAsync<string>(
                 db,
@@ -106,7 +109,7 @@ public partial class SqlServerExtensions : DatabaseExtensionsBase, IDatabaseExte
         }
         else
         {
-            var where = $"{ToAlphaNumericString(filter)}".Replace("*", "%");
+            var where = $"{ToAlphaNumericString(nameFilter)}".Replace("*", "%");
             return QueryAsync<string>(
                 db,
                 $@"
@@ -122,9 +125,9 @@ public partial class SqlServerExtensions : DatabaseExtensionsBase, IDatabaseExte
 
     public async Task<bool> DropUniqueConstraintIfExistsAsync(
         IDbConnection db,
-        string table,
-        string uniqueConstraint,
-        string? schema = null,
+        string tableName,
+        string uniqueConstraintName,
+        string? schemaName = null,
         IDbTransaction? tx = null,
         CancellationToken cancellationToken = default
     )
@@ -132,9 +135,9 @@ public partial class SqlServerExtensions : DatabaseExtensionsBase, IDatabaseExte
         if (
             !await UniqueConstraintExistsAsync(
                     db,
-                    table,
-                    uniqueConstraint,
-                    schema,
+                    tableName,
+                    uniqueConstraintName,
+                    schemaName,
                     tx,
                     cancellationToken
                 )
@@ -142,10 +145,10 @@ public partial class SqlServerExtensions : DatabaseExtensionsBase, IDatabaseExte
         )
             return false;
 
-        var (schemaName, tableName, uniqueConstraintName) = NormalizeNames(
-            schema,
-            table,
-            uniqueConstraint
+        (schemaName, tableName, uniqueConstraintName) = NormalizeNames(
+            schemaName,
+            tableName,
+            uniqueConstraintName
         );
         var schemaAndTableName = "[" + schemaName + "].[" + tableName + "]";
 

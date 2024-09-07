@@ -15,7 +15,7 @@ public partial class SqliteExtensions : DatabaseExtensionsBase, IDatabaseExtensi
 
     public Task<bool> SchemaExistsAsync(
         IDbConnection db,
-        string schema,
+        string schemaName,
         IDbTransaction? tx = null,
         CancellationToken cancellationToken = default
     )
@@ -25,7 +25,7 @@ public partial class SqliteExtensions : DatabaseExtensionsBase, IDatabaseExtensi
 
     public Task<bool> CreateSchemaIfNotExistsAsync(
         IDbConnection db,
-        string schema,
+        string schemaName,
         IDbTransaction? tx = null,
         CancellationToken cancellationToken = default
     )
@@ -35,7 +35,7 @@ public partial class SqliteExtensions : DatabaseExtensionsBase, IDatabaseExtensi
 
     public Task<IEnumerable<string>> GetSchemasAsync(
         IDbConnection db,
-        string? filter = null,
+        string? nameFilter = null,
         IDbTransaction? tx = null,
         CancellationToken cancellationToken = default
     )
@@ -46,7 +46,7 @@ public partial class SqliteExtensions : DatabaseExtensionsBase, IDatabaseExtensi
 
     public Task<bool> DropSchemaIfExistsAsync(
         IDbConnection db,
-        string schema,
+        string schemaName,
         IDbTransaction? tx = null,
         CancellationToken cancellationToken = default
     )

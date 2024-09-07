@@ -1,4 +1,5 @@
 using System.Data;
+using DapperMatic.Models;
 
 namespace DapperMatic.Providers.MySql;
 
@@ -6,16 +7,16 @@ public partial class MySqlExtensions : DatabaseExtensionsBase, IDatabaseExtensio
 {
     public async Task<bool> IndexExistsAsync(
         IDbConnection db,
-        string table,
-        string index,
-        string? schema = null,
+        string tableName,
+        string indexName,
+        string? schemaName = null,
         IDbTransaction? tx = null,
         CancellationToken cancellationToken = default
     )
     {
-        var (_, tableName, indexName) = NormalizeNames(schema, table, index);
+        (_, tableName, indexName) = NormalizeNames(schemaName, tableName, indexName);
 
-        // does index exist in MySql table
+        // does indexName exist in MySql tableName
         return 0
             < await ExecuteScalarAsync<int>(
                     db,
@@ -32,28 +33,31 @@ public partial class MySqlExtensions : DatabaseExtensionsBase, IDatabaseExtensio
 
     public async Task<bool> CreateIndexIfNotExistsAsync(
         IDbConnection db,
-        string table,
-        string index,
-        string[] columns,
-        string? schema = null,
+        string tableName,
+        string indexName,
+        string[] columnNames,
+        string? schemaName = null,
         bool unique = false,
         IDbTransaction? tx = null,
         CancellationToken cancellationToken = default
     )
     {
-        var (_, tableName, indexName) = NormalizeNames(schema, table, index);
+        (_, tableName, indexName) = NormalizeNames(schemaName, tableName, indexName);
 
-        if (columns == null || columns.Length == 0)
-            throw new ArgumentException("At least one column must be specified.", nameof(columns));
+        if (columnNames == null || columnNames.Length == 0)
+            throw new ArgumentException(
+                "At least one columnName must be specified.",
+                nameof(columnNames)
+            );
 
         if (
-            await IndexExistsAsync(db, table, index, schema, tx, cancellationToken)
+            await IndexExistsAsync(db, tableName, indexName, schemaName, tx, cancellationToken)
                 .ConfigureAwait(false)
         )
             return false;
 
         var uniqueString = unique ? "UNIQUE" : "";
-        var columnList = string.Join(", ", columns);
+        var columnList = string.Join(", ", columnNames);
         await ExecuteAsync(
                 db,
                 $@"ALTER TABLE `{tableName}`
@@ -65,18 +69,30 @@ public partial class MySqlExtensions : DatabaseExtensionsBase, IDatabaseExtensio
         return true;
     }
 
-    public Task<IEnumerable<string>> GetIndexesAsync(
+    public Task<IEnumerable<TableIndex>> GetIndexesAsync(
         IDbConnection db,
-        string? table,
-        string? filter = null,
-        string? schema = null,
+        string? tableName,
+        string? nameFilter = null,
+        string? schemaName = null,
         IDbTransaction? tx = null,
         CancellationToken cancellationToken = default
     )
     {
-        var (_, tableName, _) = NormalizeNames(schema, table);
+        throw new NotImplementedException();
+    }
 
-        if (string.IsNullOrWhiteSpace(filter))
+    public Task<IEnumerable<string>> GetIndexNamesAsync(
+        IDbConnection db,
+        string? tableName,
+        string? nameFilter = null,
+        string? schemaName = null,
+        IDbTransaction? tx = null,
+        CancellationToken cancellationToken = default
+    )
+    {
+        (_, tableName, _) = NormalizeNames(schemaName, tableName);
+
+        if (string.IsNullOrWhiteSpace(nameFilter))
         {
             return QueryAsync<string>(
                 db,
@@ -91,7 +107,7 @@ public partial class MySqlExtensions : DatabaseExtensionsBase, IDatabaseExtensio
         }
         else
         {
-            var where = $"{ToAlphaNumericString(filter)}".Replace("*", "%");
+            var where = $"{ToAlphaNumericString(nameFilter)}".Replace("*", "%");
             return QueryAsync<string>(
                 db,
                 $@"SELECT INDEX_NAME 
@@ -108,17 +124,17 @@ public partial class MySqlExtensions : DatabaseExtensionsBase, IDatabaseExtensio
 
     public async Task<bool> DropIndexIfExistsAsync(
         IDbConnection db,
-        string table,
-        string index,
-        string? schema = null,
+        string tableName,
+        string indexName,
+        string? schemaName = null,
         IDbTransaction? tx = null,
         CancellationToken cancellationToken = default
     )
     {
-        var (_, tableName, indexName) = NormalizeNames(schema, table, index);
+        (_, tableName, indexName) = NormalizeNames(schemaName, tableName, indexName);
 
         if (
-            !await IndexExistsAsync(db, table, index, schema, tx, cancellationToken)
+            !await IndexExistsAsync(db, tableName, indexName, schemaName, tx, cancellationToken)
                 .ConfigureAwait(false)
         )
             return false;

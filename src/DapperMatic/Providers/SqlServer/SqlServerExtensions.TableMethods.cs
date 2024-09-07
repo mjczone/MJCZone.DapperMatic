@@ -7,13 +7,13 @@ public partial class SqlServerExtensions : DatabaseExtensionsBase, IDatabaseExte
 {
     public async Task<bool> TableExistsAsync(
         IDbConnection db,
-        string table,
-        string? schema = null,
+        string tableName,
+        string? schemaName = null,
         IDbTransaction? tx = null,
         CancellationToken cancellationToken = default
     )
     {
-        var (schemaName, tableName, _) = NormalizeNames(schema, table, null);
+        (schemaName, tableName, _) = NormalizeNames(schemaName, tableName, null);
 
         return 0
             < await ExecuteScalarAsync<int>(
@@ -27,8 +27,8 @@ public partial class SqlServerExtensions : DatabaseExtensionsBase, IDatabaseExte
 
     public async Task<bool> CreateTableIfNotExistsAsync(
         IDbConnection db,
-        string table,
-        string? schema = null,
+        string tableName,
+        string? schemaName = null,
         string[]? primaryKeyColumnNames = null,
         Type[]? primaryKeyDotnetTypes = null,
         int?[]? primaryKeyColumnLengths = null,
@@ -36,9 +36,12 @@ public partial class SqlServerExtensions : DatabaseExtensionsBase, IDatabaseExte
         CancellationToken cancellationToken = default
     )
     {
-        var (schemaName, tableName, _) = NormalizeNames(schema, table, null);
+        (schemaName, tableName, _) = NormalizeNames(schemaName, tableName, null);
 
-        if (await TableExistsAsync(db, table, schema, tx, cancellationToken).ConfigureAwait(false))
+        if (
+            await TableExistsAsync(db, tableName, schemaName, tx, cancellationToken)
+                .ConfigureAwait(false)
+        )
             return false;
 
         if (primaryKeyColumnNames == null || primaryKeyColumnNames.Length == 0)
@@ -62,7 +65,7 @@ public partial class SqlServerExtensions : DatabaseExtensionsBase, IDatabaseExte
         for (var i = 0; i < primaryKeyColumnNames.Length; i++)
         {
             var columnArr = primaryKeyColumnNames[i].Split(' ');
-            var (_, _, columnName) = NormalizeNames(schema, table, columnArr[0]);
+            var (_, _, columnName) = NormalizeNames(schemaName, tableName, columnArr[0]);
             if (string.IsNullOrWhiteSpace(columnName))
                 continue;
 
@@ -92,15 +95,15 @@ public partial class SqlServerExtensions : DatabaseExtensionsBase, IDatabaseExte
 
     public async Task<IEnumerable<string>> GetTablesAsync(
         IDbConnection db,
-        string? filter = null,
-        string? schema = null,
+        string? nameFilter = null,
+        string? schemaName = null,
         IDbTransaction? tx = null,
         CancellationToken cancellationToken = default
     )
     {
-        var (schemaName, _, _) = NormalizeNames(schema, null, null);
+        (schemaName, _, _) = NormalizeNames(schemaName, null, null);
 
-        if (string.IsNullOrWhiteSpace(filter))
+        if (string.IsNullOrWhiteSpace(nameFilter))
         {
             return await QueryAsync<string>(
                     db,
@@ -112,7 +115,7 @@ public partial class SqlServerExtensions : DatabaseExtensionsBase, IDatabaseExte
         }
         else
         {
-            var where = $"{ToAlphaNumericString(filter)}".Replace("*", "%");
+            var where = $"{ToAlphaNumericString(nameFilter)}".Replace("*", "%");
             return await QueryAsync<string>(
                     db,
                     "SELECT DISTINCT TABLE_NAME FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_SCHEMA = @schemaName AND TABLE_NAME LIKE @where ORDER BY TABLE_NAME",
@@ -125,18 +128,21 @@ public partial class SqlServerExtensions : DatabaseExtensionsBase, IDatabaseExte
 
     public async Task<bool> DropTableIfExistsAsync(
         IDbConnection db,
-        string table,
-        string? schema = null,
+        string tableName,
+        string? schemaName = null,
         IDbTransaction? tx = null,
         CancellationToken cancellationToken = default
     )
     {
-        var (schemaName, tableName, _) = NormalizeNames(schema, table, null);
+        (schemaName, tableName, _) = NormalizeNames(schemaName, tableName, null);
 
-        if (!await TableExistsAsync(db, table, schema, tx, cancellationToken).ConfigureAwait(false))
+        if (
+            !await TableExistsAsync(db, tableName, schemaName, tx, cancellationToken)
+                .ConfigureAwait(false)
+        )
             return false;
 
-        // drop the constraints on the table first
+        // drop the constraints on the tableName first
         var constraints = await QueryAsync<string>(
                 db,
                 "SELECT CONSTRAINT_NAME FROM INFORMATION_SCHEMA.TABLE_CONSTRAINTS WHERE TABLE_NAME = @tableName AND TABLE_SCHEMA = @schemaName",

@@ -1,11 +1,22 @@
 using System.Collections.Concurrent;
 using System.Data;
+using DapperMatic.Models;
 
 namespace DapperMatic;
 
 public static partial class DatabaseExtensionMethods
 {
-    #region schema methods
+    public static string GetLastSql(this IDbConnection db)
+    {
+        return Database(db).GetLastSql(db);
+    }
+
+    public static (string sql, object? parameters) GetLastSqlWithParams(this IDbConnection db)
+    {
+        return Database(db).GetLastSqlWithParams(db);
+    }
+
+    #region schemaName methods
     public static async Task<bool> SupportsSchemasAsync(
         this IDbConnection db,
         IDbTransaction? tx = null,
@@ -17,7 +28,7 @@ public static partial class DatabaseExtensionMethods
 
     public static async Task<bool> SchemaExistsAsync(
         this IDbConnection db,
-        string schema,
+        string schemaName,
         IDbTransaction? tx = null,
         CancellationToken cancellationToken = default
     )
@@ -27,12 +38,12 @@ public static partial class DatabaseExtensionMethods
             return false;
         }
 
-        return await Database(db).SchemaExistsAsync(db, schema, tx, cancellationToken);
+        return await Database(db).SchemaExistsAsync(db, schemaName, tx, cancellationToken);
     }
 
     public static async Task<IEnumerable<string>> GetSchemasAsync(
         this IDbConnection db,
-        string? filter = null,
+        string? nameFilter = null,
         IDbTransaction? tx = null,
         CancellationToken cancellationToken = default
     )
@@ -42,12 +53,12 @@ public static partial class DatabaseExtensionMethods
             return [];
         }
 
-        return await Database(db).GetSchemasAsync(db, filter, tx, cancellationToken);
+        return await Database(db).GetSchemasAsync(db, nameFilter, tx, cancellationToken);
     }
 
     public static async Task<bool> CreateSchemaIfNotExistsAsync(
         this IDbConnection db,
-        string schema,
+        string schemaName,
         IDbTransaction? tx = null,
         CancellationToken cancellationToken = default
     )
@@ -57,12 +68,13 @@ public static partial class DatabaseExtensionMethods
             return false;
         }
 
-        return await Database(db).CreateSchemaIfNotExistsAsync(db, schema, tx, cancellationToken);
+        return await Database(db)
+            .CreateSchemaIfNotExistsAsync(db, schemaName, tx, cancellationToken);
     }
 
     public static async Task<bool> DropSchemaIfExistsAsync(
         this IDbConnection db,
-        string schema,
+        string schemaName,
         IDbTransaction? tx = null,
         CancellationToken cancellationToken = default
     )
@@ -72,39 +84,40 @@ public static partial class DatabaseExtensionMethods
             return false;
         }
 
-        return await Database(db).DropSchemaIfExistsAsync(db, schema, tx, cancellationToken);
+        return await Database(db).DropSchemaIfExistsAsync(db, schemaName, tx, cancellationToken);
     }
 
-    #endregion // schema methods
+    #endregion // schemaName methods
 
     #region table methods
 
     public static async Task<bool> TableExistsAsync(
         this IDbConnection db,
-        string table,
-        string? schema = null,
+        string tableName,
+        string? schemaName = null,
         IDbTransaction? tx = null,
         CancellationToken cancellationToken = default
     )
     {
-        return await Database(db).TableExistsAsync(db, table, schema, tx, cancellationToken);
+        return await Database(db)
+            .TableExistsAsync(db, tableName, schemaName, tx, cancellationToken);
     }
 
     public static async Task<IEnumerable<string>> GetTablesAsync(
         this IDbConnection db,
-        string? filter = null,
-        string? schema = null,
+        string? nameFilter = null,
+        string? schemaName = null,
         IDbTransaction? tx = null,
         CancellationToken cancellationToken = default
     )
     {
-        return await Database(db).GetTablesAsync(db, filter, schema, tx, cancellationToken);
+        return await Database(db).GetTablesAsync(db, nameFilter, schemaName, tx, cancellationToken);
     }
 
     public static async Task<bool> CreateTableIfNotExistsAsync(
         this IDbConnection db,
-        string table,
-        string? schema = null,
+        string tableName,
+        string? schemaName = null,
         string[]? primaryKeyColumnNames = null,
         Type[]? primaryKeyDotnetTypes = null,
         int?[]? primaryKeyColumnLengths = null,
@@ -115,8 +128,8 @@ public static partial class DatabaseExtensionMethods
         return await Database(db)
             .CreateTableIfNotExistsAsync(
                 db,
-                table,
-                schema,
+                tableName,
+                schemaName,
                 primaryKeyColumnNames,
                 primaryKeyDotnetTypes,
                 primaryKeyColumnLengths,
@@ -127,54 +140,56 @@ public static partial class DatabaseExtensionMethods
 
     public static async Task<bool> DropTableIfExistsAsync(
         this IDbConnection db,
-        string table,
-        string? schema = null,
-        IDbTransaction? tx = null,
-        CancellationToken cancellationToken = default
-    )
-    {
-        return await Database(db).DropTableIfExistsAsync(db, table, schema, tx, cancellationToken);
-    }
-
-    #endregion // table methods
-
-    #region column methods
-
-    public static async Task<bool> ColumnExistsAsync(
-        this IDbConnection db,
-        string table,
-        string column,
-        string? schema = null,
+        string tableName,
+        string? schemaName = null,
         IDbTransaction? tx = null,
         CancellationToken cancellationToken = default
     )
     {
         return await Database(db)
-            .ColumnExistsAsync(db, table, column, schema, tx, cancellationToken);
+            .DropTableIfExistsAsync(db, tableName, schemaName, tx, cancellationToken);
     }
 
-    public static async Task<IEnumerable<string>> GetColumnsAsync(
+    #endregion // table methods
+
+    #region columnName methods
+
+    public static async Task<bool> ColumnExistsAsync(
         this IDbConnection db,
-        string table,
-        string? filter = null,
-        string? schema = null,
+        string tableName,
+        string columnName,
+        string? schemaName = null,
         IDbTransaction? tx = null,
         CancellationToken cancellationToken = default
     )
     {
-        return await Database(db).GetColumnsAsync(db, table, filter, schema, tx, cancellationToken);
+        return await Database(db)
+            .ColumnExistsAsync(db, tableName, columnName, schemaName, tx, cancellationToken);
+    }
+
+    public static async Task<IEnumerable<string>> GetColumnsAsync(
+        this IDbConnection db,
+        string tableName,
+        string? nameFilter = null,
+        string? schemaName = null,
+        IDbTransaction? tx = null,
+        CancellationToken cancellationToken = default
+    )
+    {
+        return await Database(db)
+            .GetColumnsAsync(db, tableName, nameFilter, schemaName, tx, cancellationToken);
     }
 
     public static async Task<bool> CreateColumnIfNotExistsAsync(
         this IDbConnection db,
-        string table,
-        string column,
+        string tableName,
+        string columnName,
         Type dotnetType,
         string? type = null,
         int? length = null,
         int? precision = null,
         int? scale = null,
-        string? schema = null,
+        string? schemaName = null,
         string? defaultValue = null,
         bool nullable = true,
         bool unique = false,
@@ -185,14 +200,14 @@ public static partial class DatabaseExtensionMethods
         return await Database(db)
             .CreateColumnIfNotExistsAsync(
                 db,
-                table,
-                column,
+                tableName,
+                columnName,
                 dotnetType,
                 type,
                 length,
                 precision,
                 scale,
-                schema,
+                schemaName,
                 defaultValue,
                 nullable,
                 unique,
@@ -203,51 +218,66 @@ public static partial class DatabaseExtensionMethods
 
     public static async Task<bool> DropColumnIfExistsAsync(
         this IDbConnection db,
-        string table,
-        string column,
-        string? schema = null,
+        string tableName,
+        string columnName,
+        string? schemaName = null,
         IDbTransaction? tx = null,
         CancellationToken cancellationToken = default
     )
     {
         return await Database(db)
-            .DropColumnIfExistsAsync(db, table, column, schema, tx, cancellationToken);
+            .DropColumnIfExistsAsync(db, tableName, columnName, schemaName, tx, cancellationToken);
     }
 
-    #endregion // column methods
+    #endregion // columnName methods
 
-    #region index methods
+    #region indexName methods
 
     public static async Task<bool> IndexExistsAsync(
         this IDbConnection db,
-        string table,
-        string index,
-        string? schema = null,
+        string tableName,
+        string indexName,
+        string? schemaName = null,
         IDbTransaction? tx = null,
         CancellationToken cancellationToken = default
     )
     {
-        return await Database(db).IndexExistsAsync(db, table, index, schema, tx, cancellationToken);
+        return await Database(db)
+            .IndexExistsAsync(db, tableName, indexName, schemaName, tx, cancellationToken);
     }
 
-    public static async Task<IEnumerable<string>> GetIndexesAsync(
+    public static async Task<IEnumerable<TableIndex>> GetIndexesAsync(
         this IDbConnection db,
-        string? table,
-        string? filter = null,
-        string? schema = null,
+        string? tableName,
+        string? nameFilter = null,
+        string? schemaName = null,
         IDbTransaction? tx = null,
         CancellationToken cancellationToken = default
     )
     {
-        return await Database(db).GetIndexesAsync(db, table, filter, schema, tx, cancellationToken);
+        return await Database(db)
+            .GetIndexesAsync(db, tableName, nameFilter, schemaName, tx, cancellationToken);
+    }
+
+    public static async Task<IEnumerable<string>> GetIndexNamesAsync(
+        this IDbConnection db,
+        string? tableName,
+        string? nameFilter = null,
+        string? schemaName = null,
+        IDbTransaction? tx = null,
+        CancellationToken cancellationToken = default
+    )
+    {
+        return await Database(db)
+            .GetIndexNamesAsync(db, tableName, nameFilter, schemaName, tx, cancellationToken);
     }
 
     public static async Task<bool> CreateIndexIfNotExistsAsync(
         this IDbConnection db,
-        string table,
-        string index,
-        string[] columns,
-        string? schema = null,
+        string tableName,
+        string indexName,
+        string[] columnNames,
+        string? schemaName = null,
         bool unique = false,
         IDbTransaction? tx = null,
         CancellationToken cancellationToken = default
@@ -256,10 +286,10 @@ public static partial class DatabaseExtensionMethods
         return await Database(db)
             .CreateIndexIfNotExistsAsync(
                 db,
-                table,
-                index,
-                columns,
-                schema,
+                tableName,
+                indexName,
+                columnNames,
+                schemaName,
                 unique,
                 tx,
                 cancellationToken
@@ -268,15 +298,15 @@ public static partial class DatabaseExtensionMethods
 
     public static async Task<bool> DropIndexIfExistsAsync(
         this IDbConnection db,
-        string table,
-        string index,
-        string? schema = null,
+        string tableName,
+        string indexName,
+        string? schemaName = null,
         IDbTransaction? tx = null,
         CancellationToken cancellationToken = default
     )
     {
         return await Database(db)
-            .DropIndexIfExistsAsync(db, table, index, schema, tx, cancellationToken);
+            .DropIndexIfExistsAsync(db, tableName, indexName, schemaName, tx, cancellationToken);
     }
 
     #endregion // index methods
@@ -293,39 +323,47 @@ public static partial class DatabaseExtensionMethods
 
     public static async Task<bool> ForeignKeyExistsAsync(
         this IDbConnection db,
-        string table,
-        string column,
+        string tableName,
+        string columnName,
         string? foreignKey = null,
-        string? schema = null,
+        string? schemaName = null,
         IDbTransaction? tx = null,
         CancellationToken cancellationToken = default
     )
     {
         return await Database(db)
-            .ForeignKeyExistsAsync(db, table, column, foreignKey, schema, tx, cancellationToken);
+            .ForeignKeyExistsAsync(
+                db,
+                tableName,
+                columnName,
+                foreignKey,
+                schemaName,
+                tx,
+                cancellationToken
+            );
     }
 
     public static async Task<IEnumerable<string>> GetForeignKeysAsync(
         this IDbConnection db,
-        string? table,
-        string? filter = null,
-        string? schema = null,
+        string? tableName,
+        string? nameFilter = null,
+        string? schemaName = null,
         IDbTransaction? tx = null,
         CancellationToken cancellationToken = default
     )
     {
         return await Database(db)
-            .GetForeignKeysAsync(db, table, filter, schema, tx, cancellationToken);
+            .GetForeignKeysAsync(db, tableName, nameFilter, schemaName, tx, cancellationToken);
     }
 
     public static async Task<bool> CreateForeignKeyIfNotExistsAsync(
         this IDbConnection db,
-        string table,
-        string column,
+        string tableName,
+        string columnName,
         string foreignKey,
         string referenceTable,
         string referenceColumn,
-        string? schema = null,
+        string? schemaName = null,
         string onDelete = "NO ACTION",
         string onUpdate = "NO ACTION",
         IDbTransaction? tx = null,
@@ -335,12 +373,12 @@ public static partial class DatabaseExtensionMethods
         return await Database(db)
             .CreateForeignKeyIfNotExistsAsync(
                 db,
-                table,
-                column,
+                tableName,
+                columnName,
                 foreignKey,
                 referenceTable,
                 referenceColumn,
-                schema,
+                schemaName,
                 onDelete,
                 onUpdate,
                 tx,
@@ -350,10 +388,10 @@ public static partial class DatabaseExtensionMethods
 
     public static async Task<bool> DropForeignKeyIfExistsAsync(
         this IDbConnection db,
-        string table,
-        string column,
+        string tableName,
+        string columnName,
         string? foreignKey = null,
-        string? schema = null,
+        string? schemaName = null,
         IDbTransaction? tx = null,
         CancellationToken cancellationToken = default
     )
@@ -361,10 +399,10 @@ public static partial class DatabaseExtensionMethods
         return await Database(db)
             .DropForeignKeyIfExistsAsync(
                 db,
-                table,
-                column,
+                tableName,
+                columnName,
                 foreignKey,
-                schema,
+                schemaName,
                 tx,
                 cancellationToken
             );
@@ -376,9 +414,9 @@ public static partial class DatabaseExtensionMethods
 
     public static async Task<bool> UniqueConstraintExistsAsync(
         this IDbConnection db,
-        string table,
-        string uniqueConstraint,
-        string? schema = null,
+        string tableName,
+        string uniqueConstraintName,
+        string? schemaName = null,
         IDbTransaction? tx = null,
         CancellationToken cancellationToken = default
     )
@@ -386,9 +424,9 @@ public static partial class DatabaseExtensionMethods
         return await Database(db)
             .UniqueConstraintExistsAsync(
                 db,
-                table,
-                uniqueConstraint,
-                schema,
+                tableName,
+                uniqueConstraintName,
+                schemaName,
                 tx,
                 cancellationToken
             );
@@ -396,23 +434,30 @@ public static partial class DatabaseExtensionMethods
 
     public static async Task<IEnumerable<string>> GetUniqueConstraintsAsync(
         this IDbConnection db,
-        string? table,
-        string? filter = null,
-        string? schema = null,
+        string? tableName,
+        string? nameFilter = null,
+        string? schemaName = null,
         IDbTransaction? tx = null,
         CancellationToken cancellationToken = default
     )
     {
         return await Database(db)
-            .GetUniqueConstraintsAsync(db, table, filter, schema, tx, cancellationToken);
+            .GetUniqueConstraintsAsync(
+                db,
+                tableName,
+                nameFilter,
+                schemaName,
+                tx,
+                cancellationToken
+            );
     }
 
     public static async Task<bool> CreateUniqueConstraintIfNotExistsAsync(
         this IDbConnection db,
-        string table,
-        string uniqueConstraint,
-        string[] columns,
-        string? schema = null,
+        string tableName,
+        string uniqueConstraintName,
+        string[] columnNames,
+        string? schemaName = null,
         IDbTransaction? tx = null,
         CancellationToken cancellationToken = default
     )
@@ -420,10 +465,10 @@ public static partial class DatabaseExtensionMethods
         return await Database(db)
             .CreateUniqueConstraintIfNotExistsAsync(
                 db,
-                table,
-                uniqueConstraint,
-                columns,
-                schema,
+                tableName,
+                uniqueConstraintName,
+                columnNames,
+                schemaName,
                 tx,
                 cancellationToken
             );
@@ -431,9 +476,9 @@ public static partial class DatabaseExtensionMethods
 
     public static async Task<bool> DropUniqueConstraintIfExistsAsync(
         this IDbConnection db,
-        string table,
-        string uniqueConstraint,
-        string? schema = null,
+        string tableName,
+        string uniqueConstraintName,
+        string? schemaName = null,
         IDbTransaction? tx = null,
         CancellationToken cancellationToken = default
     )
@@ -441,9 +486,9 @@ public static partial class DatabaseExtensionMethods
         return await Database(db)
             .DropUniqueConstraintIfExistsAsync(
                 db,
-                table,
-                uniqueConstraint,
-                schema,
+                tableName,
+                uniqueConstraintName,
+                schemaName,
                 tx,
                 cancellationToken
             );

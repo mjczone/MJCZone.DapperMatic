@@ -11,25 +11,25 @@ public partial interface IDatabaseExtensions
     );
     Task<bool> SchemaExistsAsync(
         IDbConnection db,
-        string schema,
+        string schemaName,
         IDbTransaction? tx = null,
         CancellationToken cancellationToken = default
     );
     Task<IEnumerable<string>> GetSchemasAsync(
         IDbConnection db,
-        string? filter = null,
+        string? nameFilter = null,
         IDbTransaction? tx = null,
         CancellationToken cancellationToken = default
     );
     Task<bool> CreateSchemaIfNotExistsAsync(
         IDbConnection db,
-        string schema,
+        string schemaName,
         IDbTransaction? tx = null,
         CancellationToken cancellationToken = default
     );
     Task<bool> DropSchemaIfExistsAsync(
         IDbConnection db,
-        string schema,
+        string schemaName,
         IDbTransaction? tx = null,
         CancellationToken cancellationToken = default
     );

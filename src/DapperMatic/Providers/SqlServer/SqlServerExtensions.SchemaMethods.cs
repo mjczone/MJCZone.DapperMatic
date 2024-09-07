@@ -7,7 +7,7 @@ public partial class SqlServerExtensions : DatabaseExtensionsBase, IDatabaseExte
 {
     public async Task<bool> SchemaExistsAsync(
         IDbConnection db,
-        string schema,
+        string schemaName,
         IDbTransaction? tx = null,
         CancellationToken cancellationToken = default
     )
@@ -15,8 +15,8 @@ public partial class SqlServerExtensions : DatabaseExtensionsBase, IDatabaseExte
         return 0
             < await ExecuteScalarAsync<int>(
                     db,
-                    "SELECT count(*) FROM INFORMATION_SCHEMA.SCHEMATA WHERE SCHEMA_NAME = @schema",
-                    new { schema },
+                    "SELECT count(*) FROM INFORMATION_SCHEMA.SCHEMATA WHERE SCHEMA_NAME = @schemaName",
+                    new { schemaName },
                     transaction: tx
                 )
                 .ConfigureAwait(false);
@@ -24,15 +24,15 @@ public partial class SqlServerExtensions : DatabaseExtensionsBase, IDatabaseExte
 
     public async Task<bool> CreateSchemaIfNotExistsAsync(
         IDbConnection db,
-        string schema,
+        string schemaName,
         IDbTransaction? tx = null,
         CancellationToken cancellationToken = default
     )
     {
-        if (await SchemaExistsAsync(db, schema, tx, cancellationToken).ConfigureAwait(false))
+        if (await SchemaExistsAsync(db, schemaName, tx, cancellationToken).ConfigureAwait(false))
             return false;
 
-        var schemaName = NormalizeName(schema);
+        schemaName = NormalizeSchemaName(schemaName);
 
         await ExecuteAsync(db, $"CREATE SCHEMA {schemaName}", transaction: tx)
             .ConfigureAwait(false);
@@ -41,12 +41,12 @@ public partial class SqlServerExtensions : DatabaseExtensionsBase, IDatabaseExte
 
     public async Task<IEnumerable<string>> GetSchemasAsync(
         IDbConnection db,
-        string? filter = null,
+        string? nameFilter = null,
         IDbTransaction? tx = null,
         CancellationToken cancellationToken = default
     )
     {
-        if (string.IsNullOrWhiteSpace(filter))
+        if (string.IsNullOrWhiteSpace(nameFilter))
         {
             // get sql server schemas
             return await QueryAsync<string>(
@@ -58,7 +58,7 @@ public partial class SqlServerExtensions : DatabaseExtensionsBase, IDatabaseExte
         }
         else
         {
-            var where = $"{ToAlphaNumericString(filter)}".Replace("*", "%");
+            var where = $"{ToAlphaNumericString(nameFilter)}".Replace("*", "%");
             return await QueryAsync<string>(
                     db,
                     "SELECT DISTINCT SCHEMA_NAME FROM INFORMATION_SCHEMA.SCHEMATA WHERE SCHEMA_NAME LIKE @where ORDER BY SCHEMA_NAME",
@@ -71,15 +71,15 @@ public partial class SqlServerExtensions : DatabaseExtensionsBase, IDatabaseExte
 
     public async Task<bool> DropSchemaIfExistsAsync(
         IDbConnection db,
-        string schema,
+        string schemaName,
         IDbTransaction? tx = null,
         CancellationToken cancellationToken = default
     )
     {
-        if (!await SchemaExistsAsync(db, schema, tx, cancellationToken).ConfigureAwait(false))
+        if (!await SchemaExistsAsync(db, schemaName, tx, cancellationToken).ConfigureAwait(false))
             return false;
 
-        var schemaName = NormalizeName(schema);
+        schemaName = NormalizeSchemaName(schemaName);
 
         var innerTx =
             tx
@@ -88,7 +88,7 @@ public partial class SqlServerExtensions : DatabaseExtensionsBase, IDatabaseExte
                 .ConfigureAwait(false);
         try
         {
-            // drop all objects in the schema (except tables, which will be handled separately)
+            // drop all objects in the schemaName (except tables, which will be handled separately)
             var dropAllRelatedTypesSqlStatement = await QueryAsync<string>(
                     db,
                     $@"
@@ -128,7 +128,7 @@ public partial class SqlServerExtensions : DatabaseExtensionsBase, IDatabaseExte
                         'V',
                         --triggers
                         'TR',
-                        --functions (inline, table-valued, scalar, CLR scalar, CLR table-valued)
+                        --functions (inline, tableName-valued, scalar, CLR scalar, CLR tableName-valued)
                         'IF', 'TF', 'FN', 'FS', 'FT',
                         --procedures (stored procedure, CLR stored procedure)
                         'P', 'PC'
@@ -154,7 +154,7 @@ public partial class SqlServerExtensions : DatabaseExtensionsBase, IDatabaseExte
                 await ExecuteAsync(db, dropSql, transaction: innerTx).ConfigureAwait(false);
             }
 
-            // drop xml schema collection
+            // drop xml schemaName collection
             var dropXmlSchemaCollectionSqlStatements = await QueryAsync<string>(
                     db,
                     $@"SELECT 'DROP XML SCHEMA COLLECTION ' + QUOTENAME(SCHEMA_NAME(schema_id)) + '.' + QUOTENAME(name)
@@ -182,7 +182,7 @@ public partial class SqlServerExtensions : DatabaseExtensionsBase, IDatabaseExte
                 await ExecuteAsync(db, dropSql, transaction: innerTx).ConfigureAwait(false);
             }
 
-            // drop the schema itself
+            // drop the schemaName itself
             await ExecuteAsync(db, $"DROP SCHEMA [{schemaName}]", transaction: innerTx)
                 .ConfigureAwait(false);
 

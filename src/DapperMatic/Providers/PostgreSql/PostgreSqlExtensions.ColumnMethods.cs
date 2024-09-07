@@ -7,14 +7,14 @@ public partial class PostgreSqlExtensions : DatabaseExtensionsBase, IDatabaseExt
 {
     public async Task<bool> ColumnExistsAsync(
         IDbConnection db,
-        string table,
-        string column,
-        string? schema = null,
+        string tableName,
+        string columnName,
+        string? schemaName = null,
         IDbTransaction? tx = null,
         CancellationToken cancellationToken = default
     )
     {
-        var (schemaName, tableName, columnName) = NormalizeNames(schema, table, column);
+        (schemaName, tableName, columnName) = NormalizeNames(schemaName, tableName, columnName);
         return 0
             < await ExecuteScalarAsync<int>(
                     db,
@@ -31,14 +31,14 @@ public partial class PostgreSqlExtensions : DatabaseExtensionsBase, IDatabaseExt
 
     public async Task<bool> CreateColumnIfNotExistsAsync(
         IDbConnection db,
-        string table,
-        string column,
+        string tableName,
+        string columnName,
         Type dotnetType,
         string? type = null,
         int? length = null,
         int? precision = null,
         int? scale = null,
-        string? schema = null,
+        string? schemaName = null,
         string? defaultValue = null,
         bool nullable = true,
         bool unique = false,
@@ -47,13 +47,13 @@ public partial class PostgreSqlExtensions : DatabaseExtensionsBase, IDatabaseExt
     )
     {
         if (
-            await ColumnExistsAsync(db, table, column, schema, tx, cancellationToken)
+            await ColumnExistsAsync(db, tableName, columnName, schemaName, tx, cancellationToken)
                 .ConfigureAwait(false)
         )
             return false;
 
         var sqlType = type ?? GetSqlTypeString(dotnetType, length, precision, scale);
-        var (schemaName, tableName, columnName) = NormalizeNames(schema, table, column);
+        (schemaName, tableName, columnName) = NormalizeNames(schemaName, tableName, columnName);
 
         var sql =
             $@"ALTER TABLE {schemaName}.{tableName}
@@ -77,14 +77,14 @@ public partial class PostgreSqlExtensions : DatabaseExtensionsBase, IDatabaseExt
 
     public async Task<IEnumerable<string>> GetColumnsAsync(
         IDbConnection db,
-        string table,
-        string? filter = null,
-        string? schema = null,
+        string tableName,
+        string? nameFilter = null,
+        string? schemaName = null,
         IDbTransaction? tx = null,
         CancellationToken cancellationToken = default
     )
     {
-        var (schemaName, tableName, _) = NormalizeNames(schema, table, null);
+        (schemaName, tableName, _) = NormalizeNames(schemaName, tableName, null);
 
         return await QueryAsync<string>(
                 db,
@@ -97,20 +97,20 @@ public partial class PostgreSqlExtensions : DatabaseExtensionsBase, IDatabaseExt
 
     public async Task<bool> DropColumnIfExistsAsync(
         IDbConnection db,
-        string table,
-        string column,
-        string? schema = null,
+        string tableName,
+        string columnName,
+        string? schemaName = null,
         IDbTransaction? tx = null,
         CancellationToken cancellationToken = default
     )
     {
         if (
-            !await ColumnExistsAsync(db, table, column, schema, tx, cancellationToken)
+            !await ColumnExistsAsync(db, tableName, columnName, schemaName, tx, cancellationToken)
                 .ConfigureAwait(false)
         )
             return false;
 
-        var (schemaName, tableName, columnName) = NormalizeNames(schema, table, column);
+        (schemaName, tableName, columnName) = NormalizeNames(schemaName, tableName, columnName);
 
         await ExecuteAsync(
                 db,

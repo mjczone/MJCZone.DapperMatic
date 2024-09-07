@@ -2,10 +2,10 @@ namespace DapperMatic.Models;
 
 public class PrimaryKey
 {
-    public PrimaryKey(string name, string[] columns)
+    public PrimaryKey(string name, string[] columnNames)
     {
         Name = name;
-        Columns = columns;
+        Columns = columnNames;
     }
 
     public string Name { get; set; }

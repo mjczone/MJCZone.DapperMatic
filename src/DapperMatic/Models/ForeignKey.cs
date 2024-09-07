@@ -2,10 +2,10 @@ namespace DapperMatic.Models;
 
 public class ForeignKey
 {
-    public ForeignKey(string name, string column, string referenceTable, string referenceColumn)
+    public ForeignKey(string name, string columnName, string referenceTable, string referenceColumn)
     {
         Name = name;
-        Column = column;
+        Column = columnName;
         ReferenceTable = referenceTable;
         ReferenceColumn = referenceColumn;
     }

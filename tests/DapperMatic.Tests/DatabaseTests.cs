@@ -1,6 +1,7 @@
 using System.Data;
 using Dapper;
 using DapperMatic.Models;
+using Microsoft.VisualBasic;
 using Xunit.Abstractions;
 
 namespace DapperMatic.Tests;
@@ -76,7 +77,7 @@ public abstract class DatabaseTests
         var exists = await connection.SchemaExistsAsync(schemaName);
         Assert.False(exists);
 
-        output.WriteLine($"Creating schema: {schemaName}");
+        output.WriteLine($"Creating schemaName: {schemaName}");
         var created = await connection.CreateSchemaIfNotExistsAsync(schemaName);
         if (supportsSchemas)
         {
@@ -109,7 +110,7 @@ public abstract class DatabaseTests
             Assert.Empty(schemas);
         }
 
-        output.WriteLine($"Dropping schema: {schemaName}");
+        output.WriteLine($"Dropping schemaName: {schemaName}");
         var dropped = await connection.DropSchemaIfExistsAsync(schemaName);
         if (supportsSchemas)
         {
@@ -241,7 +242,7 @@ public abstract class DatabaseTests
         var exists = await connection.ColumnExistsAsync(tableName, columnName);
         Assert.False(exists);
 
-        output.WriteLine($"Creating column: {tableName}.{columnName}");
+        output.WriteLine($"Creating columnName: {tableName}.{columnName}");
         await connection.CreateColumnIfNotExistsAsync(
             tableName,
             columnName,
@@ -254,14 +255,14 @@ public abstract class DatabaseTests
         exists = await connection.ColumnExistsAsync(tableName, columnName);
         Assert.True(exists);
 
-        output.WriteLine($"Dropping column: {tableName}.{columnName}");
+        output.WriteLine($"Dropping columnName: {tableName}.{columnName}");
         await connection.DropColumnIfExistsAsync(tableName, columnName);
 
         output.WriteLine($"Column Exists: {tableName}.{columnName}");
         exists = await connection.ColumnExistsAsync(tableName, columnName);
         Assert.False(exists);
 
-        // try adding a column of all the supported types
+        // try adding a columnName of all the supported types
         await connection.CreateTableIfNotExistsAsync("testWithAllColumns");
         var columnCount = 1;
         await connection.CreateColumnIfNotExistsAsync(
@@ -426,44 +427,148 @@ public abstract class DatabaseTests
     protected virtual async Task Database_Can_CrudTableIndexesAsync()
     {
         using IDbConnection connection = await OpenConnectionAsync();
-        const string tableName = "testWithIndex";
-        const string columnName = "testColumn";
-        const string indexName = "testIndex";
+        try
+        {
+            // await connection.ExecuteAsync("DROP TABLE testWithIndex");
+            const string tableName = "testWithIndex";
+            const string columnName = "testColumn";
+            const string indexName = "testIndex";
 
-        await connection.CreateTableIfNotExistsAsync(tableName);
-        await connection.CreateColumnIfNotExistsAsync(
-            tableName,
-            columnName,
-            typeof(int),
-            defaultValue: "1",
-            nullable: false
-        );
+            await connection.DropTableIfExistsAsync(tableName);
+            await connection.CreateTableIfNotExistsAsync(tableName);
+            await connection.CreateColumnIfNotExistsAsync(
+                tableName,
+                columnName,
+                typeof(int),
+                defaultValue: "1",
+                nullable: false
+            );
+            for (var i = 0; i < 10; i++)
+            {
+                await connection.CreateColumnIfNotExistsAsync(
+                    tableName,
+                    columnName + "_" + i,
+                    typeof(int),
+                    defaultValue: i.ToString(),
+                    nullable: false
+                );
+            }
 
-        output.WriteLine($"Index Exists: {tableName}.{indexName}");
-        var exists = await connection.IndexExistsAsync(tableName, columnName, indexName);
-        Assert.False(exists);
+            output.WriteLine($"Index Exists: {tableName}.{indexName}");
+            var exists = await connection.IndexExistsAsync(tableName, columnName, indexName);
+            Assert.False(exists);
 
-        output.WriteLine($"Creating index: {tableName}.{indexName}");
-        await connection.CreateIndexIfNotExistsAsync(
-            tableName,
-            indexName,
-            [columnName],
-            unique: true
-        );
+            output.WriteLine($"Creating unique index: {tableName}.{indexName}");
+            await connection.CreateIndexIfNotExistsAsync(
+                tableName,
+                indexName,
+                [columnName],
+                unique: true
+            );
 
-        output.WriteLine($"Index Exists: {tableName}.{indexName}");
-        exists = await connection.IndexExistsAsync(tableName, indexName);
-        Assert.True(exists);
+            output.WriteLine(
+                $"Creating multiple column unique index: {tableName}.{indexName}_multi"
+            );
+            await connection.CreateIndexIfNotExistsAsync(
+                tableName,
+                indexName + "_multi",
+                [columnName + "_1 DESC", columnName + "_2"],
+                unique: true
+            );
 
-        var indexes = await connection.GetIndexesAsync(tableName);
-        Assert.Contains(indexes, i => i.Equals(indexName, StringComparison.OrdinalIgnoreCase));
+            output.WriteLine(
+                $"Creating multiple column non unique index: {tableName}.{indexName}_multi2"
+            );
+            await connection.CreateIndexIfNotExistsAsync(
+                tableName,
+                indexName + "_multi2",
+                [columnName + "_3 ASC", columnName + "_4 DESC"]
+            );
 
-        output.WriteLine($"Dropping index: {tableName}.{indexName}");
-        await connection.DropIndexIfExistsAsync(tableName, indexName);
+            output.WriteLine($"Index Exists: {tableName}.{indexName}");
+            exists = await connection.IndexExistsAsync(tableName, indexName);
+            Assert.True(exists);
+            exists = await connection.IndexExistsAsync(tableName, indexName + "_multi");
+            Assert.True(exists);
+            exists = await connection.IndexExistsAsync(tableName, indexName + "_multi2");
+            Assert.True(exists);
 
-        output.WriteLine($"Index Exists: {tableName}.{indexName}");
-        exists = await connection.IndexExistsAsync(tableName, indexName);
-        Assert.False(exists);
+            var indexNames = await connection.GetIndexNamesAsync(tableName);
+            // get all indexes in the database
+            var indexNames2 = await connection.GetIndexNamesAsync(null);
+            Assert.Contains(
+                indexNames,
+                i => i.Equals(indexName, StringComparison.OrdinalIgnoreCase)
+            );
+            Assert.Contains(
+                indexNames2,
+                i => i.Equals(indexName, StringComparison.OrdinalIgnoreCase)
+            );
+            Assert.Contains(
+                indexNames,
+                i => i.Equals(indexName + "_multi", StringComparison.OrdinalIgnoreCase)
+            );
+            Assert.Contains(
+                indexNames2,
+                i => i.Equals(indexName + "_multi", StringComparison.OrdinalIgnoreCase)
+            );
+            Assert.Contains(
+                indexNames,
+                i => i.Equals(indexName + "_multi2", StringComparison.OrdinalIgnoreCase)
+            );
+            Assert.Contains(
+                indexNames2,
+                i => i.Equals(indexName + "_multi2", StringComparison.OrdinalIgnoreCase)
+            );
+
+            var indexes = await connection.GetIndexesAsync(tableName);
+            // get all indexes in the database
+            var indexes2 = await connection.GetIndexesAsync(null);
+            Assert.True(indexes.Count() >= 3);
+            Assert.True(indexes2.Count() >= 3);
+            var idxMulti1 = indexes.SingleOrDefault(i =>
+                i.TableName.Equals(tableName, StringComparison.OrdinalIgnoreCase)
+                && i.IndexName.Equals(indexName + "_multi", StringComparison.OrdinalIgnoreCase)
+            );
+            var idxMulti2 = indexes.SingleOrDefault(i =>
+                i.TableName.Equals(tableName, StringComparison.OrdinalIgnoreCase)
+                && i.IndexName.Equals(indexName + "_multi2", StringComparison.OrdinalIgnoreCase)
+            );
+            Assert.NotNull(idxMulti1);
+            Assert.NotNull(idxMulti2);
+            idxMulti1 = indexes2.SingleOrDefault(i =>
+                i.TableName.Equals(tableName, StringComparison.OrdinalIgnoreCase)
+                && i.IndexName.Equals(indexName + "_multi", StringComparison.OrdinalIgnoreCase)
+            );
+            idxMulti2 = indexes2.SingleOrDefault(i =>
+                i.TableName.Equals(tableName, StringComparison.OrdinalIgnoreCase)
+                && i.IndexName.Equals(indexName + "_multi2", StringComparison.OrdinalIgnoreCase)
+            );
+            Assert.NotNull(idxMulti1);
+            Assert.NotNull(idxMulti2);
+            Assert.True(idxMulti1.Unique);
+            Assert.True(idxMulti1.ColumnNames.Length == 2);
+            Assert.EndsWith("desc", idxMulti1.ColumnNames[0], StringComparison.OrdinalIgnoreCase);
+            Assert.EndsWith("asc", idxMulti1.ColumnNames[1], StringComparison.OrdinalIgnoreCase);
+            Assert.False(idxMulti2.Unique);
+            Assert.True(idxMulti2.ColumnNames.Length == 2);
+            Assert.EndsWith("asc", idxMulti2.ColumnNames[0], StringComparison.OrdinalIgnoreCase);
+            Assert.EndsWith("desc", idxMulti2.ColumnNames[1], StringComparison.OrdinalIgnoreCase);
+
+            output.WriteLine($"Dropping indexName: {tableName}.{indexName}");
+            await connection.DropIndexIfExistsAsync(tableName, indexName);
+
+            output.WriteLine($"Index Exists: {tableName}.{indexName}");
+            exists = await connection.IndexExistsAsync(tableName, indexName);
+            Assert.False(exists);
+
+            await connection.DropTableIfExistsAsync(tableName);
+        }
+        finally
+        {
+            var sql = connection.GetLastSql();
+            output.WriteLine("Last sql: " + sql);
+        }
     }
 
     [Fact]

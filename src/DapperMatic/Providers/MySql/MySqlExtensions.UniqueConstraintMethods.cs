@@ -6,14 +6,18 @@ public partial class MySqlExtensions : DatabaseExtensionsBase, IDatabaseExtensio
 {
     public async Task<bool> UniqueConstraintExistsAsync(
         IDbConnection db,
-        string table,
-        string uniqueConstraint,
-        string? schema = null,
+        string tableName,
+        string uniqueConstraintName,
+        string? schemaName = null,
         IDbTransaction? tx = null,
         CancellationToken cancellationToken = default
     )
     {
-        var (_, tableName, uniqueConstraintName) = NormalizeNames(schema, table, uniqueConstraint);
+        (_, tableName, uniqueConstraintName) = NormalizeNames(
+            schemaName,
+            tableName,
+            uniqueConstraintName
+        );
 
         return 0
             < await ExecuteScalarAsync<int>(
@@ -32,25 +36,32 @@ public partial class MySqlExtensions : DatabaseExtensionsBase, IDatabaseExtensio
 
     public async Task<bool> CreateUniqueConstraintIfNotExistsAsync(
         IDbConnection db,
-        string table,
-        string uniqueConstraint,
-        string[] columns,
-        string? schema = null,
+        string tableName,
+        string uniqueConstraintName,
+        string[] columnNames,
+        string? schemaName = null,
         IDbTransaction? tx = null,
         CancellationToken cancellationToken = default
     )
     {
-        var (_, tableName, uniqueConstraintName) = NormalizeNames(schema, table, uniqueConstraint);
+        (_, tableName, uniqueConstraintName) = NormalizeNames(
+            schemaName,
+            tableName,
+            uniqueConstraintName
+        );
 
-        if (columns == null || columns.Length == 0)
-            throw new ArgumentException("At least one column must be specified.", nameof(columns));
+        if (columnNames == null || columnNames.Length == 0)
+            throw new ArgumentException(
+                "At least one columnName must be specified.",
+                nameof(columnNames)
+            );
 
         if (
             await UniqueConstraintExistsAsync(
                     db,
-                    table,
-                    uniqueConstraint,
-                    schema,
+                    tableName,
+                    uniqueConstraintName,
+                    schemaName,
                     tx,
                     cancellationToken
                 )
@@ -58,7 +69,7 @@ public partial class MySqlExtensions : DatabaseExtensionsBase, IDatabaseExtensio
         )
             return false;
 
-        var columnList = string.Join(", ", columns);
+        var columnList = string.Join(", ", columnNames);
 
         await ExecuteAsync(
                 db,
@@ -73,16 +84,16 @@ public partial class MySqlExtensions : DatabaseExtensionsBase, IDatabaseExtensio
 
     public Task<IEnumerable<string>> GetUniqueConstraintsAsync(
         IDbConnection db,
-        string? table,
-        string? filter = null,
-        string? schema = null,
+        string? tableName,
+        string? nameFilter = null,
+        string? schemaName = null,
         IDbTransaction? tx = null,
         CancellationToken cancellationToken = default
     )
     {
-        var (_, tableName, _) = NormalizeNames(schema, table, null);
+        (_, tableName, _) = NormalizeNames(schemaName, tableName, null);
 
-        if (string.IsNullOrWhiteSpace(filter))
+        if (string.IsNullOrWhiteSpace(nameFilter))
         {
             return QueryAsync<string>(
                 db,
@@ -98,7 +109,7 @@ public partial class MySqlExtensions : DatabaseExtensionsBase, IDatabaseExtensio
         }
         else
         {
-            var where = $"{ToAlphaNumericString(filter)}".Replace("*", "%");
+            var where = $"{ToAlphaNumericString(nameFilter)}".Replace("*", "%");
             return QueryAsync<string>(
                 db,
                 $@"
@@ -116,9 +127,9 @@ public partial class MySqlExtensions : DatabaseExtensionsBase, IDatabaseExtensio
 
     public async Task<bool> DropUniqueConstraintIfExistsAsync(
         IDbConnection db,
-        string table,
-        string uniqueConstraint,
-        string? schema = null,
+        string tableName,
+        string uniqueConstraintName,
+        string? schemaName = null,
         IDbTransaction? tx = null,
         CancellationToken cancellationToken = default
     )
@@ -126,9 +137,9 @@ public partial class MySqlExtensions : DatabaseExtensionsBase, IDatabaseExtensio
         if (
             !await UniqueConstraintExistsAsync(
                     db,
-                    table,
-                    uniqueConstraint,
-                    schema,
+                    tableName,
+                    uniqueConstraintName,
+                    schemaName,
                     tx,
                     cancellationToken
                 )
@@ -136,7 +147,11 @@ public partial class MySqlExtensions : DatabaseExtensionsBase, IDatabaseExtensio
         )
             return false;
 
-        var (_, tableName, uniqueConstraintName) = NormalizeNames(schema, table, uniqueConstraint);
+        (_, tableName, uniqueConstraintName) = NormalizeNames(
+            schemaName,
+            tableName,
+            uniqueConstraintName
+        );
 
         // drop unique constraint in MySql 5.7
         await ExecuteAsync(

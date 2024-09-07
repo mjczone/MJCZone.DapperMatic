@@ -7,13 +7,13 @@ public partial class SqliteExtensions : DatabaseExtensionsBase, IDatabaseExtensi
 {
     public async Task<bool> TableExistsAsync(
         IDbConnection db,
-        string table,
-        string? schema = null,
+        string tableName,
+        string? schemaName = null,
         IDbTransaction? tx = null,
         CancellationToken cancellationToken = default
     )
     {
-        var (_, tableName, _) = NormalizeNames(schema, table, null);
+        (_, tableName, _) = NormalizeNames(schemaName, tableName, null);
 
         return 0
             < await ExecuteScalarAsync<int>(
@@ -27,8 +27,8 @@ public partial class SqliteExtensions : DatabaseExtensionsBase, IDatabaseExtensi
 
     public async Task<bool> CreateTableIfNotExistsAsync(
         IDbConnection db,
-        string table,
-        string? schema = null,
+        string tableName,
+        string? schemaName = null,
         string[]? primaryKeyColumnNames = null,
         Type[]? primaryKeyDotnetTypes = null,
         int?[]? primaryKeyColumnLengths = null,
@@ -36,10 +36,13 @@ public partial class SqliteExtensions : DatabaseExtensionsBase, IDatabaseExtensi
         CancellationToken cancellationToken = default
     )
     {
-        if (await TableExistsAsync(db, table, schema, tx, cancellationToken).ConfigureAwait(false))
+        if (
+            await TableExistsAsync(db, tableName, schemaName, tx, cancellationToken)
+                .ConfigureAwait(false)
+        )
             return false;
 
-        var (_, tableName, _) = NormalizeNames(schema, table, null);
+        (_, tableName, _) = NormalizeNames(schemaName, tableName, null);
 
         if (primaryKeyColumnNames == null || primaryKeyColumnNames.Length == 0)
         {
@@ -64,7 +67,7 @@ public partial class SqliteExtensions : DatabaseExtensionsBase, IDatabaseExtensi
         for (var i = 0; i < primaryKeyColumnNames.Length; i++)
         {
             var columnArr = primaryKeyColumnNames[i].Split(' ');
-            var (_, _, columnName) = NormalizeNames(schema, table, columnArr[0]);
+            var (_, _, columnName) = NormalizeNames(schemaName, tableName, columnArr[0]);
             if (string.IsNullOrWhiteSpace(columnName))
                 continue;
 
@@ -94,13 +97,13 @@ public partial class SqliteExtensions : DatabaseExtensionsBase, IDatabaseExtensi
 
     public async Task<IEnumerable<string>> GetTablesAsync(
         IDbConnection db,
-        string? filter = null,
-        string? schema = null,
+        string? nameFilter = null,
+        string? schemaName = null,
         IDbTransaction? tx = null,
         CancellationToken cancellationToken = default
     )
     {
-        if (string.IsNullOrWhiteSpace(filter))
+        if (string.IsNullOrWhiteSpace(nameFilter))
         {
             return await QueryAsync<string>(
                     db,
@@ -111,7 +114,7 @@ public partial class SqliteExtensions : DatabaseExtensionsBase, IDatabaseExtensi
         }
         else
         {
-            var where = $"{ToAlphaNumericString(filter)}".Replace("*", "%");
+            var where = $"{ToAlphaNumericString(nameFilter)}".Replace("*", "%");
             return await QueryAsync<string>(
                     db,
                     "SELECT distinct name FROM sqlite_master WHERE type ='table' AND name NOT LIKE 'sqlite_%' AND name LIKE @where ORDER BY name",
@@ -124,16 +127,19 @@ public partial class SqliteExtensions : DatabaseExtensionsBase, IDatabaseExtensi
 
     public async Task<bool> DropTableIfExistsAsync(
         IDbConnection db,
-        string table,
-        string? schema = null,
+        string tableName,
+        string? schemaName = null,
         IDbTransaction? tx = null,
         CancellationToken cancellationToken = default
     )
     {
-        if (!await TableExistsAsync(db, table, schema, tx, cancellationToken).ConfigureAwait(false))
+        if (
+            !await TableExistsAsync(db, tableName, schemaName, tx, cancellationToken)
+                .ConfigureAwait(false)
+        )
             return false;
 
-        var (_, tableName, _) = NormalizeNames(schema, table, null);
+        (_, tableName, _) = NormalizeNames(schemaName, tableName, null);
 
         await ExecuteAsync(db, @$"DROP TABLE ""{tableName}""", transaction: tx)
             .ConfigureAwait(false);

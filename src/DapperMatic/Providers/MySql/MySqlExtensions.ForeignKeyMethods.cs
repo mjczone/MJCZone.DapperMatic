@@ -6,15 +6,15 @@ public partial class MySqlExtensions : DatabaseExtensionsBase, IDatabaseExtensio
 {
     public async Task<bool> ForeignKeyExistsAsync(
         IDbConnection db,
-        string table,
-        string column,
+        string tableName,
+        string columnName,
         string? foreignKey = null,
-        string? schema = null,
+        string? schemaName = null,
         IDbTransaction? tx = null,
         CancellationToken cancellationToken = default
     )
     {
-        var (_, tableName, columnName) = NormalizeNames(schema, table, column);
+        (_, tableName, columnName) = NormalizeNames(schemaName, tableName, columnName);
 
         if (!string.IsNullOrWhiteSpace(foreignKey))
         {
@@ -37,7 +37,7 @@ public partial class MySqlExtensions : DatabaseExtensionsBase, IDatabaseExtensio
         else
         {
             if (string.IsNullOrWhiteSpace(columnName))
-                throw new ArgumentException("Column name must be specified.", nameof(column));
+                throw new ArgumentException("Column name must be specified.", nameof(columnName));
 
             return 0
                 < await ExecuteScalarAsync<int>(
@@ -57,12 +57,12 @@ public partial class MySqlExtensions : DatabaseExtensionsBase, IDatabaseExtensio
 
     public async Task<bool> CreateForeignKeyIfNotExistsAsync(
         IDbConnection db,
-        string table,
-        string column,
+        string tableName,
+        string columnName,
         string foreignKey,
         string referenceTable,
         string referenceColumn,
-        string? schema = null,
+        string? schemaName = null,
         string onDelete = "NO ACTION",
         string onUpdate = "NO ACTION",
         IDbTransaction? tx = null,
@@ -73,26 +73,26 @@ public partial class MySqlExtensions : DatabaseExtensionsBase, IDatabaseExtensio
             throw new ArgumentException("Foreign key name must be specified.", nameof(foreignKey));
         if (string.IsNullOrWhiteSpace(referenceTable))
             throw new ArgumentException(
-                "Reference table name must be specified.",
+                "Reference tableName name must be specified.",
                 nameof(referenceTable)
             );
         if (string.IsNullOrWhiteSpace(referenceColumn))
             throw new ArgumentException(
-                "Reference column name must be specified.",
+                "Reference columnName name must be specified.",
                 nameof(referenceColumn)
             );
-        if (string.IsNullOrWhiteSpace(column))
-            throw new ArgumentException("Column name must be specified.", nameof(column));
-        if (string.IsNullOrWhiteSpace(table))
-            throw new ArgumentException("Table name must be specified.", nameof(table));
+        if (string.IsNullOrWhiteSpace(columnName))
+            throw new ArgumentException("Column name must be specified.", nameof(columnName));
+        if (string.IsNullOrWhiteSpace(tableName))
+            throw new ArgumentException("Table name must be specified.", nameof(tableName));
 
         if (
             await ForeignKeyExistsAsync(
                     db,
-                    table,
-                    column,
+                    tableName,
+                    columnName,
                     foreignKey,
-                    schema,
+                    schemaName,
                     tx,
                     cancellationToken
                 )
@@ -100,16 +100,16 @@ public partial class MySqlExtensions : DatabaseExtensionsBase, IDatabaseExtensio
         )
             return false;
 
-        var (_, tableName, columnName) = NormalizeNames(schema, table, column);
+        (_, tableName, columnName) = NormalizeNames(schemaName, tableName, columnName);
         var (_, referenceTableName, referenceColumnName) = NormalizeNames(
-            schema,
+            schemaName,
             referenceTable,
             referenceColumn
         );
 
         var foreignKeyName = NormalizeName(foreignKey);
 
-        // add the foreign key to the MySql database table
+        // add the foreign key to the MySql database tableName
         await ExecuteAsync(
                 db,
                 $@"ALTER TABLE `{tableName}` 
@@ -127,19 +127,19 @@ public partial class MySqlExtensions : DatabaseExtensionsBase, IDatabaseExtensio
 
     public Task<IEnumerable<string>> GetForeignKeysAsync(
         IDbConnection db,
-        string? table,
-        string? filter = null,
-        string? schema = null,
+        string? tableName,
+        string? nameFilter = null,
+        string? schemaName = null,
         IDbTransaction? tx = null,
         CancellationToken cancellationToken = default
     )
     {
-        if (string.IsNullOrWhiteSpace(table))
-            throw new ArgumentException("Table name must be specified.", nameof(table));
+        if (string.IsNullOrWhiteSpace(tableName))
+            throw new ArgumentException("Table name must be specified.", nameof(tableName));
 
-        var (_, tableName, _) = NormalizeNames(schema, table);
+        (_, tableName, _) = NormalizeNames(schemaName, tableName);
 
-        if (string.IsNullOrWhiteSpace(filter))
+        if (string.IsNullOrWhiteSpace(nameFilter))
         {
             return QueryAsync<string>(
                 db,
@@ -155,7 +155,7 @@ public partial class MySqlExtensions : DatabaseExtensionsBase, IDatabaseExtensio
         }
         else
         {
-            var where = $"{ToAlphaNumericString(filter)}".Replace("*", "%");
+            var where = $"{ToAlphaNumericString(nameFilter)}".Replace("*", "%");
             return QueryAsync<string>(
                 db,
                 $@"SELECT CONSTRAINT_NAME
@@ -172,7 +172,7 @@ public partial class MySqlExtensions : DatabaseExtensionsBase, IDatabaseExtensio
     }
 
     /// <summary>
-    /// In SQLite, to drop a foreign key, you must re-create the table without the foreign key,
+    /// In SQLite, to drop a foreign key, you must re-create the tableName without the foreign key,
     /// and then re-insert the data. It's a costly operation.
     /// </summary>
     /// <remarks>
@@ -180,25 +180,25 @@ public partial class MySqlExtensions : DatabaseExtensionsBase, IDatabaseExtensio
     /// </remarks>
     public async Task<bool> DropForeignKeyIfExistsAsync(
         IDbConnection db,
-        string table,
-        string column,
+        string tableName,
+        string columnName,
         string? foreignKey = null,
-        string? schema = null,
+        string? schemaName = null,
         IDbTransaction? tx = null,
         CancellationToken cancellationToken = default
     )
     {
-        if (string.IsNullOrWhiteSpace(table))
-            throw new ArgumentException("Table name must be specified.", nameof(table));
-        if (string.IsNullOrWhiteSpace(column))
-            throw new ArgumentException("Column name must be specified.", nameof(column));
+        if (string.IsNullOrWhiteSpace(tableName))
+            throw new ArgumentException("Table name must be specified.", nameof(tableName));
+        if (string.IsNullOrWhiteSpace(columnName))
+            throw new ArgumentException("Column name must be specified.", nameof(columnName));
 
         var fkExists = await ForeignKeyExistsAsync(
                 db,
-                table,
-                column,
+                tableName,
+                columnName,
                 foreignKey,
-                schema,
+                schemaName,
                 tx,
                 cancellationToken
             )
@@ -206,7 +206,7 @@ public partial class MySqlExtensions : DatabaseExtensionsBase, IDatabaseExtensio
         if (!fkExists)
             return false;
 
-        var (_, tableName, columnName) = NormalizeNames(schema, table, column);
+        (_, tableName, columnName) = NormalizeNames(schemaName, tableName, columnName);
 
         if (!string.IsNullOrWhiteSpace(foreignKey))
         {
@@ -221,9 +221,9 @@ public partial class MySqlExtensions : DatabaseExtensionsBase, IDatabaseExtensio
         else
         {
             if (string.IsNullOrWhiteSpace(columnName))
-                throw new ArgumentException("Column name must be specified.", nameof(column));
+                throw new ArgumentException("Column name must be specified.", nameof(columnName));
 
-            // get the name of the foreign key for the column
+            // get the name of the foreign key for the columnName
             var foreignKeyName = await ExecuteScalarAsync<string>(
                     db,
                     $@"SELECT CONSTRAINT_NAME 

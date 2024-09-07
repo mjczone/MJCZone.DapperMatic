@@ -2,10 +2,10 @@ namespace DapperMatic.Models;
 
 public class UniqueConstraint
 {
-    public UniqueConstraint(string name, string[] columns)
+    public UniqueConstraint(string name, string[] columnNames)
     {
         Name = name;
-        Columns = columns;
+        Columns = columnNames;
     }
 
     public string Name { get; set; }

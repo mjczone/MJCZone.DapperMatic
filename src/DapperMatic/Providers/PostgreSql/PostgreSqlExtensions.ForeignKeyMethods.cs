@@ -6,15 +6,15 @@ public partial class PostgreSqlExtensions : DatabaseExtensionsBase, IDatabaseExt
 {
     public async Task<bool> ForeignKeyExistsAsync(
         IDbConnection db,
-        string table,
-        string column,
+        string tableName,
+        string columnName,
         string? foreignKey = null,
-        string? schema = null,
+        string? schemaName = null,
         IDbTransaction? tx = null,
         CancellationToken cancellationToken = default
     )
     {
-        var (schemaName, tableName, columnName) = NormalizeNames(schema, table, column);
+        (schemaName, tableName, columnName) = NormalizeNames(schemaName, tableName, columnName);
         if (!string.IsNullOrWhiteSpace(foreignKey))
         {
             var foreignKeyName = NormalizeName(foreignKey);
@@ -41,7 +41,7 @@ public partial class PostgreSqlExtensions : DatabaseExtensionsBase, IDatabaseExt
         else
         {
             if (string.IsNullOrWhiteSpace(columnName))
-                throw new ArgumentException("Column name must be specified.", nameof(column));
+                throw new ArgumentException("Column name must be specified.", nameof(columnName));
 
             return 0
                 < await ExecuteScalarAsync<int>(
@@ -72,12 +72,12 @@ public partial class PostgreSqlExtensions : DatabaseExtensionsBase, IDatabaseExt
 
     public async Task<bool> CreateForeignKeyIfNotExistsAsync(
         IDbConnection db,
-        string table,
-        string column,
+        string tableName,
+        string columnName,
         string foreignKey,
         string referenceTable,
         string referenceColumn,
-        string? schema = null,
+        string? schemaName = null,
         string onDelete = "NO ACTION",
         string onUpdate = "NO ACTION",
         IDbTransaction? tx = null,
@@ -88,26 +88,26 @@ public partial class PostgreSqlExtensions : DatabaseExtensionsBase, IDatabaseExt
             throw new ArgumentException("Foreign key name must be specified.", nameof(foreignKey));
         if (string.IsNullOrWhiteSpace(referenceTable))
             throw new ArgumentException(
-                "Reference table name must be specified.",
+                "Reference tableName name must be specified.",
                 nameof(referenceTable)
             );
         if (string.IsNullOrWhiteSpace(referenceColumn))
             throw new ArgumentException(
-                "Reference column name must be specified.",
+                "Reference columnName name must be specified.",
                 nameof(referenceColumn)
             );
-        if (string.IsNullOrWhiteSpace(column))
-            throw new ArgumentException("Column name must be specified.", nameof(column));
-        if (string.IsNullOrWhiteSpace(table))
-            throw new ArgumentException("Table name must be specified.", nameof(table));
+        if (string.IsNullOrWhiteSpace(columnName))
+            throw new ArgumentException("Column name must be specified.", nameof(columnName));
+        if (string.IsNullOrWhiteSpace(tableName))
+            throw new ArgumentException("Table name must be specified.", nameof(tableName));
 
         if (
             await ForeignKeyExistsAsync(
                     db,
-                    table,
-                    column,
+                    tableName,
+                    columnName,
                     foreignKey,
-                    schema,
+                    schemaName,
                     tx,
                     cancellationToken
                 )
@@ -115,9 +115,9 @@ public partial class PostgreSqlExtensions : DatabaseExtensionsBase, IDatabaseExt
         )
             return false;
 
-        var (schemaName, tableName, columnName) = NormalizeNames(schema, table, column);
+        (schemaName, tableName, columnName) = NormalizeNames(schemaName, tableName, columnName);
         var (referenceSchemaName, referenceTableName, referenceColumnName) = NormalizeNames(
-            schema,
+            schemaName,
             referenceTable,
             referenceColumn
         );
@@ -141,16 +141,16 @@ public partial class PostgreSqlExtensions : DatabaseExtensionsBase, IDatabaseExt
 
     public Task<IEnumerable<string>> GetForeignKeysAsync(
         IDbConnection db,
-        string? table,
-        string? filter = null,
-        string? schema = null,
+        string? tableName,
+        string? nameFilter = null,
+        string? schemaName = null,
         IDbTransaction? tx = null,
         CancellationToken cancellationToken = default
     )
     {
-        var (schemaName, tableName, _) = NormalizeNames(schema, table);
+        (schemaName, tableName, _) = NormalizeNames(schemaName, tableName);
 
-        if (string.IsNullOrWhiteSpace(filter))
+        if (string.IsNullOrWhiteSpace(nameFilter))
         {
             return QueryAsync<string>(
                 db,
@@ -163,7 +163,7 @@ public partial class PostgreSqlExtensions : DatabaseExtensionsBase, IDatabaseExt
         }
         else
         {
-            var where = $"{ToAlphaNumericString(filter)}".Replace("*", "%");
+            var where = $"{ToAlphaNumericString(nameFilter)}".Replace("*", "%");
             return QueryAsync<string>(
                 db,
                 $@"SELECT conname 
@@ -184,10 +184,10 @@ public partial class PostgreSqlExtensions : DatabaseExtensionsBase, IDatabaseExt
 
     public async Task<bool> DropForeignKeyIfExistsAsync(
         IDbConnection db,
-        string table,
-        string column,
+        string tableName,
+        string columnName,
         string? foreignKey = null,
-        string? schema = null,
+        string? schemaName = null,
         IDbTransaction? tx = null,
         CancellationToken cancellationToken = default
     )
@@ -195,10 +195,10 @@ public partial class PostgreSqlExtensions : DatabaseExtensionsBase, IDatabaseExt
         if (
             !await ForeignKeyExistsAsync(
                     db,
-                    table,
-                    column,
+                    tableName,
+                    columnName,
                     foreignKey,
-                    schema,
+                    schemaName,
                     tx,
                     cancellationToken
                 )
@@ -206,7 +206,7 @@ public partial class PostgreSqlExtensions : DatabaseExtensionsBase, IDatabaseExt
         )
             return false;
 
-        var (schemaName, tableName, columnName) = NormalizeNames(schema, table, column);
+        (schemaName, tableName, columnName) = NormalizeNames(schemaName, tableName, columnName);
 
         if (!string.IsNullOrWhiteSpace(foreignKey))
         {
@@ -222,7 +222,7 @@ public partial class PostgreSqlExtensions : DatabaseExtensionsBase, IDatabaseExt
         else
         {
             if (string.IsNullOrWhiteSpace(columnName))
-                throw new ArgumentException("Column name must be specified.", nameof(column));
+                throw new ArgumentException("Column name must be specified.", nameof(columnName));
 
             // get the name of the postgresql foreign key
             var foreignKeyName = await ExecuteScalarAsync<string>(

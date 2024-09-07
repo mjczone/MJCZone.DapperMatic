@@ -16,21 +16,24 @@ public partial class SqliteExtensions : DatabaseExtensionsBase, IDatabaseExtensi
 
     public async Task<bool> ForeignKeyExistsAsync(
         IDbConnection db,
-        string table,
-        string column,
+        string tableName,
+        string columnName,
         string? foreignKey = null,
-        string? schema = null,
+        string? schemaName = null,
         IDbTransaction? tx = null,
         CancellationToken cancellationToken = default
     )
     {
-        var (_, tableName, columnName) = NormalizeNames(schema, table, column);
+        (_, tableName, columnName) = NormalizeNames(schemaName, tableName, columnName);
 
         // foreign key names don't exist in sqlite, the columnName MUST be specified
         if (string.IsNullOrWhiteSpace(columnName))
-            throw new ArgumentException("Column name must be specified in SQLite.", nameof(column));
+            throw new ArgumentException(
+                "Column name must be specified in SQLite.",
+                nameof(columnName)
+            );
 
-        // this is the query to get all foreign keys for a table in SQLite
+        // this is the query to get all foreign keys for a tableName in SQLite
         // for DEBUGGING purposes
         // var fks = (
         //     await db.QueryAsync($@"select * from pragma_foreign_key_list('{tableName}')", tx)
@@ -54,12 +57,12 @@ public partial class SqliteExtensions : DatabaseExtensionsBase, IDatabaseExtensi
 
     public async Task<bool> CreateForeignKeyIfNotExistsAsync(
         IDbConnection db,
-        string table,
-        string column,
+        string tableName,
+        string columnName,
         string foreignKey,
         string referenceTable,
         string referenceColumn,
-        string? schema = null,
+        string? schemaName = null,
         string onDelete = "NO ACTION",
         string onUpdate = "NO ACTION",
         IDbTransaction? tx = null,
@@ -68,26 +71,26 @@ public partial class SqliteExtensions : DatabaseExtensionsBase, IDatabaseExtensi
     {
         if (string.IsNullOrWhiteSpace(referenceTable))
             throw new ArgumentException(
-                "Reference table name must be specified.",
+                "Reference tableName name must be specified.",
                 nameof(referenceTable)
             );
         if (string.IsNullOrWhiteSpace(referenceColumn))
             throw new ArgumentException(
-                "Reference column name must be specified.",
+                "Reference columnName name must be specified.",
                 nameof(referenceColumn)
             );
-        if (string.IsNullOrWhiteSpace(column))
-            throw new ArgumentException("Column name must be specified.", nameof(column));
-        if (string.IsNullOrWhiteSpace(table))
-            throw new ArgumentException("Table name must be specified.", nameof(table));
+        if (string.IsNullOrWhiteSpace(columnName))
+            throw new ArgumentException("Column name must be specified.", nameof(columnName));
+        if (string.IsNullOrWhiteSpace(tableName))
+            throw new ArgumentException("Table name must be specified.", nameof(tableName));
 
         if (
             await ForeignKeyExistsAsync(
                     db,
-                    table,
-                    column,
+                    tableName,
+                    columnName,
                     foreignKey,
-                    schema,
+                    schemaName,
                     tx,
                     cancellationToken
                 )
@@ -95,9 +98,9 @@ public partial class SqliteExtensions : DatabaseExtensionsBase, IDatabaseExtensi
         )
             return false;
 
-        var (_, tableName, columnName) = NormalizeNames(schema, table, column);
+        (_, tableName, columnName) = NormalizeNames(schemaName, tableName, columnName);
         var (_, referenceTableName, referenceColumnName) = NormalizeNames(
-            schema,
+            schemaName,
             referenceTable,
             referenceColumn
         );
@@ -123,23 +126,23 @@ public partial class SqliteExtensions : DatabaseExtensionsBase, IDatabaseExtensi
         await ExecuteAsync(db, "PRAGMA foreign_keys = 0", tx ?? innerTx).ConfigureAwait(false);
         try
         {
-            // first rename the table
+            // first rename the tableName
             await ExecuteAsync(
                     db,
                     $@"ALTER TABLE '{tableName}' RENAME TO '{tableName}_old'",
                     tx ?? innerTx
                 )
                 .ConfigureAwait(false);
-            // re-create the table with the new constraint
+            // re-create the tableName with the new constraint
             await ExecuteAsync(db, createSqlStatement, tx ?? innerTx).ConfigureAwait(false);
-            // copy the data from the old table to the new table
+            // copy the data from the old tableName to the new tableName
             await ExecuteAsync(
                     db,
                     $@"INSERT INTO '{tableName}' SELECT * FROM '{tableName}_old'",
                     tx ?? innerTx
                 )
                 .ConfigureAwait(false);
-            // drop the old table
+            // drop the old tableName
             await ExecuteAsync(db, $@"DROP TABLE '{tableName}_old'", tx ?? innerTx)
                 .ConfigureAwait(false);
             await ExecuteAsync(db, "PRAGMA foreign_keys = 1", tx ?? innerTx).ConfigureAwait(false);
@@ -159,23 +162,23 @@ public partial class SqliteExtensions : DatabaseExtensionsBase, IDatabaseExtensi
 
     public Task<IEnumerable<string>> GetForeignKeysAsync(
         IDbConnection db,
-        string? table,
-        string? filter = null,
-        string? schema = null,
+        string? tableName,
+        string? nameFilter = null,
+        string? schemaName = null,
         IDbTransaction? tx = null,
         CancellationToken cancellationToken = default
     )
     {
-        if (string.IsNullOrWhiteSpace(table))
-            throw new ArgumentException("Table name must be specified.", nameof(table));
+        if (string.IsNullOrWhiteSpace(tableName))
+            throw new ArgumentException("Table name must be specified.", nameof(tableName));
 
-        var (_, tableName, _) = NormalizeNames(schema, table);
+        (_, tableName, _) = NormalizeNames(schemaName, tableName);
 
-        if (string.IsNullOrWhiteSpace(filter))
+        if (string.IsNullOrWhiteSpace(nameFilter))
         {
             return QueryAsync<string>(
                 db,
-                $@"SELECT 'fk_{tableName}'||'_'||""from""||'_'||""table""||'_'||""to"" CONSTRAINT_NAME, * 
+                $@"SELECT 'fk_{tableName}'||'_'||""from""||'_'||""tableName""||'_'||""to"" CONSTRAINT_NAME, * 
                     FROM pragma_foreign_key_list('{tableName}')
                     ORDER BY CONSTRAINT_NAME",
                 new { tableName },
@@ -184,11 +187,11 @@ public partial class SqliteExtensions : DatabaseExtensionsBase, IDatabaseExtensi
         }
         else
         {
-            var where = $"{ToAlphaNumericString(filter)}".Replace("*", "%");
+            var where = $"{ToAlphaNumericString(nameFilter)}".Replace("*", "%");
 
             return QueryAsync<string>(
                 db,
-                $@"SELECT 'fk_{tableName}'||'_'||""from""||'_'||""table""||'_'||""to"" CONSTRAINT_NAME, * 
+                $@"SELECT 'fk_{tableName}'||'_'||""from""||'_'||""tableName""||'_'||""to"" CONSTRAINT_NAME, * 
                     FROM pragma_foreign_key_list('{tableName}')
                     WHERE CONSTRAINT_NAME LIKE @where
                     ORDER BY CONSTRAINT_NAME",
@@ -199,7 +202,7 @@ public partial class SqliteExtensions : DatabaseExtensionsBase, IDatabaseExtensi
     }
 
     /// <summary>
-    /// In SQLite, to drop a foreign key, you must re-create the table without the foreign key,
+    /// In SQLite, to drop a foreign key, you must re-create the tableName without the foreign key,
     /// and then re-insert the data. It's a costly operation.
     /// </summary>
     /// <remarks>
@@ -207,25 +210,25 @@ public partial class SqliteExtensions : DatabaseExtensionsBase, IDatabaseExtensi
     /// </remarks>
     public async Task<bool> DropForeignKeyIfExistsAsync(
         IDbConnection db,
-        string table,
-        string column,
+        string tableName,
+        string columnName,
         string? foreignKey = null,
-        string? schema = null,
+        string? schemaName = null,
         IDbTransaction? tx = null,
         CancellationToken cancellationToken = default
     )
     {
-        if (string.IsNullOrWhiteSpace(table))
-            throw new ArgumentException("Table name must be specified.", nameof(table));
-        if (string.IsNullOrWhiteSpace(column))
-            throw new ArgumentException("Column name must be specified.", nameof(column));
+        if (string.IsNullOrWhiteSpace(tableName))
+            throw new ArgumentException("Table name must be specified.", nameof(tableName));
+        if (string.IsNullOrWhiteSpace(columnName))
+            throw new ArgumentException("Column name must be specified.", nameof(columnName));
 
         var fkExists = await ForeignKeyExistsAsync(
                 db,
-                table,
-                column,
+                tableName,
+                columnName,
                 foreignKey,
-                schema,
+                schemaName,
                 tx,
                 cancellationToken
             )
@@ -233,7 +236,7 @@ public partial class SqliteExtensions : DatabaseExtensionsBase, IDatabaseExtensi
         if (!fkExists)
             return false;
 
-        var (_, tableName, columnName) = NormalizeNames(schema, table, column);
+        (_, tableName, columnName) = NormalizeNames(schemaName, tableName, columnName);
 
         var originalCreateSqlStatement = (
             await QueryAsync<string>(
@@ -246,9 +249,9 @@ public partial class SqliteExtensions : DatabaseExtensionsBase, IDatabaseExtensi
 
         // this statement will look like this:
         /*
-         CREATE TABLE "table" (
-            "column" INTEGER,
-            FOREIGN KEY ("column") REFERENCES "referenceTable" ("referenceColumn") ON DELETE NO ACTION ON UPDATE NO ACTION
+         CREATE TABLE "tableName" (
+            "columnName" INTEGER,
+            FOREIGN KEY ("columnName") REFERENCES "referenceTable" ("referenceColumn") ON DELETE NO ACTION ON UPDATE NO ACTION
         )
         */
 
@@ -259,7 +262,7 @@ public partial class SqliteExtensions : DatabaseExtensionsBase, IDatabaseExtensi
         );
         if (indexOfForeignKeyClause < 0)
             throw new InvalidOperationException(
-                "Foreign key constraint not found in the table create statement."
+                "Foreign key constraint not found in the tableName create statement."
             );
 
         var createSqlStatement = originalCreateSqlStatement;
@@ -293,7 +296,7 @@ public partial class SqliteExtensions : DatabaseExtensionsBase, IDatabaseExtensi
         // throw an error if the createSqlStatement is the same as the original
         if (createSqlStatement == originalCreateSqlStatement)
             throw new InvalidOperationException(
-                "Foreign key constraint not found in the table create statement."
+                "Foreign key constraint not found in the tableName create statement."
             );
 
         var innerTx =
@@ -304,23 +307,23 @@ public partial class SqliteExtensions : DatabaseExtensionsBase, IDatabaseExtensi
         await ExecuteAsync(db, "PRAGMA foreign_keys = 0", tx ?? innerTx).ConfigureAwait(false);
         try
         {
-            // first rename the table
+            // first rename the tableName
             await ExecuteAsync(
                     db,
                     $@"ALTER TABLE '{tableName}' RENAME TO '{tableName}_old'",
                     tx ?? innerTx
                 )
                 .ConfigureAwait(false);
-            // re-create the table with the new constraint
+            // re-create the tableName with the new constraint
             await ExecuteAsync(db, createSqlStatement, tx ?? innerTx).ConfigureAwait(false);
-            // copy the data from the old table to the new table
+            // copy the data from the old tableName to the new tableName
             await ExecuteAsync(
                     db,
                     $@"INSERT INTO '{tableName}' SELECT * FROM '{tableName}_old'",
                     tx ?? innerTx
                 )
                 .ConfigureAwait(false);
-            // drop the old table
+            // drop the old tableName
             await ExecuteAsync(db, $@"DROP TABLE '{tableName}_old'", tx ?? innerTx)
                 .ConfigureAwait(false);
             await ExecuteAsync(db, "PRAGMA foreign_keys = 1", tx ?? innerTx).ConfigureAwait(false);

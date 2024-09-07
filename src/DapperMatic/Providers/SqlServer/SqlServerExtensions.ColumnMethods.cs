@@ -6,14 +6,14 @@ public partial class SqlServerExtensions : DatabaseExtensionsBase, IDatabaseExte
 {
     public async Task<bool> ColumnExistsAsync(
         IDbConnection db,
-        string table,
-        string column,
-        string? schema = null,
+        string tableName,
+        string columnName,
+        string? schemaName = null,
         IDbTransaction? tx = null,
         CancellationToken cancellationToken = default
     )
     {
-        var (schemaName, tableName, columnName) = NormalizeNames(schema, table, column);
+        (schemaName, tableName, columnName) = NormalizeNames(schemaName, tableName, columnName);
         return 0
             < await ExecuteScalarAsync<int>(
                     db,
@@ -31,14 +31,14 @@ public partial class SqlServerExtensions : DatabaseExtensionsBase, IDatabaseExte
 
     public async Task<bool> CreateColumnIfNotExistsAsync(
         IDbConnection db,
-        string table,
-        string column,
+        string tableName,
+        string columnName,
         Type dotnetType,
         string? type = null,
         int? length = null,
         int? precision = null,
         int? scale = null,
-        string? schema = null,
+        string? schemaName = null,
         string? defaultValue = null,
         bool nullable = true,
         bool unique = false,
@@ -47,13 +47,13 @@ public partial class SqlServerExtensions : DatabaseExtensionsBase, IDatabaseExte
     )
     {
         if (
-            await ColumnExistsAsync(db, table, column, schema, tx, cancellationToken)
+            await ColumnExistsAsync(db, tableName, columnName, schemaName, tx, cancellationToken)
                 .ConfigureAwait(false)
         )
             return false;
 
         var sqlType = type ?? GetSqlTypeString(dotnetType, length, precision, scale);
-        var (schemaName, tableName, columnName) = NormalizeNames(schema, table, column);
+        (schemaName, tableName, columnName) = NormalizeNames(schemaName, tableName, columnName);
         await ExecuteAsync(
                 db,
                 $@"ALTER TABLE {schemaName}.{tableName}
@@ -74,14 +74,14 @@ public partial class SqlServerExtensions : DatabaseExtensionsBase, IDatabaseExte
 
     public async Task<IEnumerable<string>> GetColumnsAsync(
         IDbConnection db,
-        string table,
-        string? filter = null,
-        string? schema = null,
+        string tableName,
+        string? nameFilter = null,
+        string? schemaName = null,
         IDbTransaction? tx = null,
         CancellationToken cancellationToken = default
     )
     {
-        var (schemaName, tableName, _) = NormalizeNames(schema, table, null);
+        (schemaName, tableName, _) = NormalizeNames(schemaName, tableName, null);
         return await QueryAsync<string>(
                 db,
                 "SELECT COLUMN_NAME FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_SCHEMA = @schemaName AND TABLE_NAME = @tableName",
@@ -93,22 +93,22 @@ public partial class SqlServerExtensions : DatabaseExtensionsBase, IDatabaseExte
 
     public async Task<bool> DropColumnIfExistsAsync(
         IDbConnection db,
-        string table,
-        string column,
-        string? schema = null,
+        string tableName,
+        string columnName,
+        string? schemaName = null,
         IDbTransaction? tx = null,
         CancellationToken cancellationToken = default
     )
     {
         if (
-            !await ColumnExistsAsync(db, table, column, schema, tx, cancellationToken)
+            !await ColumnExistsAsync(db, tableName, columnName, schemaName, tx, cancellationToken)
                 .ConfigureAwait(false)
         )
             return false;
 
-        var (schemaName, tableName, columnName) = NormalizeNames(schema, table, column);
+        (schemaName, tableName, columnName) = NormalizeNames(schemaName, tableName, columnName);
 
-        // get foreign keys for the column
+        // get foreign keys for the columnName
         var foreignKeys = await QueryAsync<string>(
                 db,
                 $@"
@@ -140,7 +140,7 @@ public partial class SqlServerExtensions : DatabaseExtensionsBase, IDatabaseExte
                 .ConfigureAwait(false);
         }
 
-        // get indexes for the column (indexes and unique constraints)
+        // get indexes for the columnName (indexes and unique constraints)
         var indexes = await QueryAsync<(string, bool)>(
                 db,
                 $@"
@@ -162,15 +162,15 @@ public partial class SqlServerExtensions : DatabaseExtensionsBase, IDatabaseExte
             .ConfigureAwait(false);
 
         // drop indexes
-        foreach (var index in indexes)
+        foreach (var indexName in indexes)
         {
-            if (index.Item2 == true)
+            if (indexName.Item2 == true)
             {
                 await ExecuteAsync(
                         db,
                         $@"
                         ALTER TABLE [{schemaName}].[{tableName}]
-                        DROP CONSTRAINT {index.Item1}",
+                        DROP CONSTRAINT {indexName.Item1}",
                         tx
                     )
                     .ConfigureAwait(false);
@@ -181,14 +181,14 @@ public partial class SqlServerExtensions : DatabaseExtensionsBase, IDatabaseExte
                 await ExecuteAsync(
                         db,
                         $@"
-                        DROP INDEX [{schemaName}].[{tableName}].[{index}]",
+                        DROP INDEX [{schemaName}].[{tableName}].[{indexName}]",
                         tx
                     )
                     .ConfigureAwait(false);
             }
         }
 
-        // get default constraints for the column
+        // get default constraints for the columnName
         var defaultConstraints = await QueryAsync<string>(
                 db,
                 $@"
@@ -218,7 +218,7 @@ public partial class SqlServerExtensions : DatabaseExtensionsBase, IDatabaseExte
                 .ConfigureAwait(false);
         }
 
-        // drop column
+        // drop columnName
         await ExecuteAsync(
                 db,
                 $@"ALTER TABLE {schemaName}.{tableName} DROP COLUMN {columnName}",

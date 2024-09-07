@@ -1,3 +1,4 @@
+using System.Collections.Concurrent;
 using System.Data;
 using Dapper;
 
@@ -58,24 +59,31 @@ public abstract class DatabaseExtensionsBase
         return ToAlphaNumericString(name);
     }
 
-    protected virtual (string? schema, string? table, string? column) NormalizeNames(
-        string? schema,
-        string? table = null,
-        string? column = null
+    protected virtual string NormalizeSchemaName(string? schemaName)
+    {
+        if (string.IsNullOrWhiteSpace(schemaName))
+            schemaName = DefaultSchema;
+        else
+            schemaName = NormalizeName(schemaName);
+
+        return schemaName;
+    }
+
+    protected virtual (string schemaName, string tableName, string identifierName) NormalizeNames(
+        string? schemaName = null,
+        string? tableName = null,
+        string? identifierName = null
     )
     {
-        if (string.IsNullOrWhiteSpace(schema))
-            schema = DefaultSchema;
-        else
-            schema = NormalizeName(schema);
+        schemaName = NormalizeSchemaName(schemaName);
 
-        if (!string.IsNullOrWhiteSpace(table))
-            table = NormalizeName(table);
+        if (!string.IsNullOrWhiteSpace(tableName))
+            tableName = NormalizeName(tableName);
 
-        if (!string.IsNullOrWhiteSpace(column))
-            column = NormalizeName(column);
+        if (!string.IsNullOrWhiteSpace(identifierName))
+            identifierName = NormalizeName(identifierName);
 
-        return (schema, table, column);
+        return (schemaName ?? "", tableName ?? "", identifierName ?? "");
     }
 
     protected virtual string ToAlphaNumericString(string text)
@@ -109,6 +117,30 @@ public abstract class DatabaseExtensionsBase
         return Task.FromResult(true);
     }
 
+    internal static readonly ConcurrentDictionary<
+        string,
+        (string sql, object? parameters)
+    > _lastSqls = new();
+
+    public string GetLastSql(IDbConnection connection)
+    {
+        return _lastSqls.TryGetValue(connection.ConnectionString, out var sql) ? sql.sql : "";
+    }
+
+    public (string sql, object? parameters) GetLastSqlWithParams(IDbConnection connection)
+    {
+        return _lastSqls.TryGetValue(connection.ConnectionString, out var sql) ? sql : ("", null);
+    }
+
+    private static void SetLastSql(IDbConnection connection, string sql, object? param = null)
+    {
+        _lastSqls.AddOrUpdate(
+            connection.ConnectionString,
+            (sql, param),
+            (key, oldValue) => (sql, param)
+        );
+    }
+
     protected virtual async Task<IEnumerable<TOutput>> QueryAsync<TOutput>(
         IDbConnection connection,
         string sql,
@@ -120,6 +152,7 @@ public abstract class DatabaseExtensionsBase
     {
         try
         {
+            SetLastSql(connection, sql, param);
             return await connection.QueryAsync<TOutput>(
                 sql,
                 param,
@@ -147,6 +180,7 @@ public abstract class DatabaseExtensionsBase
     {
         try
         {
+            SetLastSql(connection, sql, param);
             return await connection.ExecuteScalarAsync<TOutput>(
                 sql,
                 param,
@@ -174,6 +208,7 @@ public abstract class DatabaseExtensionsBase
     {
         try
         {
+            SetLastSql(connection, sql, param);
             return await connection.ExecuteAsync(
                 sql,
                 param,

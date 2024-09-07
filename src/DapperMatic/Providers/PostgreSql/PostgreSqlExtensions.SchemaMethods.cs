@@ -7,12 +7,12 @@ public partial class PostgreSqlExtensions : DatabaseExtensionsBase, IDatabaseExt
 {
     public async Task<bool> SchemaExistsAsync(
         IDbConnection db,
-        string schema,
+        string schemaName,
         IDbTransaction? tx = null,
         CancellationToken cancellationToken = default
     )
     {
-        var (schemaName, _, _) = NormalizeNames(schema);
+        schemaName = NormalizeSchemaName(schemaName);
 
         return 0
             < await ExecuteScalarAsync<int>(
@@ -25,27 +25,27 @@ public partial class PostgreSqlExtensions : DatabaseExtensionsBase, IDatabaseExt
 
     public async Task<bool> CreateSchemaIfNotExistsAsync(
         IDbConnection db,
-        string schema,
+        string schemaName,
         IDbTransaction? tx = null,
         CancellationToken cancellationToken = default
     )
     {
-        if (await SchemaExistsAsync(db, schema, tx, cancellationToken).ConfigureAwait(false))
+        if (await SchemaExistsAsync(db, schemaName, tx, cancellationToken).ConfigureAwait(false))
             return false;
 
-        var (schemaName, _, _) = NormalizeNames(schema);
+        schemaName = NormalizeSchemaName(schemaName);
         await ExecuteAsync(db, $"CREATE SCHEMA IF NOT EXISTS {schemaName}").ConfigureAwait(false);
         return true;
     }
 
     public async Task<IEnumerable<string>> GetSchemasAsync(
         IDbConnection db,
-        string? filter = null,
+        string? nameFilter = null,
         IDbTransaction? tx = null,
         CancellationToken cancellationToken = default
     )
     {
-        if (string.IsNullOrWhiteSpace(filter))
+        if (string.IsNullOrWhiteSpace(nameFilter))
         {
             return await QueryAsync<string>(
                     db,
@@ -56,7 +56,7 @@ public partial class PostgreSqlExtensions : DatabaseExtensionsBase, IDatabaseExt
         }
         else
         {
-            var where = $"{ToAlphaNumericString(filter)}".Replace("*", "%");
+            var where = $"{ToAlphaNumericString(nameFilter)}".Replace("*", "%");
             return await QueryAsync<string>(
                     db,
                     "SELECT DISTINCT nspname FROM pg_catalog.pg_namespace WHERE nspname LIKE @where ORDER BY nspname",
@@ -68,15 +68,15 @@ public partial class PostgreSqlExtensions : DatabaseExtensionsBase, IDatabaseExt
 
     public async Task<bool> DropSchemaIfExistsAsync(
         IDbConnection db,
-        string schema,
+        string schemaName,
         IDbTransaction? tx = null,
         CancellationToken cancellationToken = default
     )
     {
-        if (!await SchemaExistsAsync(db, schema, tx, cancellationToken).ConfigureAwait(false))
+        if (!await SchemaExistsAsync(db, schemaName, tx, cancellationToken).ConfigureAwait(false))
             return false;
 
-        var (schemaName, _, _) = NormalizeNames(schema);
+        schemaName = NormalizeSchemaName(schemaName);
         await ExecuteAsync(db, $"DROP SCHEMA IF EXISTS {schemaName} CASCADE").ConfigureAwait(false);
         return true;
     }
