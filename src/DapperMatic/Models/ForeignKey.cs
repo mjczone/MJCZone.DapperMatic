@@ -2,18 +2,33 @@ namespace DapperMatic.Models;
 
 public class ForeignKey
 {
-    public ForeignKey(string name, string columnName, string referenceTable, string referenceColumn)
+    public ForeignKey(
+        string? schemaName,
+        string foreignKeyName,
+        string tableName,
+        string columnName,
+        string referenceTable,
+        string referenceColumn,
+        ReferentialAction onDelete,
+        ReferentialAction onUpdate
+    )
     {
-        Name = name;
-        Column = columnName;
-        ReferenceTable = referenceTable;
-        ReferenceColumn = referenceColumn;
+        SchemaName = schemaName;
+        ForeignKeyName = foreignKeyName;
+        TableName = tableName;
+        ColumnName = columnName;
+        ReferenceTableName = referenceTable;
+        ReferenceColumnName = referenceColumn;
+        OnDelete = onDelete;
+        OnUpdate = onUpdate;
     }
 
-    public string Name { get; set; }
-    public string Column { get; set; }
-    public string ReferenceTable { get; set; }
-    public string ReferenceColumn { get; set; }
+    public string? SchemaName { get; set; }
+    public string ForeignKeyName { get; set; }
+    public string TableName { get; set; }
+    public string ColumnName { get; set; }
+    public string ReferenceTableName { get; set; }
+    public string ReferenceColumnName { get; set; }
     public ReferentialAction OnDelete { get; set; } = ReferentialAction.NoAction;
     public ReferentialAction OnUpdate { get; set; } = ReferentialAction.NoAction;
 }

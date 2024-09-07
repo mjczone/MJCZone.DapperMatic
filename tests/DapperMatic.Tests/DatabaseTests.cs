@@ -621,15 +621,27 @@ public abstract class DatabaseTests
         exists = await connection.ForeignKeyExistsAsync(tableName, columnName, foreignKeyName);
         Assert.True(exists);
 
-        output.WriteLine($"Get Foreign Keys: {tableName}");
-        var fks = await connection.GetForeignKeyNamesAsync(tableName);
+        output.WriteLine($"Get Foreign Key Names: {tableName}");
+        var fkNames = await connection.GetForeignKeyNamesAsync(tableName);
         if (await connection.SupportsNamedForeignKeysAsync())
         {
             Assert.Contains(
-                fks,
+                fkNames,
                 fk => fk.Equals(foreignKeyName, StringComparison.OrdinalIgnoreCase)
             );
         }
+
+        output.WriteLine($"Get Foreign Keys: {tableName}");
+        var fks = await connection.GetForeignKeysAsync(tableName);
+        Assert.Contains(
+            fks,
+            fk => fk.TableName.Equals(tableName, StringComparison.OrdinalIgnoreCase)
+                && fk.ColumnName.Equals(columnName, StringComparison.OrdinalIgnoreCase)
+                && fk.ForeignKeyName.Equals(foreignKeyName, StringComparison.OrdinalIgnoreCase)
+                && fk.ReferenceTableName.Equals(refTableName, StringComparison.OrdinalIgnoreCase)
+                && fk.ReferenceColumnName.Equals("id", StringComparison.OrdinalIgnoreCase)
+                && fk.OnDelete.Equals(ReferentialAction.Cascade)
+        );
 
         output.WriteLine($"Dropping foreign key: {tableName}.{foreignKeyName}");
         await connection.DropForeignKeyIfExistsAsync(tableName, columnName, foreignKeyName);

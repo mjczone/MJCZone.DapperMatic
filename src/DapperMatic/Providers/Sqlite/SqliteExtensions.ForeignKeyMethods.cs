@@ -1,5 +1,6 @@
 using System.Data;
 using System.Data.Common;
+using DapperMatic.Models;
 
 namespace DapperMatic.Providers.Sqlite;
 
@@ -158,6 +159,18 @@ public partial class SqliteExtensions : DatabaseExtensionsBase, IDatabaseExtensi
         }
 
         return true;
+    }
+
+    public Task<IEnumerable<ForeignKey>> GetForeignKeysAsync(
+        IDbConnection db,
+        string? tableName,
+        string? nameFilter = null,
+        string? schemaName = null,
+        IDbTransaction? tx = null,
+        CancellationToken cancellationToken = default
+    )
+    {
+        throw new NotImplementedException();
     }
 
     public Task<IEnumerable<string>> GetForeignKeyNamesAsync(

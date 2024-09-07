@@ -1,4 +1,5 @@
 using System.Data;
+using DapperMatic.Models;
 
 namespace DapperMatic.Providers.PostgreSql;
 
@@ -127,6 +128,18 @@ public partial class PostgreSqlExtensions : DatabaseExtensionsBase, IDatabaseExt
             .ConfigureAwait(false);
 
         return true;
+    }
+
+    public Task<IEnumerable<ForeignKey>> GetForeignKeysAsync(
+        IDbConnection db,
+        string? tableName,
+        string? nameFilter = null,
+        string? schemaName = null,
+        IDbTransaction? tx = null,
+        CancellationToken cancellationToken = default
+    )
+    {
+        throw new NotImplementedException();
     }
 
     public Task<IEnumerable<string>> GetForeignKeyNamesAsync(

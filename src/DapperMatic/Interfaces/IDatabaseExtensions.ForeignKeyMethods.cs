@@ -1,4 +1,5 @@
 using System.Data;
+using DapperMatic.Models;
 
 namespace DapperMatic;
 
@@ -15,6 +16,14 @@ public partial interface IDatabaseExtensions
         string tableName,
         string columnName,
         string? foreignKey = null,
+        string? schemaName = null,
+        IDbTransaction? tx = null,
+        CancellationToken cancellationToken = default
+    );
+    Task<IEnumerable<ForeignKey>> GetForeignKeysAsync(
+        IDbConnection db,
+        string? tableName,
+        string? nameFilter = null,
         string? schemaName = null,
         IDbTransaction? tx = null,
         CancellationToken cancellationToken = default

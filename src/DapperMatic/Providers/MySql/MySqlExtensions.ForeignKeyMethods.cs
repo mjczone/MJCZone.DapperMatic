@@ -1,4 +1,5 @@
 using System.Data;
+using DapperMatic.Models;
 
 namespace DapperMatic.Providers.MySql;
 
@@ -123,6 +124,82 @@ public partial class MySqlExtensions : DatabaseExtensionsBase, IDatabaseExtensio
             .ConfigureAwait(false);
 
         return true;
+    }
+
+    public async Task<IEnumerable<ForeignKey>> GetForeignKeysAsync(
+        IDbConnection db,
+        string? tableName,
+        string? nameFilter = null,
+        string? schemaName = null,
+        IDbTransaction? tx = null,
+        CancellationToken cancellationToken = default
+    )
+    {
+        if (string.IsNullOrWhiteSpace(tableName))
+            throw new ArgumentException("Table name must be specified.", nameof(tableName));
+
+        (_, tableName, _) = NormalizeNames(schemaName, tableName);
+
+        var where = string.IsNullOrWhiteSpace(nameFilter)
+          ? ""
+          : $"{ToAlphaNumericString(nameFilter)}".Replace("*", "%");
+
+        var sql =
+            $@"SELECT 
+                        kcu.CONSTRAINT_NAME as constraing_name, 
+                        kcu.TABLE_NAME as table_name, 
+                        kcu.COLUMN_NAME as column_name, 
+                        kcu.REFERENCED_TABLE_NAME as referenced_table_name, 
+                        kcu.REFERENCED_COLUMN_NAME as referenced_column_name, 
+                        rc.DELETE_RULE as delete_rule, 
+                        rc.UPDATE_RULE as update_rule
+                    FROM information_schema.KEY_COLUMN_USAGE kcu
+                    INNER JOIN information_schema.referential_constraints rc ON kcu.CONSTRAINT_NAME = rc.CONSTRAINT_NAME 
+                    WHERE kcu.TABLE_SCHEMA = DATABASE()";
+        if (string.IsNullOrWhiteSpace(tableName))
+            sql += $@" AND kcu.TABLE_NAME = @tableName AND REFERENCED_TABLE_NAME IS NOT NULL";
+        if (!string.IsNullOrWhiteSpace(where))
+            sql += $@" AND kcu.CONSTRAINT_NAME LIKE @where";
+        sql += " ORDER BY kcu.TABLE_NAME, kcu.CONSTRAINT_NAME";
+
+        var results =
+            await QueryAsync<(string constraint_name, string table_name, string column_name, string referenced_table_name, string referenced_column_name, string delete_rule, string update_rule)>(
+                    db,
+                    sql,
+                    new { tableName, where },
+                    tx
+                )
+                .ConfigureAwait(false);
+
+        return results.Select(
+            r =>
+            {
+                var deleteRule = r.delete_rule switch
+                {
+                    "NO ACTION" => ReferentialAction.NoAction,
+                    "CASCADE" => ReferentialAction.Cascade,
+                    "SET NULL" => ReferentialAction.SetNull,
+                    _ => ReferentialAction.NoAction
+                };
+                var updateRule = r.update_rule switch
+                {
+                    "NO ACTION" => ReferentialAction.NoAction,
+                    "CASCADE" => ReferentialAction.Cascade,
+                    "SET NULL" => ReferentialAction.SetNull,
+                    _ => ReferentialAction.NoAction
+                };
+                return new ForeignKey(
+                    null,
+                    r.constraint_name,
+                    r.table_name,
+                    r.column_name,
+                    r.referenced_table_name,
+                    r.referenced_column_name,
+                    deleteRule,
+                    updateRule
+                );
+            }
+        );
     }
 
     public Task<IEnumerable<string>> GetForeignKeyNamesAsync(

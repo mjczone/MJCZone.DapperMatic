@@ -352,6 +352,19 @@ public static partial class DatabaseExtensionMethods
             );
     }
 
+    public static async Task<IEnumerable<ForeignKey>> GetForeignKeysAsync(
+        this IDbConnection db,
+        string? tableName,
+        string? nameFilter = null,
+        string? schemaName = null,
+        IDbTransaction? tx = null,
+        CancellationToken cancellationToken = default
+    )
+    {
+        return await Database(db)
+            .GetForeignKeysAsync(db, tableName, nameFilter, schemaName, tx, cancellationToken);
+    }
+
     public static async Task<IEnumerable<string>> GetForeignKeyNamesAsync(
         this IDbConnection db,
         string? tableName,
