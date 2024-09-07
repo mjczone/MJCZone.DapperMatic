@@ -16,6 +16,15 @@ public static partial class DatabaseExtensionMethods
         return Database(db).GetLastSqlWithParams(db);
     }
 
+    public static async Task<string> GetDatabaseVersionAsync(
+        this IDbConnection db,
+        IDbTransaction? tx = null,
+        CancellationToken cancellationToken = default
+    )
+    {
+        return await Database(db).GetDatabaseVersionAsync(db, tx, cancellationToken);
+    }
+
     #region schemaName methods
     public static async Task<bool> SupportsSchemasAsync(
         this IDbConnection db,

@@ -427,6 +427,19 @@ public abstract class DatabaseTests
     protected virtual async Task Database_Can_CrudTableIndexesAsync()
     {
         using IDbConnection connection = await OpenConnectionAsync();
+
+        var version = await connection.GetDatabaseVersionAsync();
+        Assert.NotEmpty(version);
+        
+        var supportsDescendingColumnSorts = true;
+        var dbType = connection.GetDatabaseType();
+        if (dbType.HasFlag(DatabaseTypes.MySql)) 
+        {
+            if (version.StartsWith("5."))
+            {
+                supportsDescendingColumnSorts = false;
+            }
+        }
         try
         {
             // await connection.ExecuteAsync("DROP TABLE testWithIndex");
@@ -548,12 +561,12 @@ public abstract class DatabaseTests
             Assert.NotNull(idxMulti2);
             Assert.True(idxMulti1.Unique);
             Assert.True(idxMulti1.ColumnNames.Length == 2);
-            Assert.EndsWith("desc", idxMulti1.ColumnNames[0], StringComparison.OrdinalIgnoreCase);
+            if (supportsDescendingColumnSorts) Assert.EndsWith("desc", idxMulti1.ColumnNames[0], StringComparison.OrdinalIgnoreCase);
             Assert.EndsWith("asc", idxMulti1.ColumnNames[1], StringComparison.OrdinalIgnoreCase);
             Assert.False(idxMulti2.Unique);
             Assert.True(idxMulti2.ColumnNames.Length == 2);
             Assert.EndsWith("asc", idxMulti2.ColumnNames[0], StringComparison.OrdinalIgnoreCase);
-            Assert.EndsWith("desc", idxMulti2.ColumnNames[1], StringComparison.OrdinalIgnoreCase);
+            if (supportsDescendingColumnSorts) Assert.EndsWith("desc", idxMulti2.ColumnNames[1], StringComparison.OrdinalIgnoreCase);
 
             output.WriteLine($"Dropping indexName: {tableName}.{indexName}");
             await connection.DropIndexIfExistsAsync(tableName, indexName);

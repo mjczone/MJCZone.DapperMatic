@@ -15,4 +15,14 @@ public partial class PostgreSqlExtensions : DatabaseExtensionsBase, IDatabaseExt
     {
         return base.NormalizeName(name).ToLowerInvariant();
     }
+
+    public async Task<string> GetDatabaseVersionAsync(
+        IDbConnection db,
+        IDbTransaction? tx = null,
+        CancellationToken cancellationToken = default
+    )
+    {
+        return await ExecuteScalarAsync<string>(db, $@"SELECT version()", transaction: tx)
+                .ConfigureAwait(false) ?? "";
+    }
 }
