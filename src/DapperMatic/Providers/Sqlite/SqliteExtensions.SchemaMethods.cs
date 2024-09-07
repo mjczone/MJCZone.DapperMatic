@@ -33,7 +33,7 @@ public partial class SqliteExtensions : DatabaseExtensionsBase, IDatabaseExtensi
         return Task.FromResult(false);
     }
 
-    public Task<IEnumerable<string>> GetSchemasAsync(
+    public Task<IEnumerable<string>> GetSchemaNamesAsync(
         IDbConnection db,
         string? nameFilter = null,
         IDbTransaction? tx = null,

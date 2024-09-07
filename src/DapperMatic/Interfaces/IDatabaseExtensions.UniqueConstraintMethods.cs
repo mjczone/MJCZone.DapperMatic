@@ -12,7 +12,7 @@ public partial interface IDatabaseExtensions
         IDbTransaction? tx = null,
         CancellationToken cancellationToken = default
     );
-    Task<IEnumerable<string>> GetUniqueConstraintsAsync(
+    Task<IEnumerable<string>> GetUniqueConstraintNamesAsync(
         IDbConnection db,
         string? tableName,
         string? nameFilter = null,

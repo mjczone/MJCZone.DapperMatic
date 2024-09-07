@@ -39,7 +39,7 @@ public partial class SqlServerExtensions : DatabaseExtensionsBase, IDatabaseExte
         return true;
     }
 
-    public async Task<IEnumerable<string>> GetSchemasAsync(
+    public async Task<IEnumerable<string>> GetSchemaNamesAsync(
         IDbConnection db,
         string? nameFilter = null,
         IDbTransaction? tx = null,

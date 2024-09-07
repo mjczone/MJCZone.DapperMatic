@@ -89,7 +89,7 @@ public abstract class DatabaseTests
         }
 
         output.WriteLine($"Retrieving schemas");
-        var schemas = (await connection.GetSchemasAsync()).ToArray();
+        var schemas = (await connection.GetSchemaNamesAsync()).ToArray();
         if (supportsSchemas)
         {
             Assert.True(schemas.Length > 0 && schemas.Contains(schemaName));
@@ -99,7 +99,7 @@ public abstract class DatabaseTests
             Assert.Empty(schemas);
         }
 
-        schemas = (await connection.GetSchemasAsync(schemaName)).ToArray();
+        schemas = (await connection.GetSchemaNamesAsync(schemaName)).ToArray();
         if (supportsSchemas)
         {
             Assert.Single(schemas);
@@ -121,7 +121,7 @@ public abstract class DatabaseTests
             Assert.False(dropped);
         }
 
-        schemas = (await connection.GetSchemasAsync(schemaName)).ToArray();
+        schemas = (await connection.GetSchemaNamesAsync(schemaName)).ToArray();
         Assert.Empty(schemas);
     }
 
@@ -141,10 +141,10 @@ public abstract class DatabaseTests
         await connection.CreateTableIfNotExistsAsync(tableName);
 
         output.WriteLine($"Retrieving tables");
-        var tables = (await connection.GetTablesAsync()).ToArray();
+        var tables = (await connection.GetTableNamesAsync()).ToArray();
         Assert.True(tables.Length > 0 && tables.Contains(tableName));
 
-        tables = (await connection.GetTablesAsync(tableName)).ToArray();
+        tables = (await connection.GetTableNamesAsync(tableName)).ToArray();
         Assert.Single(tables);
         Assert.Equal(tableName, tables.Single());
 
@@ -419,7 +419,7 @@ public abstract class DatabaseTests
             typeof(Dictionary<string, object>)
         );
 
-        var columnNames = await connection.GetColumnsAsync("testWithAllColumns");
+        var columnNames = await connection.GetColumnNamesAsync("testWithAllColumns");
         Assert.Equal(columnCount, columnNames.Count());
     }
 
@@ -622,7 +622,7 @@ public abstract class DatabaseTests
         Assert.True(exists);
 
         output.WriteLine($"Get Foreign Keys: {tableName}");
-        var fks = await connection.GetForeignKeysAsync(tableName);
+        var fks = await connection.GetForeignKeyNamesAsync(tableName);
         if (await connection.SupportsNamedForeignKeysAsync())
         {
             Assert.Contains(

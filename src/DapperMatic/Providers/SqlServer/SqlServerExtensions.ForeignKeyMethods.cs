@@ -27,12 +27,7 @@ public partial class SqlServerExtensions : DatabaseExtensionsBase, IDatabaseExte
                               TABLE_NAME = @tableName AND 
                               CONSTRAINT_NAME = @foreignKeyName AND
                               CONSTRAINT_TYPE = 'FOREIGN KEY'",
-                        new
-                        {
-                            schemaName,
-                            tableName,
-                            foreignKeyName
-                        },
+                        new { schemaName, tableName, foreignKeyName },
                         tx
                     )
                     .ConfigureAwait(false);
@@ -53,12 +48,7 @@ public partial class SqlServerExtensions : DatabaseExtensionsBase, IDatabaseExte
                                 ON f.object_id = fc.constraint_object_id
                             WHERE f.parent_object_id = OBJECT_ID('{schemaAndTableName}') AND
                                 COL_NAME(fc.parent_object_id, fc.parent_column_id) = @columnName",
-                        new
-                        {
-                            schemaName,
-                            tableName,
-                            columnName
-                        },
+                        new { schemaName, tableName, columnName },
                         tx
                     )
                     .ConfigureAwait(false);
@@ -135,7 +125,7 @@ public partial class SqlServerExtensions : DatabaseExtensionsBase, IDatabaseExte
         return true;
     }
 
-    public Task<IEnumerable<string>> GetForeignKeysAsync(
+    public Task<IEnumerable<string>> GetForeignKeyNamesAsync(
         IDbConnection db,
         string? tableName,
         string? nameFilter = null,
@@ -173,12 +163,7 @@ public partial class SqlServerExtensions : DatabaseExtensionsBase, IDatabaseExte
                           CONSTRAINT_TYPE = 'FOREIGN KEY' AND 
                           CONSTRAINT_NAME LIKE @where 
                     ORDER BY CONSTRAINT_NAME",
-                new
-                {
-                    schemaName,
-                    tableName,
-                    where
-                },
+                new { schemaName, tableName, where },
                 tx
             );
         }
@@ -236,12 +221,7 @@ public partial class SqlServerExtensions : DatabaseExtensionsBase, IDatabaseExte
                             ON f.object_id = fc.constraint_object_id
                         WHERE f.parent_object_id = OBJECT_ID('{schemaAndTableName}') AND
                             COL_NAME(fc.parent_object_id, fc.parent_column_id) = @columnName",
-                    new
-                    {
-                        schemaName,
-                        tableName,
-                        columnName
-                    },
+                    new { schemaName, tableName, columnName },
                     tx
                 )
                 .ConfigureAwait(false);

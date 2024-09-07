@@ -50,7 +50,7 @@ public static partial class DatabaseExtensionMethods
         return await Database(db).SchemaExistsAsync(db, schemaName, tx, cancellationToken);
     }
 
-    public static async Task<IEnumerable<string>> GetSchemasAsync(
+    public static async Task<IEnumerable<string>> GetSchemaNamesAsync(
         this IDbConnection db,
         string? nameFilter = null,
         IDbTransaction? tx = null,
@@ -62,7 +62,7 @@ public static partial class DatabaseExtensionMethods
             return [];
         }
 
-        return await Database(db).GetSchemasAsync(db, nameFilter, tx, cancellationToken);
+        return await Database(db).GetSchemaNamesAsync(db, nameFilter, tx, cancellationToken);
     }
 
     public static async Task<bool> CreateSchemaIfNotExistsAsync(
@@ -112,7 +112,7 @@ public static partial class DatabaseExtensionMethods
             .TableExistsAsync(db, tableName, schemaName, tx, cancellationToken);
     }
 
-    public static async Task<IEnumerable<string>> GetTablesAsync(
+    public static async Task<IEnumerable<string>> GetTableNamesAsync(
         this IDbConnection db,
         string? nameFilter = null,
         string? schemaName = null,
@@ -120,7 +120,7 @@ public static partial class DatabaseExtensionMethods
         CancellationToken cancellationToken = default
     )
     {
-        return await Database(db).GetTablesAsync(db, nameFilter, schemaName, tx, cancellationToken);
+        return await Database(db).GetTableNamesAsync(db, nameFilter, schemaName, tx, cancellationToken);
     }
 
     public static async Task<bool> CreateTableIfNotExistsAsync(
@@ -176,7 +176,7 @@ public static partial class DatabaseExtensionMethods
             .ColumnExistsAsync(db, tableName, columnName, schemaName, tx, cancellationToken);
     }
 
-    public static async Task<IEnumerable<string>> GetColumnsAsync(
+    public static async Task<IEnumerable<string>> GetColumnNamesAsync(
         this IDbConnection db,
         string tableName,
         string? nameFilter = null,
@@ -186,7 +186,7 @@ public static partial class DatabaseExtensionMethods
     )
     {
         return await Database(db)
-            .GetColumnsAsync(db, tableName, nameFilter, schemaName, tx, cancellationToken);
+            .GetColumnNamesAsync(db, tableName, nameFilter, schemaName, tx, cancellationToken);
     }
 
     public static async Task<bool> CreateColumnIfNotExistsAsync(
@@ -352,7 +352,7 @@ public static partial class DatabaseExtensionMethods
             );
     }
 
-    public static async Task<IEnumerable<string>> GetForeignKeysAsync(
+    public static async Task<IEnumerable<string>> GetForeignKeyNamesAsync(
         this IDbConnection db,
         string? tableName,
         string? nameFilter = null,
@@ -362,7 +362,7 @@ public static partial class DatabaseExtensionMethods
     )
     {
         return await Database(db)
-            .GetForeignKeysAsync(db, tableName, nameFilter, schemaName, tx, cancellationToken);
+            .GetForeignKeyNamesAsync(db, tableName, nameFilter, schemaName, tx, cancellationToken);
     }
 
     public static async Task<bool> CreateForeignKeyIfNotExistsAsync(
@@ -441,7 +441,7 @@ public static partial class DatabaseExtensionMethods
             );
     }
 
-    public static async Task<IEnumerable<string>> GetUniqueConstraintsAsync(
+    public static async Task<IEnumerable<string>> GetUniqueConstraintNamesAsync(
         this IDbConnection db,
         string? tableName,
         string? nameFilter = null,
@@ -451,7 +451,7 @@ public static partial class DatabaseExtensionMethods
     )
     {
         return await Database(db)
-            .GetUniqueConstraintsAsync(
+            .GetUniqueConstraintNamesAsync(
                 db,
                 tableName,
                 nameFilter,

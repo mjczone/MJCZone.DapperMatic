@@ -11,7 +11,7 @@ public partial interface IDatabaseExtensions
         IDbTransaction? tx = null,
         CancellationToken cancellationToken = default
     );
-    Task<IEnumerable<string>> GetTablesAsync(
+    Task<IEnumerable<string>> GetTableNamesAsync(
         IDbConnection db,
         string? nameFilter = null,
         string? schemaName = null,

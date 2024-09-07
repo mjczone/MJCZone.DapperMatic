@@ -65,7 +65,7 @@ public partial class MySqlExtensions : DatabaseExtensionsBase, IDatabaseExtensio
         return true;
     }
 
-    public async Task<IEnumerable<string>> GetColumnsAsync(
+    public async Task<IEnumerable<string>> GetColumnNamesAsync(
         IDbConnection db,
         string tableName,
         string? nameFilter = null,

@@ -15,7 +15,7 @@ public partial interface IDatabaseExtensions
         IDbTransaction? tx = null,
         CancellationToken cancellationToken = default
     );
-    Task<IEnumerable<string>> GetSchemasAsync(
+    Task<IEnumerable<string>> GetSchemaNamesAsync(
         IDbConnection db,
         string? nameFilter = null,
         IDbTransaction? tx = null,

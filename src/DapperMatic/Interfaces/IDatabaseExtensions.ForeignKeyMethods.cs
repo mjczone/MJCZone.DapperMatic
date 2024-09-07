@@ -19,7 +19,7 @@ public partial interface IDatabaseExtensions
         IDbTransaction? tx = null,
         CancellationToken cancellationToken = default
     );
-    Task<IEnumerable<string>> GetForeignKeysAsync(
+    Task<IEnumerable<string>> GetForeignKeyNamesAsync(
         IDbConnection db,
         string? tableName,
         string? nameFilter = null,

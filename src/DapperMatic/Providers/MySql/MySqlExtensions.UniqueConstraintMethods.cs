@@ -82,7 +82,7 @@ public partial class MySqlExtensions : DatabaseExtensionsBase, IDatabaseExtensio
         return true;
     }
 
-    public Task<IEnumerable<string>> GetUniqueConstraintsAsync(
+    public Task<IEnumerable<string>> GetUniqueConstraintNamesAsync(
         IDbConnection db,
         string? tableName,
         string? nameFilter = null,

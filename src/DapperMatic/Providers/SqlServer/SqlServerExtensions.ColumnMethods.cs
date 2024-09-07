@@ -18,12 +18,7 @@ public partial class SqlServerExtensions : DatabaseExtensionsBase, IDatabaseExte
             < await ExecuteScalarAsync<int>(
                     db,
                     "SELECT COUNT(*) FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_SCHEMA = @schemaName AND TABLE_NAME = @tableName AND COLUMN_NAME = @columnName",
-                    new
-                    {
-                        schemaName,
-                        tableName,
-                        columnName
-                    },
+                    new { schemaName, tableName, columnName },
                     tx
                 )
                 .ConfigureAwait(false);
@@ -59,12 +54,7 @@ public partial class SqlServerExtensions : DatabaseExtensionsBase, IDatabaseExte
                 $@"ALTER TABLE {schemaName}.{tableName}
                   ADD {columnName} {sqlType} {(nullable ? "NULL" : "NOT NULL")} {(!string.IsNullOrWhiteSpace(defaultValue) ? $"DEFAULT {defaultValue}" : "")} {(unique ? "UNIQUE" : "")}
                     ",
-                new
-                {
-                    schemaName,
-                    tableName,
-                    columnName
-                },
+                new { schemaName, tableName, columnName },
                 tx
             )
             .ConfigureAwait(false);
@@ -72,7 +62,7 @@ public partial class SqlServerExtensions : DatabaseExtensionsBase, IDatabaseExte
         return true;
     }
 
-    public async Task<IEnumerable<string>> GetColumnsAsync(
+    public async Task<IEnumerable<string>> GetColumnNamesAsync(
         IDbConnection db,
         string tableName,
         string? nameFilter = null,
@@ -222,12 +212,7 @@ public partial class SqlServerExtensions : DatabaseExtensionsBase, IDatabaseExte
         await ExecuteAsync(
                 db,
                 $@"ALTER TABLE {schemaName}.{tableName} DROP COLUMN {columnName}",
-                new
-                {
-                    schemaName,
-                    tableName,
-                    columnName
-                },
+                new { schemaName, tableName, columnName },
                 tx
             )
             .ConfigureAwait(false);

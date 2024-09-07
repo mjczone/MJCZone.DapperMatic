@@ -30,12 +30,7 @@ public partial class PostgreSqlExtensions : DatabaseExtensionsBase, IDatabaseExt
                           constraint_name = @uniqueConstraintName AND
                           constraint_type = 'UNIQUE'
                     ",
-                    new
-                    {
-                        schemaName,
-                        tableName,
-                        uniqueConstraintName
-                    },
+                    new { schemaName, tableName, uniqueConstraintName },
                     tx
                 )
                 .ConfigureAwait(false);
@@ -91,7 +86,7 @@ public partial class PostgreSqlExtensions : DatabaseExtensionsBase, IDatabaseExt
         return true;
     }
 
-    public Task<IEnumerable<string>> GetUniqueConstraintsAsync(
+    public Task<IEnumerable<string>> GetUniqueConstraintNamesAsync(
         IDbConnection db,
         string? tableName,
         string? nameFilter = null,
@@ -132,12 +127,7 @@ public partial class PostgreSqlExtensions : DatabaseExtensionsBase, IDatabaseExt
                       constraint_name LIKE @where
                 ORDER BY constraint_name
                 ",
-                new
-                {
-                    schemaName,
-                    tableName,
-                    where
-                },
+                new { schemaName, tableName, where },
                 tx
             );
         }

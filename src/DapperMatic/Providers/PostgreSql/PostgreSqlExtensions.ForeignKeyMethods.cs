@@ -28,12 +28,7 @@ public partial class PostgreSqlExtensions : DatabaseExtensionsBase, IDatabaseExt
                               table_name = @tableName AND 
                               constraint_name = @foreignKeyName AND
                               constraint_type = 'FOREIGN KEY'",
-                        new
-                        {
-                            schemaName,
-                            tableName,
-                            foreignKeyName
-                        },
+                        new { schemaName, tableName, foreignKeyName },
                         tx
                     )
                     .ConfigureAwait(false);
@@ -58,12 +53,7 @@ public partial class PostgreSqlExtensions : DatabaseExtensionsBase, IDatabaseExt
                                             table_name = @tableName AND 
                                             column_name = @columnName
                                   )",
-                        new
-                        {
-                            schemaName,
-                            tableName,
-                            columnName
-                        },
+                        new { schemaName, tableName, columnName },
                         tx
                     )
                     .ConfigureAwait(false);
@@ -139,7 +129,7 @@ public partial class PostgreSqlExtensions : DatabaseExtensionsBase, IDatabaseExt
         return true;
     }
 
-    public Task<IEnumerable<string>> GetForeignKeysAsync(
+    public Task<IEnumerable<string>> GetForeignKeyNamesAsync(
         IDbConnection db,
         string? tableName,
         string? nameFilter = null,
@@ -171,12 +161,7 @@ public partial class PostgreSqlExtensions : DatabaseExtensionsBase, IDatabaseExt
                     WHERE conrelid = '{schemaName}.{tableName}'::regclass 
                     AND contype = 'f' 
                     AND conname LIKE @where",
-                new
-                {
-                    schemaName,
-                    tableName,
-                    where
-                },
+                new { schemaName, tableName, where },
                 transaction: tx
             );
         }
@@ -243,12 +228,7 @@ public partial class PostgreSqlExtensions : DatabaseExtensionsBase, IDatabaseExt
                                 AND attname = @columnName
                             )
                         )",
-                    new
-                    {
-                        schemaName,
-                        tableName,
-                        columnName
-                    },
+                    new { schemaName, tableName, columnName },
                     tx
                 )
                 .ConfigureAwait(false);

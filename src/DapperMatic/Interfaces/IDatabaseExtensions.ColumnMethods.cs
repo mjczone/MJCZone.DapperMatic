@@ -12,7 +12,7 @@ public partial interface IDatabaseExtensions
         IDbTransaction? tx = null,
         CancellationToken cancellationToken = default
     );
-    Task<IEnumerable<string>> GetColumnsAsync(
+    Task<IEnumerable<string>> GetColumnNamesAsync(
         IDbConnection db,
         string tableName,
         string? nameFilter = null,

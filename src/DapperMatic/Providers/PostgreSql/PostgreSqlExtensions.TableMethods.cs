@@ -91,7 +91,7 @@ public partial class PostgreSqlExtensions : DatabaseExtensionsBase, IDatabaseExt
         return true;
     }
 
-    public async Task<IEnumerable<string>> GetTablesAsync(
+    public async Task<IEnumerable<string>> GetTableNamesAsync(
         IDbConnection db,
         string? nameFilter = null,
         string? schemaName = null,

@@ -125,7 +125,7 @@ public partial class MySqlExtensions : DatabaseExtensionsBase, IDatabaseExtensio
         return true;
     }
 
-    public Task<IEnumerable<string>> GetForeignKeysAsync(
+    public Task<IEnumerable<string>> GetForeignKeyNamesAsync(
         IDbConnection db,
         string? tableName,
         string? nameFilter = null,
