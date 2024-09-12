@@ -161,7 +161,7 @@ public partial class SqliteExtensions : DatabaseExtensionsBase, IDatabaseExtensi
         return true;
     }
 
-    public Task<IEnumerable<ForeignKey>> GetForeignKeysAsync(
+    public async Task<IEnumerable<ForeignKey>> GetForeignKeysAsync(
         IDbConnection db,
         string? tableName,
         string? nameFilter = null,
@@ -170,48 +170,118 @@ public partial class SqliteExtensions : DatabaseExtensionsBase, IDatabaseExtensi
         CancellationToken cancellationToken = default
     )
     {
-        throw new NotImplementedException();
-    }
-
-    public Task<IEnumerable<string>> GetForeignKeyNamesAsync(
-        IDbConnection db,
-        string? tableName,
-        string? nameFilter = null,
-        string? schemaName = null,
-        IDbTransaction? tx = null,
-        CancellationToken cancellationToken = default
-    )
-    {
-        if (string.IsNullOrWhiteSpace(tableName))
-            throw new ArgumentException("Table name must be specified.", nameof(tableName));
-
         (_, tableName, _) = NormalizeNames(schemaName, tableName);
 
-        if (string.IsNullOrWhiteSpace(nameFilter))
-        {
-            return QueryAsync<string>(
-                db,
-                $@"SELECT 'fk_{tableName}'||'_'||""from""||'_'||""tableName""||'_'||""to"" CONSTRAINT_NAME, * 
-                    FROM pragma_foreign_key_list('{tableName}')
-                    ORDER BY CONSTRAINT_NAME",
-                new { tableName },
-                tx
-            );
-        }
-        else
-        {
-            var where = $"{ToAlphaNumericString(nameFilter)}".Replace("*", "%");
+        var where = string.IsNullOrWhiteSpace(nameFilter)
+            ? null
+            : $"{ToAlphaNumericString(nameFilter)}".Replace("*", "%");
 
-            return QueryAsync<string>(
+        var sql =
+            $@"SELECT 'fk_'||sm.name||'_'||p.""from""||'_'||p.""table""||'_'||p.""to"" AS constraint_name,
+                        sm.name AS table_name,
+                        p.""from"" AS column_name,
+                        p.""table"" AS referenced_table_name,
+                        p.""to"" AS referenced_column_name,
+                        p.on_delete AS delete_rule,
+                        p.on_update AS update_rule
+                    FROM sqlite_master sm
+                        JOIN pragma_foreign_key_list(sm.name) p
+                    WHERE sm.type = 'table'";
+        if (!string.IsNullOrWhiteSpace(tableName))
+            sql += $@" AND sm.name = @tableName";
+        if (!string.IsNullOrWhiteSpace(where))
+            sql += $@" AND constraint_name LIKE @where";
+        sql += $@" order by constraint_name";
+
+        var results = await QueryAsync<(
+            string constraint_name,
+            string table_name,
+            string column_name,
+            string referenced_table_name,
+            string referenced_column_name,
+            string delete_rule,
+            string update_rule
+        )>(
                 db,
-                $@"SELECT 'fk_{tableName}'||'_'||""from""||'_'||""tableName""||'_'||""to"" CONSTRAINT_NAME, * 
-                    FROM pragma_foreign_key_list('{tableName}')
-                    WHERE CONSTRAINT_NAME LIKE @where
-                    ORDER BY CONSTRAINT_NAME",
-                new { tableName, where },
+                sql,
+                new
+                {
+                    schemaName,
+                    tableName,
+                    where
+                },
                 tx
+            )
+            .ConfigureAwait(false);
+
+        return results.Select(r =>
+        {
+            var deleteRule = (r.delete_rule ?? "").Replace('_', ' ') switch
+            {
+                "CASCADE" => ReferentialAction.Cascade,
+                "SET NULL" => ReferentialAction.SetNull,
+                "NO ACTION" => ReferentialAction.NoAction,
+                _ => ReferentialAction.NoAction
+            };
+            var updateRule = (r.update_rule ?? "").Replace('_', ' ') switch
+            {
+                "CASCADE" => ReferentialAction.Cascade,
+                "SET NULL" => ReferentialAction.SetNull,
+                "NO ACTION" => ReferentialAction.NoAction,
+                _ => ReferentialAction.NoAction
+            };
+
+            return new ForeignKey(
+                null,
+                r.constraint_name,
+                r.table_name,
+                r.column_name,
+                r.referenced_table_name,
+                r.referenced_column_name,
+                deleteRule,
+                updateRule
             );
-        }
+        });
+    }
+
+    public async Task<IEnumerable<string>> GetForeignKeyNamesAsync(
+        IDbConnection db,
+        string? tableName,
+        string? nameFilter = null,
+        string? schemaName = null,
+        IDbTransaction? tx = null,
+        CancellationToken cancellationToken = default
+    )
+    {
+        (_, tableName, _) = NormalizeNames(schemaName, tableName);
+
+        var where = string.IsNullOrWhiteSpace(nameFilter)
+            ? null
+            : $"{ToAlphaNumericString(nameFilter)}".Replace("*", "%");
+
+        var sql =
+            $@"SELECT 'fk_'||sm.name||'_'||p.""from""||'_'||p.""table""||'_'||p.""to"" AS constraint_name
+                FROM sqlite_master sm
+                    JOIN pragma_foreign_key_list(sm.name) p
+                WHERE sm.type = 'table'";
+        if (!string.IsNullOrWhiteSpace(tableName))
+            sql += $@" AND sm.name = @tableName";
+        if (!string.IsNullOrWhiteSpace(where))
+            sql += $@" AND constraint_name LIKE @where";
+        sql += @" ORDER BY constraint_name";
+
+        return await QueryAsync<string>(
+                db,
+                sql,
+                new
+                {
+                    schemaName,
+                    tableName,
+                    where
+                },
+                tx
+            )
+            .ConfigureAwait(false);
     }
 
     /// <summary>

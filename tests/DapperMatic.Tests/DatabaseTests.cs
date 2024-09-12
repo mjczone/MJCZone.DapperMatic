@@ -430,10 +430,10 @@ public abstract class DatabaseTests
 
         var version = await connection.GetDatabaseVersionAsync();
         Assert.NotEmpty(version);
-        
+
         var supportsDescendingColumnSorts = true;
         var dbType = connection.GetDatabaseType();
-        if (dbType.HasFlag(DatabaseTypes.MySql)) 
+        if (dbType.HasFlag(DatabaseTypes.MySql))
         {
             if (version.StartsWith("5."))
             {
@@ -561,12 +561,22 @@ public abstract class DatabaseTests
             Assert.NotNull(idxMulti2);
             Assert.True(idxMulti1.Unique);
             Assert.True(idxMulti1.ColumnNames.Length == 2);
-            if (supportsDescendingColumnSorts) Assert.EndsWith("desc", idxMulti1.ColumnNames[0], StringComparison.OrdinalIgnoreCase);
+            if (supportsDescendingColumnSorts)
+                Assert.EndsWith(
+                    "desc",
+                    idxMulti1.ColumnNames[0],
+                    StringComparison.OrdinalIgnoreCase
+                );
             Assert.EndsWith("asc", idxMulti1.ColumnNames[1], StringComparison.OrdinalIgnoreCase);
             Assert.False(idxMulti2.Unique);
             Assert.True(idxMulti2.ColumnNames.Length == 2);
             Assert.EndsWith("asc", idxMulti2.ColumnNames[0], StringComparison.OrdinalIgnoreCase);
-            if (supportsDescendingColumnSorts) Assert.EndsWith("desc", idxMulti2.ColumnNames[1], StringComparison.OrdinalIgnoreCase);
+            if (supportsDescendingColumnSorts)
+                Assert.EndsWith(
+                    "desc",
+                    idxMulti2.ColumnNames[1],
+                    StringComparison.OrdinalIgnoreCase
+                );
 
             output.WriteLine($"Dropping indexName: {tableName}.{indexName}");
             await connection.DropIndexIfExistsAsync(tableName, indexName);
@@ -592,6 +602,8 @@ public abstract class DatabaseTests
         const string refTableName = "testPk";
         const string columnName = "testFkColumn";
         const string foreignKeyName = "testFk";
+
+        var supportsForeignKeyNaming = await connection.SupportsNamedForeignKeysAsync();
 
         await connection.CreateTableIfNotExistsAsync(tableName);
         await connection.CreateTableIfNotExistsAsync(refTableName);
@@ -623,7 +635,7 @@ public abstract class DatabaseTests
 
         output.WriteLine($"Get Foreign Key Names: {tableName}");
         var fkNames = await connection.GetForeignKeyNamesAsync(tableName);
-        if (await connection.SupportsNamedForeignKeysAsync())
+        if (supportsForeignKeyNaming)
         {
             Assert.Contains(
                 fkNames,
@@ -635,19 +647,32 @@ public abstract class DatabaseTests
         var fks = await connection.GetForeignKeysAsync(tableName);
         Assert.Contains(
             fks,
-            fk => fk.TableName.Equals(tableName, StringComparison.OrdinalIgnoreCase)
+            fk =>
+                fk.TableName.Equals(tableName, StringComparison.OrdinalIgnoreCase)
                 && fk.ColumnName.Equals(columnName, StringComparison.OrdinalIgnoreCase)
-                && fk.ForeignKeyName.Equals(foreignKeyName, StringComparison.OrdinalIgnoreCase)
+                && (
+                    !supportsForeignKeyNaming
+                    || fk.ForeignKeyName.Equals(foreignKeyName, StringComparison.OrdinalIgnoreCase)
+                )
                 && fk.ReferenceTableName.Equals(refTableName, StringComparison.OrdinalIgnoreCase)
                 && fk.ReferenceColumnName.Equals("id", StringComparison.OrdinalIgnoreCase)
                 && fk.OnDelete.Equals(ReferentialAction.Cascade)
         );
 
-        output.WriteLine($"Dropping foreign key: {tableName}.{foreignKeyName}");
-        await connection.DropForeignKeyIfExistsAsync(tableName, columnName, foreignKeyName);
+        output.WriteLine($"Dropping foreign key: {foreignKeyName}");
+        if (supportsForeignKeyNaming)
+        {
+            await connection.DropForeignKeyIfExistsAsync(tableName, columnName, foreignKeyName);
+        }
+        else
+        {
+            await connection.DropForeignKeyIfExistsAsync(tableName, columnName);
+        }
 
-        output.WriteLine($"Foreign Key Exists: {tableName}.{foreignKeyName}");
-        exists = await connection.ForeignKeyExistsAsync(tableName, columnName, foreignKeyName);
+        output.WriteLine($"Foreign Key Exists: {foreignKeyName}");
+        exists = supportsForeignKeyNaming
+            ? await connection.ForeignKeyExistsAsync(tableName, columnName, foreignKeyName)
+            : await connection.ForeignKeyExistsAsync(tableName, columnName);
         Assert.False(exists);
     }
 

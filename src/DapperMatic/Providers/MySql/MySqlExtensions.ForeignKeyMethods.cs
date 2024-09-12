@@ -141,12 +141,12 @@ public partial class MySqlExtensions : DatabaseExtensionsBase, IDatabaseExtensio
         (_, tableName, _) = NormalizeNames(schemaName, tableName);
 
         var where = string.IsNullOrWhiteSpace(nameFilter)
-          ? ""
-          : $"{ToAlphaNumericString(nameFilter)}".Replace("*", "%");
+            ? ""
+            : $"{ToAlphaNumericString(nameFilter)}".Replace("*", "%");
 
         var sql =
             $@"SELECT 
-                        kcu.CONSTRAINT_NAME as constraing_name, 
+                        kcu.CONSTRAINT_NAME as constraint_name, 
                         kcu.TABLE_NAME as table_name, 
                         kcu.COLUMN_NAME as column_name, 
                         kcu.REFERENCED_TABLE_NAME as referenced_table_name, 
@@ -155,54 +155,54 @@ public partial class MySqlExtensions : DatabaseExtensionsBase, IDatabaseExtensio
                         rc.UPDATE_RULE as update_rule
                     FROM information_schema.KEY_COLUMN_USAGE kcu
                     INNER JOIN information_schema.referential_constraints rc ON kcu.CONSTRAINT_NAME = rc.CONSTRAINT_NAME 
-                    WHERE kcu.TABLE_SCHEMA = DATABASE()";
-        if (string.IsNullOrWhiteSpace(tableName))
-            sql += $@" AND kcu.TABLE_NAME = @tableName AND REFERENCED_TABLE_NAME IS NOT NULL";
+                    WHERE kcu.TABLE_SCHEMA = DATABASE() AND kcu.REFERENCED_TABLE_NAME IS NOT NULL";
+        if (!string.IsNullOrWhiteSpace(tableName))
+            sql += $@" AND kcu.TABLE_NAME = @tableName";
         if (!string.IsNullOrWhiteSpace(where))
             sql += $@" AND kcu.CONSTRAINT_NAME LIKE @where";
         sql += " ORDER BY kcu.TABLE_NAME, kcu.CONSTRAINT_NAME";
 
-        var results =
-            await QueryAsync<(string constraint_name, string table_name, string column_name, string referenced_table_name, string referenced_column_name, string delete_rule, string update_rule)>(
-                    db,
-                    sql,
-                    new { tableName, where },
-                    tx
-                )
-                .ConfigureAwait(false);
+        var results = await QueryAsync<(
+            string constraint_name,
+            string table_name,
+            string column_name,
+            string referenced_table_name,
+            string referenced_column_name,
+            string delete_rule,
+            string update_rule
+        )>(db, sql, new { tableName, where }, tx)
+            .ConfigureAwait(false);
 
-        return results.Select(
-            r =>
+        return results.Select(r =>
+        {
+            var deleteRule = r.delete_rule switch
             {
-                var deleteRule = r.delete_rule switch
-                {
-                    "NO ACTION" => ReferentialAction.NoAction,
-                    "CASCADE" => ReferentialAction.Cascade,
-                    "SET NULL" => ReferentialAction.SetNull,
-                    _ => ReferentialAction.NoAction
-                };
-                var updateRule = r.update_rule switch
-                {
-                    "NO ACTION" => ReferentialAction.NoAction,
-                    "CASCADE" => ReferentialAction.Cascade,
-                    "SET NULL" => ReferentialAction.SetNull,
-                    _ => ReferentialAction.NoAction
-                };
-                return new ForeignKey(
-                    null,
-                    r.constraint_name,
-                    r.table_name,
-                    r.column_name,
-                    r.referenced_table_name,
-                    r.referenced_column_name,
-                    deleteRule,
-                    updateRule
-                );
-            }
-        );
+                "NO ACTION" => ReferentialAction.NoAction,
+                "CASCADE" => ReferentialAction.Cascade,
+                "SET NULL" => ReferentialAction.SetNull,
+                _ => ReferentialAction.NoAction
+            };
+            var updateRule = r.update_rule switch
+            {
+                "NO ACTION" => ReferentialAction.NoAction,
+                "CASCADE" => ReferentialAction.Cascade,
+                "SET NULL" => ReferentialAction.SetNull,
+                _ => ReferentialAction.NoAction
+            };
+            return new ForeignKey(
+                null,
+                r.constraint_name,
+                r.table_name,
+                r.column_name,
+                r.referenced_table_name,
+                r.referenced_column_name,
+                deleteRule,
+                updateRule
+            );
+        });
     }
 
-    public Task<IEnumerable<string>> GetForeignKeyNamesAsync(
+    public async Task<IEnumerable<string>> GetForeignKeyNamesAsync(
         IDbConnection db,
         string? tableName,
         string? nameFilter = null,
@@ -211,41 +211,23 @@ public partial class MySqlExtensions : DatabaseExtensionsBase, IDatabaseExtensio
         CancellationToken cancellationToken = default
     )
     {
-        if (string.IsNullOrWhiteSpace(tableName))
-            throw new ArgumentException("Table name must be specified.", nameof(tableName));
-
         (_, tableName, _) = NormalizeNames(schemaName, tableName);
 
-        if (string.IsNullOrWhiteSpace(nameFilter))
-        {
-            return QueryAsync<string>(
-                db,
-                $@"SELECT CONSTRAINT_NAME 
+        var where = string.IsNullOrWhiteSpace(nameFilter)
+            ? null
+            : $"{ToAlphaNumericString(nameFilter)}".Replace("*", "%");
+
+        var sql =
+            $@"SELECT CONSTRAINT_NAME 
                     FROM information_schema.TABLE_CONSTRAINTS 
                     WHERE TABLE_SCHEMA = DATABASE() AND 
-                          TABLE_NAME = @tableName AND 
-                          CONSTRAINT_TYPE = 'FOREIGN KEY'
-                    ORDER BY CONSTRAINT_NAME",
-                new { tableName },
-                tx
-            );
-        }
-        else
-        {
-            var where = $"{ToAlphaNumericString(nameFilter)}".Replace("*", "%");
-            return QueryAsync<string>(
-                db,
-                $@"SELECT CONSTRAINT_NAME
-                    FROM information_schema.TABLE_CONSTRAINTS 
-                    WHERE TABLE_SCHEMA = DATABASE() AND 
-                          TABLE_NAME = @tableName AND 
-                          CONSTRAINT_TYPE = 'FOREIGN KEY' AND 
-                          CONSTRAINT_NAME LIKE @where
-                    ORDER BY CONSTRAINT_NAME",
-                new { tableName, where },
-                tx
-            );
-        }
+                          CONSTRAINT_TYPE = 'FOREIGN KEY'"
+            + (string.IsNullOrWhiteSpace(tableName) ? "" : " AND TABLE_NAME = @tableName")
+            + (string.IsNullOrWhiteSpace(where) ? "" : " AND CONSTRAINT_NAME LIKE @where")
+            + @" ORDER BY CONSTRAINT_NAME";
+
+        return await QueryAsync<string>(db, sql, new { tableName, where }, tx)
+            .ConfigureAwait(false);
     }
 
     /// <summary>

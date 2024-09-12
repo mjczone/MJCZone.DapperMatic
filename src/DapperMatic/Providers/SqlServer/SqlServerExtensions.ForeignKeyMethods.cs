@@ -28,7 +28,12 @@ public partial class SqlServerExtensions : DatabaseExtensionsBase, IDatabaseExte
                               TABLE_NAME = @tableName AND 
                               CONSTRAINT_NAME = @foreignKeyName AND
                               CONSTRAINT_TYPE = 'FOREIGN KEY'",
-                        new { schemaName, tableName, foreignKeyName },
+                        new
+                        {
+                            schemaName,
+                            tableName,
+                            foreignKeyName
+                        },
                         tx
                     )
                     .ConfigureAwait(false);
@@ -49,7 +54,12 @@ public partial class SqlServerExtensions : DatabaseExtensionsBase, IDatabaseExte
                                 ON f.object_id = fc.constraint_object_id
                             WHERE f.parent_object_id = OBJECT_ID('{schemaAndTableName}') AND
                                 COL_NAME(fc.parent_object_id, fc.parent_column_id) = @columnName",
-                        new { schemaName, tableName, columnName },
+                        new
+                        {
+                            schemaName,
+                            tableName,
+                            columnName
+                        },
                         tx
                     )
                     .ConfigureAwait(false);
@@ -126,19 +136,7 @@ public partial class SqlServerExtensions : DatabaseExtensionsBase, IDatabaseExte
         return true;
     }
 
-    public Task<IEnumerable<ForeignKey>> GetForeignKeysAsync(
-        IDbConnection db,
-        string? tableName,
-        string? nameFilter = null,
-        string? schemaName = null,
-        IDbTransaction? tx = null,
-        CancellationToken cancellationToken = default
-    )
-    {
-        throw new NotImplementedException();
-    }
-
-    public Task<IEnumerable<string>> GetForeignKeyNamesAsync(
+    public async Task<IEnumerable<ForeignKey>> GetForeignKeysAsync(
         IDbConnection db,
         string? tableName,
         string? nameFilter = null,
@@ -149,37 +147,146 @@ public partial class SqlServerExtensions : DatabaseExtensionsBase, IDatabaseExte
     {
         (schemaName, tableName, _) = NormalizeNames(schemaName, tableName);
 
-        if (string.IsNullOrWhiteSpace(nameFilter))
-        {
-            return QueryAsync<string>(
-                db,
-                $@"SELECT CONSTRAINT_NAME 
-                    FROM INFORMATION_SCHEMA.TABLE_CONSTRAINTS 
-                    WHERE TABLE_SCHEMA = @schemaName AND 
-                          TABLE_NAME = @tableName AND 
-                          CONSTRAINT_TYPE = 'FOREIGN KEY' 
-                    ORDER BY CONSTRAINT_NAME",
-                new { schemaName, tableName },
-                tx
-            );
-        }
-        else
-        {
-            var where = $"{ToAlphaNumericString(nameFilter)}".Replace("*", "%");
+        var where = string.IsNullOrWhiteSpace(nameFilter)
+            ? null
+            : $"{ToAlphaNumericString(nameFilter)}".Replace("*", "%");
 
-            return QueryAsync<string>(
+        var sql =
+            $@"select
+                    fk.name as constraint_name,
+                    schema_name(fk_tab.schema_id) as schema_name,
+                    fk_tab.name as table_name,
+                    substring(fk_column_names, 1, len(fk_column_names)-1) as [column_name],
+                    schema_name(pk_tab.schema_id) as referenced_schema_name,
+                    pk_tab.name as referenced_table_name,
+                    substring(pk_column_names, 1, len(pk_column_names)-1) as [referenced_column_name],
+                    fk.delete_referential_action_desc as delete_rule,
+                    fk.update_referential_action_desc  as update_rule
+                from sys.foreign_keys fk
+                    inner join sys.tables fk_tab on fk_tab.object_id = fk.parent_object_id
+                    inner join sys.tables pk_tab on pk_tab.object_id = fk.referenced_object_id
+                    cross apply (select col.[name] + ', '
+                                    from sys.foreign_key_columns fk_c
+                                        inner join sys.columns col
+                                            on fk_c.parent_object_id = col.object_id
+                                            and fk_c.parent_column_id = col.column_id
+                                    where fk_c.parent_object_id = fk_tab.object_id
+                                    and fk_c.constraint_object_id = fk.object_id
+                                            order by col.column_id
+                                            for xml path ('') ) D (fk_column_names)
+                    cross apply (select col.[name] + ', '
+                                    from sys.foreign_key_columns fk_c
+                                        inner join sys.columns col
+                                            on fk_c.referenced_object_id = col.object_id
+                                            and fk_c.referenced_column_id = col.column_id
+                                    where fk_c.referenced_object_id = pk_tab.object_id
+                                    and fk_c.constraint_object_id = fk.object_id
+                                            order by col.column_id
+                                            for xml path ('') ) G (pk_column_names)
+            where 1 = 1";
+        if (!string.IsNullOrWhiteSpace(schemaName))
+            sql += $@" AND schema_name(fk_tab.schema_id) = @schemaName";
+        if (!string.IsNullOrWhiteSpace(tableName))
+            sql += $@" AND fk_tab.name = @tableName";
+        if (!string.IsNullOrWhiteSpace(where))
+            sql += $@" AND fk.name LIKE @where";
+        sql +=
+            $@" 
+            order by schema_name(fk_tab.schema_id), fk_tab.name, fk.name";
+
+        var results = await QueryAsync<(
+            string constraint_name,
+            string schema_name,
+            string table_name,
+            string column_name,
+            string referenced_schema_name,
+            string referenced_table_name,
+            string referenced_column_name,
+            string delete_rule,
+            string update_rule
+        )>(
                 db,
-                $@"SELECT CONSTRAINT_NAME 
-                    FROM INFORMATION_SCHEMA.TABLE_CONSTRAINTS 
-                    WHERE TABLE_SCHEMA = @schemaName AND 
-                          TABLE_NAME = @tableName AND 
-                          CONSTRAINT_TYPE = 'FOREIGN KEY' AND 
-                          CONSTRAINT_NAME LIKE @where 
-                    ORDER BY CONSTRAINT_NAME",
-                new { schemaName, tableName, where },
+                sql,
+                new
+                {
+                    schemaName,
+                    tableName,
+                    where
+                },
                 tx
+            )
+            .ConfigureAwait(false);
+
+        return results.Select(r =>
+        {
+            var deleteRule = (r.delete_rule ?? "").Replace('_', ' ') switch
+            {
+                "CASCADE" => ReferentialAction.Cascade,
+                "SET NULL" => ReferentialAction.SetNull,
+                "NO ACTION" => ReferentialAction.NoAction,
+                _ => ReferentialAction.NoAction
+            };
+            var updateRule = (r.update_rule ?? "").Replace('_', ' ') switch
+            {
+                "CASCADE" => ReferentialAction.Cascade,
+                "SET NULL" => ReferentialAction.SetNull,
+                "NO ACTION" => ReferentialAction.NoAction,
+                _ => ReferentialAction.NoAction
+            };
+
+            return new ForeignKey(
+                r.schema_name,
+                r.constraint_name,
+                r.table_name,
+                r.column_name,
+                r.referenced_table_name,
+                r.referenced_column_name,
+                deleteRule,
+                updateRule
             );
-        }
+        });
+    }
+
+    public async Task<IEnumerable<string>> GetForeignKeyNamesAsync(
+        IDbConnection db,
+        string? tableName,
+        string? nameFilter = null,
+        string? schemaName = null,
+        IDbTransaction? tx = null,
+        CancellationToken cancellationToken = default
+    )
+    {
+        (schemaName, tableName, _) = NormalizeNames(schemaName, tableName);
+
+        var where = string.IsNullOrWhiteSpace(nameFilter)
+            ? null
+            : $"{ToAlphaNumericString(nameFilter)}".Replace("*", "%");
+
+        var sql =
+            $@"SELECT CONSTRAINT_NAME 
+                    FROM INFORMATION_SCHEMA.TABLE_CONSTRAINTS 
+                    where 
+                          CONSTRAINT_TYPE = 'FOREIGN KEY'";
+        if (!string.IsNullOrWhiteSpace(schemaName))
+            sql += $@" AND TABLE_SCHEMA = @schemaName";
+        if (!string.IsNullOrWhiteSpace(tableName))
+            sql += $@" AND TABLE_NAME = @tableName";
+        if (!string.IsNullOrWhiteSpace(where))
+            sql += $@" AND CONSTRAINT_NAME LIKE @where";
+        sql += @" ORDER BY CONSTRAINT_NAME";
+
+        return await QueryAsync<string>(
+                db,
+                sql,
+                new
+                {
+                    schemaName,
+                    tableName,
+                    where
+                },
+                tx
+            )
+            .ConfigureAwait(false);
     }
 
     public async Task<bool> DropForeignKeyIfExistsAsync(
@@ -234,7 +341,12 @@ public partial class SqlServerExtensions : DatabaseExtensionsBase, IDatabaseExte
                             ON f.object_id = fc.constraint_object_id
                         WHERE f.parent_object_id = OBJECT_ID('{schemaAndTableName}') AND
                             COL_NAME(fc.parent_object_id, fc.parent_column_id) = @columnName",
-                    new { schemaName, tableName, columnName },
+                    new
+                    {
+                        schemaName,
+                        tableName,
+                        columnName
+                    },
                     tx
                 )
                 .ConfigureAwait(false);

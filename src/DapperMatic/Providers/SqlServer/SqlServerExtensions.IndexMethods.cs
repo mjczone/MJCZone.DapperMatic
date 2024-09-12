@@ -81,8 +81,8 @@ public partial class SqlServerExtensions : DatabaseExtensionsBase, IDatabaseExte
         (schemaName, tableName, _) = NormalizeNames(schemaName, tableName);
 
         var where = string.IsNullOrWhiteSpace(nameFilter)
-          ? null
-          : $"{ToAlphaNumericString(nameFilter)}".Replace("*", "%");
+            ? null
+            : $"{ToAlphaNumericString(nameFilter)}".Replace("*", "%");
 
         var sql =
             @$"SELECT 
@@ -100,21 +100,33 @@ public partial class SqlServerExtensions : DatabaseExtensionsBase, IDatabaseExte
                WHERE ind.is_primary_key = 0 AND ind.is_unique_constraint = 0 AND t.is_ms_shipped = 0"
             + (
                 string.IsNullOrWhiteSpace(schemaName)
-                  ? ""
-                  : " AND SCHEMA_NAME(t.schema_id) = @schemaName"
+                    ? ""
+                    : " AND SCHEMA_NAME(t.schema_id) = @schemaName"
             )
             + (string.IsNullOrWhiteSpace(tableName) ? "" : " AND t.name = @tableName")
             + (string.IsNullOrWhiteSpace(where) ? "" : " AND ind.name LIKE @where")
             + @" ORDER BY schema_name, table_name, index_name, key_ordinal";
 
-        var results =
-            await QueryAsync<(string schema_name, string table_name, string index_name, string column_name, int is_unique, string key_ordinal, int is_descending_key)>(
-                    db,
-                    sql,
-                    new { schemaName, tableName, where },
-                    tx
-                )
-                .ConfigureAwait(false);
+        var results = await QueryAsync<(
+            string schema_name,
+            string table_name,
+            string index_name,
+            string column_name,
+            int is_unique,
+            string key_ordinal,
+            int is_descending_key
+        )>(
+                db,
+                sql,
+                new
+                {
+                    schemaName,
+                    tableName,
+                    where
+                },
+                tx
+            )
+            .ConfigureAwait(false);
 
         var grouped = results.GroupBy(
             r => (r.schema_name, r.table_name, r.index_name),
@@ -131,14 +143,12 @@ public partial class SqlServerExtensions : DatabaseExtensionsBase, IDatabaseExte
                 table_name,
                 index_name,
                 group
-                    .Select(
-                        g =>
-                        {
-                            var col = g.column_name;
-                            var direction = g.is_descending_key == 1 ? "DESC" : "ASC";
-                            return $"{col} {direction}";
-                        }
-                    )
+                    .Select(g =>
+                    {
+                        var col = g.column_name;
+                        var direction = g.is_descending_key == 1 ? "DESC" : "ASC";
+                        return $"{col} {direction}";
+                    })
                     .ToArray(),
                 is_unique == 1
             );
@@ -160,8 +170,8 @@ public partial class SqlServerExtensions : DatabaseExtensionsBase, IDatabaseExte
         (schemaName, tableName, _) = NormalizeNames(schemaName, tableName);
 
         var where = string.IsNullOrWhiteSpace(nameFilter)
-          ? null
-          : $"{ToAlphaNumericString(nameFilter)}".Replace("*", "%");
+            ? null
+            : $"{ToAlphaNumericString(nameFilter)}".Replace("*", "%");
 
         var sql =
             @$"SELECT ind.name 
@@ -170,14 +180,24 @@ public partial class SqlServerExtensions : DatabaseExtensionsBase, IDatabaseExte
                WHERE ind.is_primary_key = 0 and ind.is_unique_constraint = 0 AND t.is_ms_shipped = 0"
             + (
                 string.IsNullOrWhiteSpace(schemaName)
-                  ? ""
-                  : " AND SCHEMA_NAME(t.schema_id) = @schemaName"
+                    ? ""
+                    : " AND SCHEMA_NAME(t.schema_id) = @schemaName"
             )
             + (string.IsNullOrWhiteSpace(tableName) ? "" : " AND t.name = @tableName")
             + (string.IsNullOrWhiteSpace(where) ? "" : " AND ind.name LIKE @where")
             + @" ORDER BY ind.name";
 
-        return await QueryAsync<string>(db, sql, new { schemaName, tableName, where }, tx)
+        return await QueryAsync<string>(
+                db,
+                sql,
+                new
+                {
+                    schemaName,
+                    tableName,
+                    where
+                },
+                tx
+            )
             .ConfigureAwait(false);
     }
 
