@@ -1,12 +1,5 @@
-using System.Data;
-using System.Data.Entity;
 using Dapper;
-using Dapper.Contrib.Extensions;
 using DapperMatic.Models;
-using DapperMatic.Providers;
-using Microsoft.VisualBasic;
-using Newtonsoft.Json;
-using Xunit.Abstractions;
 
 namespace DapperMatic.Tests;
 

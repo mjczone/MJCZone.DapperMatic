@@ -1,11 +1,4 @@
-using System.Data;
-using System.Data.Entity;
-using Dapper;
 using DapperMatic.Models;
-using DapperMatic.Providers;
-using Microsoft.VisualBasic;
-using Newtonsoft.Json;
-using Xunit.Abstractions;
 
 namespace DapperMatic.Tests;
 
@@ -56,5 +49,29 @@ public abstract partial class DatabaseMethodsTests
         await connection.DropCheckConstraintIfExistsAsync(null, "testTable", constraintName);
         exists = await connection.CheckConstraintExistsAsync(null, "testTable", constraintName);
         Assert.False(exists);
+
+        await connection.DropTableIfExistsAsync(null, "testTable");
+
+        await connection.CreateTableIfNotExistsAsync(
+            null,
+            "testTable",
+            [
+                new DxColumn(null, "testTable", "testColumn", typeof(int)),
+                new DxColumn(
+                    null,
+                    "testTable",
+                    "testColumn2",
+                    typeof(int),
+                    checkExpression: "testColumn2 > 0"
+                )
+            ]
+        );
+
+        var checkConstraint = await connection.GetCheckConstraintOnColumnAsync(
+            null,
+            "testTable",
+            "testColumn2"
+        );
+        Assert.NotNull(checkConstraint);
     }
 }
