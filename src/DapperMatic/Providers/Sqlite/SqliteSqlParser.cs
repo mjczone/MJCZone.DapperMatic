@@ -471,6 +471,7 @@ public static partial class SqliteSqlParser
                                     referencedTableName,
                                     fkOrderedReferencedColumns
                                 );
+                                table.ForeignKeyConstraints.Add(foreignKey);
 
                                 var onDeleteTokenIndex = tableConstraint.FindTokenIndex(
                                     "ON DELETE"

@@ -177,14 +177,34 @@ public abstract partial class DatabaseMethodsBase : IDatabaseForeignKeyConstrain
         );
     }
 
-    public abstract Task<List<DxForeignKeyConstraint>> GetForeignKeyConstraintsAsync(
+    public virtual async Task<List<DxForeignKeyConstraint>> GetForeignKeyConstraintsAsync(
         IDbConnection db,
         string? schemaName,
         string tableName,
         string? constraintNameFilter = null,
         IDbTransaction? tx = null,
         CancellationToken cancellationToken = default
-    );
+    )
+    {
+        if (string.IsNullOrWhiteSpace(tableName))
+            throw new ArgumentException("Table name is required.", nameof(tableName));
+
+        var table = await GetTableAsync(db, schemaName, tableName, tx, cancellationToken)
+            .ConfigureAwait(false);
+
+        if (table == null)
+            return new List<DxForeignKeyConstraint>();
+
+        var filter = string.IsNullOrWhiteSpace(constraintNameFilter)
+            ? null
+            : ToAlphaNumericString(constraintNameFilter);
+
+        return string.IsNullOrWhiteSpace(filter)
+            ? table.ForeignKeyConstraints
+            : table
+                .ForeignKeyConstraints.Where(c => IsWildcardPatternMatch(c.ConstraintName, filter))
+                .ToList();
+    }
 
     public virtual async Task<bool> DropForeignKeyConstraintOnColumnIfExistsAsync(
         IDbConnection db,

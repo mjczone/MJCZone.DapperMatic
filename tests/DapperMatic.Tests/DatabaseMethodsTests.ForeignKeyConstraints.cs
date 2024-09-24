@@ -10,19 +10,29 @@ public abstract partial class DatabaseMethodsTests
         using var connection = await OpenConnectionAsync();
 
         const string tableName = "testWithFk";
-        const string refTableName = "testPk";
         const string columnName = "testFkColumn";
         const string foreignKeyName = "testFk";
+        const string refTableName = "testPk";
+        const string refTableColumn = "id";
 
-        await connection.CreateTableIfNotExistsAsync(null, tableName);
-        await connection.CreateTableIfNotExistsAsync(null, refTableName);
-        await connection.CreateColumnIfNotExistsAsync(
+        await connection.CreateTableIfNotExistsAsync(
             null,
             tableName,
-            columnName,
-            typeof(int),
-            defaultExpression: "1",
-            isNullable: false
+            [
+                new DxColumn(
+                    null,
+                    tableName,
+                    columnName,
+                    typeof(int),
+                    defaultExpression: "1",
+                    isNullable: false
+                )
+            ]
+        );
+        await connection.CreateTableIfNotExistsAsync(
+            null,
+            refTableName,
+            [new DxColumn(null, refTableName, refTableColumn, typeof(int), defaultExpression: "1")]
         );
 
         output.WriteLine($"Foreign Key Exists: {tableName}.{foreignKeyName}");
@@ -34,7 +44,7 @@ public abstract partial class DatabaseMethodsTests
         Assert.False(exists);
 
         output.WriteLine($"Creating foreign key: {tableName}.{foreignKeyName}");
-        await connection.CreateForeignKeyConstraintIfNotExistsAsync(
+        var created = await connection.CreateForeignKeyConstraintIfNotExistsAsync(
             null,
             tableName,
             foreignKeyName,
@@ -43,6 +53,7 @@ public abstract partial class DatabaseMethodsTests
             [new DxOrderedColumn("id")],
             onDelete: DxForeignKeyAction.Cascade
         );
+        Assert.True(created);
 
         output.WriteLine($"Foreign Key Exists: {tableName}.{foreignKeyName}");
         exists = await connection.ForeignKeyConstraintExistsAsync(null, tableName, foreignKeyName);

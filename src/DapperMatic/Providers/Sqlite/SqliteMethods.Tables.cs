@@ -115,9 +115,11 @@ public partial class SqliteMethods
                 columnSql +=
                     $" CONSTRAINT fk_{tableName}_{columnName}_{column.ReferencedTableName}_{column.ReferencedColumnName} FOREIGN KEY ({columnName}) REFERENCES {ToAlphaNumericString(column.ReferencedTableName)} ({ToAlphaNumericString(column.ReferencedColumnName)})";
                 if (column.OnDelete.HasValue)
-                    columnSql += $" ON DELETE {column.OnDelete}";
+                    columnSql +=
+                        $" ON DELETE {(column.OnDelete ?? DxForeignKeyAction.NoAction).ToSql()}";
                 if (column.OnUpdate.HasValue)
-                    columnSql += $" ON UPDATE {column.OnUpdate}";
+                    columnSql +=
+                        $" ON UPDATE {(column.OnUpdate ?? DxForeignKeyAction.NoAction).ToSql()}";
             }
             columnDefinitionClauses.Add(columnSql);
         }
@@ -153,8 +155,8 @@ public partial class SqliteMethods
                 sql.AppendLine(
                     $", CONSTRAINT {fkName} FOREIGN KEY ({string.Join(", ", fkColumns)}) REFERENCES {ToAlphaNumericString(constraint.ReferencedTableName)} ({string.Join(", ", fkReferencedColumns)})"
                 );
-                sql.AppendLine($" ON DELETE {constraint.OnDelete}");
-                sql.AppendLine($" ON UPDATE {constraint.OnUpdate}");
+                sql.AppendLine($" ON DELETE {constraint.OnDelete.ToSql()}");
+                sql.AppendLine($" ON UPDATE {constraint.OnUpdate.ToSql()}");
             }
         }
         if (uniqueConstraints != null && uniqueConstraints.Length > 0)
@@ -247,6 +249,66 @@ public partial class SqliteMethods
                 continue;
             tables.Add(table);
         }
+
+        // attach indexes
+        var whereStatement =
+            (tables.Count > 0 && tables.Count < 15) ? " AND m.name IN @tableNames" : "";
+        var whereParams = new
+        {
+            tableNames = (tables.Count > 0 && tables.Count < 15)
+                ? tables.Select(t => t.TableName).ToArray()
+                : []
+        };
+
+        var indexes = await GetIndexesInternalAsync(
+                db,
+                schemaName,
+                whereStatement,
+                whereParams,
+                tx,
+                cancellationToken
+            )
+            .ConfigureAwait(false);
+
+        if (indexes.Count > 0)
+        {
+            foreach (var table in tables)
+            {
+                table.Indexes = indexes
+                    .Where(i =>
+                        i.TableName.Equals(table.TableName, StringComparison.OrdinalIgnoreCase)
+                    )
+                    .ToList();
+                if (table.Indexes.Count > 0)
+                {
+                    foreach (var column in table.Columns)
+                    {
+                        column.IsIndexed = table.Indexes.Any(i =>
+                            i.Columns.Any(c =>
+                                c.ColumnName.Equals(
+                                    column.ColumnName,
+                                    StringComparison.OrdinalIgnoreCase
+                                )
+                            )
+                        );
+                        if (column.IsIndexed && !column.IsUnique)
+                        {
+                            column.IsUnique = table
+                                .Indexes.Where(i => i.IsUnique)
+                                .Any(i =>
+                                    i.Columns.Any(c =>
+                                        c.ColumnName.Equals(
+                                            column.ColumnName,
+                                            StringComparison.OrdinalIgnoreCase
+                                        )
+                                    )
+                                );
+                        }
+                    }
+                }
+            }
+        }
+
         return tables;
     }
 

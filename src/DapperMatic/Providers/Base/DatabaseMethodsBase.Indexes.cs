@@ -18,7 +18,7 @@ public abstract partial class DatabaseMethodsBase : IDatabaseIndexMethods
                 .ConfigureAwait(false) != null;
     }
 
-    public virtual async Task<bool> IndexExistsOnColumnAsync(
+    public virtual async Task<bool> IndexesExistOnColumnAsync(
         IDbConnection db,
         string? schemaName,
         string tableName,
@@ -27,15 +27,17 @@ public abstract partial class DatabaseMethodsBase : IDatabaseIndexMethods
         CancellationToken cancellationToken = default
     )
     {
-        return await GetIndexOnColumnAsync(
-                    db,
-                    schemaName,
-                    tableName,
-                    columnName,
-                    tx,
-                    cancellationToken
-                )
-                .ConfigureAwait(false) != null;
+        return (
+                await GetIndexesOnColumnAsync(
+                        db,
+                        schemaName,
+                        tableName,
+                        columnName,
+                        tx,
+                        cancellationToken
+                    )
+                    .ConfigureAwait(false)
+            ).Count > 0;
     }
 
     public virtual async Task<bool> CreateIndexIfNotExistsAsync(
@@ -102,7 +104,7 @@ public abstract partial class DatabaseMethodsBase : IDatabaseIndexMethods
         CancellationToken cancellationToken = default
     );
 
-    public virtual async Task<string?> GetIndexNameOnColumnAsync(
+    public virtual async Task<List<string>> GetIndexNamesOnColumnAsync(
         IDbConnection db,
         string? schemaName,
         string tableName,
@@ -112,7 +114,7 @@ public abstract partial class DatabaseMethodsBase : IDatabaseIndexMethods
     )
     {
         return (
-            await GetIndexOnColumnAsync(
+            await GetIndexesOnColumnAsync(
                     db,
                     schemaName,
                     tableName,
@@ -121,7 +123,9 @@ public abstract partial class DatabaseMethodsBase : IDatabaseIndexMethods
                     cancellationToken
                 )
                 .ConfigureAwait(false)
-        )?.IndexName;
+        )
+            .Select(x => x.IndexName)
+            .ToList();
     }
 
     public virtual async Task<List<string>> GetIndexNamesAsync(
@@ -141,7 +145,7 @@ public abstract partial class DatabaseMethodsBase : IDatabaseIndexMethods
             .ToList();
     }
 
-    public virtual async Task<DxIndex?> GetIndexOnColumnAsync(
+    public virtual async Task<List<DxIndex>> GetIndexesOnColumnAsync(
         IDbConnection db,
         string? schemaName,
         string tableName,
@@ -156,9 +160,13 @@ public abstract partial class DatabaseMethodsBase : IDatabaseIndexMethods
         var indexes = await GetIndexesAsync(db, schemaName, tableName, null, tx, cancellationToken)
             .ConfigureAwait(false);
 
-        return indexes.FirstOrDefault(c =>
-            c.Columns.Any(x => x.ColumnName.Equals(columnName, StringComparison.OrdinalIgnoreCase))
-        );
+        return indexes
+            .Where(c =>
+                c.Columns.Any(x =>
+                    x.ColumnName.Equals(columnName, StringComparison.OrdinalIgnoreCase)
+                )
+            )
+            .ToList();
     }
 
     public virtual async Task<bool> DropIndexIfExistsAsync(
@@ -198,7 +206,7 @@ public abstract partial class DatabaseMethodsBase : IDatabaseIndexMethods
         return true;
     }
 
-    public virtual async Task<bool> DropIndexOnColumnIfExistsAsync(
+    public virtual async Task<bool> DropIndexesOnColumnIfExistsAsync(
         IDbConnection db,
         string? schemaName,
         string tableName,
@@ -207,7 +215,7 @@ public abstract partial class DatabaseMethodsBase : IDatabaseIndexMethods
         CancellationToken cancellationToken = default
     )
     {
-        var indexName = await GetIndexNameOnColumnAsync(
+        var indexNames = await GetIndexNamesOnColumnAsync(
                 db,
                 schemaName,
                 tableName,
@@ -217,17 +225,22 @@ public abstract partial class DatabaseMethodsBase : IDatabaseIndexMethods
             )
             .ConfigureAwait(false);
 
-        if (string.IsNullOrWhiteSpace(indexName))
+        if (indexNames.Count == 0)
             return false;
 
-        return await DropIndexIfExistsAsync(
-                db,
-                schemaName,
-                tableName,
-                indexName,
-                tx,
-                cancellationToken
-            )
-            .ConfigureAwait(false);
+        foreach (var indexName in indexNames)
+        {
+            await DropIndexIfExistsAsync(
+                    db,
+                    schemaName,
+                    tableName,
+                    indexName,
+                    tx,
+                    cancellationToken
+                )
+                .ConfigureAwait(false);
+        }
+
+        return true;
     }
 }

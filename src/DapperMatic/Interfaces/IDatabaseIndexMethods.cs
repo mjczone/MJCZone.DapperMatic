@@ -23,7 +23,7 @@ public partial interface IDatabaseIndexMethods
         CancellationToken cancellationToken = default
     );
 
-    Task<bool> IndexExistsOnColumnAsync(
+    Task<bool> IndexesExistOnColumnAsync(
         IDbConnection db,
         string? schemaName,
         string tableName,
@@ -41,7 +41,7 @@ public partial interface IDatabaseIndexMethods
         CancellationToken cancellationToken = default
     );
 
-    Task<DxIndex?> GetIndexOnColumnAsync(
+    Task<List<DxIndex>> GetIndexesOnColumnAsync(
         IDbConnection db,
         string? schemaName,
         string tableName,
@@ -68,7 +68,7 @@ public partial interface IDatabaseIndexMethods
         CancellationToken cancellationToken = default
     );
 
-    Task<string?> GetIndexNameOnColumnAsync(
+    Task<List<string>> GetIndexNamesOnColumnAsync(
         IDbConnection db,
         string? schemaName,
         string tableName,
@@ -86,7 +86,7 @@ public partial interface IDatabaseIndexMethods
         CancellationToken cancellationToken = default
     );
 
-    Task<bool> DropIndexOnColumnIfExistsAsync(
+    Task<bool> DropIndexesOnColumnIfExistsAsync(
         IDbConnection db,
         string? schemaName,
         string tableName,

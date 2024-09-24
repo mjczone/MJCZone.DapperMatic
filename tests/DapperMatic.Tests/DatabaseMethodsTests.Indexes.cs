@@ -23,32 +23,37 @@ public abstract partial class DatabaseMethodsTests
         }
         try
         {
-            // await connection.ExecuteAsync("DROP TABLE testWithIndex");
             const string tableName = "testWithIndex";
             const string columnName = "testColumn";
             const string indexName = "testIndex";
 
-            await connection.DropTableIfExistsAsync(null, tableName);
-            await connection.CreateTableIfNotExistsAsync(null, tableName);
-            await connection.CreateColumnIfNotExistsAsync(
-                null,
-                tableName,
-                columnName,
-                typeof(int),
-                defaultExpression: "1",
-                isNullable: false
-            );
-            for (var i = 0; i < 10; i++)
+            var columns = new List<DxColumn>
             {
-                await connection.CreateColumnIfNotExistsAsync(
+                new DxColumn(
                     null,
                     tableName,
-                    columnName + "_" + i,
+                    columnName,
                     typeof(int),
-                    defaultExpression: i.ToString(),
+                    defaultExpression: "1",
                     isNullable: false
+                )
+            };
+            for (var i = 0; i < 10; i++)
+            {
+                columns.Add(
+                    new DxColumn(
+                        null,
+                        tableName,
+                        columnName + "_" + i,
+                        typeof(int),
+                        defaultExpression: i.ToString(),
+                        isNullable: false
+                    )
                 );
             }
+
+            await connection.DropTableIfExistsAsync(null, tableName);
+            await connection.CreateTableIfNotExistsAsync(null, tableName, columns: [.. columns]);
 
             output.WriteLine($"Index Exists: {tableName}.{indexName}");
             var exists = await connection.IndexExistsAsync(null, tableName, indexName);
@@ -140,6 +145,13 @@ public abstract partial class DatabaseMethodsTests
             {
                 Assert.Equal(DxColumnOrder.Descending, idxMulti2.Columns[1].Order);
             }
+
+            var indexesOnColumn = await connection.GetIndexesOnColumnAsync(
+                null,
+                tableName,
+                columnName
+            );
+            Assert.NotEmpty(indexesOnColumn);
 
             output.WriteLine($"Dropping indexName: {tableName}.{indexName}");
             await connection.DropIndexIfExistsAsync(null, tableName, indexName);

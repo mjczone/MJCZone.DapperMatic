@@ -38,11 +38,12 @@ public partial class SqliteMethods
             return false;
 
         // get the create index sql statements for the existing table
-        var createIndexStatements = await QueryAsync<string>(
+        var createIndexStatements = await GetCreateIndexSqlStatementsForTable(
                 db,
-                $@"SELECT sql FROM sqlite_master WHERE type = 'index' and tbl_name = @tableName and sql is not null",
-                new { tableName },
-                transaction: tx
+                schemaName,
+                tableName,
+                tx,
+                cancellationToken
             )
             .ConfigureAwait(false);
 
@@ -173,11 +174,12 @@ public partial class SqliteMethods
         //     return false;
 
         // get the create index sql statements for the existing table
-        var createIndexStatements = await QueryAsync<string>(
+        var createIndexStatements = await GetCreateIndexSqlStatementsForTable(
                 db,
-                $@"SELECT sql FROM sqlite_master WHERE type = 'index' and tbl_name = @tableName and sql is not null",
-                new { tableName },
-                transaction: tx
+                schemaName,
+                tableName,
+                tx,
+                cancellationToken
             )
             .ConfigureAwait(false);
 

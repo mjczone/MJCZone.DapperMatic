@@ -52,11 +52,12 @@ public partial class SqliteMethods
             return false;
 
         // get the create index sql statements for the existing table
-        var createIndexStatements = await QueryAsync<string>(
+        var createIndexStatements = await GetCreateIndexSqlStatementsForTable(
                 db,
-                $@"SELECT sql FROM sqlite_master WHERE type = 'index' and tbl_name = @tableName and sql is not null",
-                new { tableName },
-                transaction: tx
+                schemaName,
+                tableName,
+                tx,
+                cancellationToken
             )
             .ConfigureAwait(false);
 
@@ -183,23 +184,13 @@ public partial class SqliteMethods
 
         // to drop a unique index, you have to re-create the table in sqlite
 
-        // get the create table sql for the existing table
-        // var sql = await ExecuteScalarAsync<string>(
-        //         db,
-        //         $@"SELECT sql FROM sqlite_master WHERE type = 'table' AND name = @tableName",
-        //         new { tableName },
-        //         transaction: tx
-        //     )
-        //     .ConfigureAwait(false);
-        // if (string.IsNullOrWhiteSpace(sql))
-        //     return false;
-
         // get the create index sql statements for the existing table
-        var createIndexStatements = await QueryAsync<string>(
+        var createIndexStatements = await GetCreateIndexSqlStatementsForTable(
                 db,
-                $@"SELECT sql FROM sqlite_master WHERE type = 'index' and tbl_name = @tableName and sql is not null",
-                new { tableName },
-                transaction: tx
+                schemaName,
+                tableName,
+                tx,
+                cancellationToken
             )
             .ConfigureAwait(false);
 

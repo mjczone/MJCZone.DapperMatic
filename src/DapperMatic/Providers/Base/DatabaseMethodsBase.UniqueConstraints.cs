@@ -189,14 +189,11 @@ public abstract partial class DatabaseMethodsBase : IDatabaseUniqueConstraintMet
             ? null
             : ToAlphaNumericString(constraintNameFilter);
 
-        var constraints = table
-            ?.UniqueConstraints.Where(x =>
-                string.IsNullOrWhiteSpace(filter)
-                || IsWildcardPatternMatch(x.ConstraintName, filter)
-            )
-            .ToList();
-
-        return constraints ?? [];
+        return string.IsNullOrWhiteSpace(filter)
+            ? table.UniqueConstraints
+            : table
+                .UniqueConstraints.Where(c => IsWildcardPatternMatch(c.ConstraintName, filter))
+                .ToList();
     }
 
     public virtual async Task<bool> DropUniqueConstraintIfExistsAsync(

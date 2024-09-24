@@ -1143,7 +1143,7 @@ public static partial class IDbConnectionExtensions
             .ConfigureAwait(false);
     }
 
-    public static async Task<bool> IndexExistsOnColumnAsync(
+    public static async Task<bool> IndexesExistOnColumnAsync(
         this IDbConnection db,
         string? schemaName,
         string tableName,
@@ -1153,7 +1153,7 @@ public static partial class IDbConnectionExtensions
     )
     {
         return await Database(db)
-            .IndexExistsOnColumnAsync(db, schemaName, tableName, columnName, tx, cancellationToken)
+            .IndexesExistOnColumnAsync(db, schemaName, tableName, columnName, tx, cancellationToken)
             .ConfigureAwait(false);
     }
 
@@ -1171,7 +1171,7 @@ public static partial class IDbConnectionExtensions
             .ConfigureAwait(false);
     }
 
-    public static async Task<DxIndex?> GetIndexOnColumnAsync(
+    public static async Task<List<DxIndex>> GetIndexesOnColumnAsync(
         this IDbConnection db,
         string? schemaName,
         string tableName,
@@ -1181,7 +1181,7 @@ public static partial class IDbConnectionExtensions
     )
     {
         return await Database(db)
-            .GetIndexOnColumnAsync(db, schemaName, tableName, columnName, tx, cancellationToken)
+            .GetIndexesOnColumnAsync(db, schemaName, tableName, columnName, tx, cancellationToken)
             .ConfigureAwait(false);
     }
 
@@ -1213,7 +1213,7 @@ public static partial class IDbConnectionExtensions
             .ConfigureAwait(false);
     }
 
-    public static async Task<string?> GetIndexNameOnColumnAsync(
+    public static async Task<List<string>> GetIndexNamesOnColumnAsync(
         this IDbConnection db,
         string? schemaName,
         string tableName,
@@ -1223,7 +1223,14 @@ public static partial class IDbConnectionExtensions
     )
     {
         return await Database(db)
-            .GetIndexNameOnColumnAsync(db, schemaName, tableName, columnName, tx, cancellationToken)
+            .GetIndexNamesOnColumnAsync(
+                db,
+                schemaName,
+                tableName,
+                columnName,
+                tx,
+                cancellationToken
+            )
             .ConfigureAwait(false);
     }
 
@@ -1241,7 +1248,7 @@ public static partial class IDbConnectionExtensions
             .ConfigureAwait(false);
     }
 
-    public static async Task<bool> DropIndexOnColumnIfExistsAsync(
+    public static async Task<bool> DropIndexesOnColumnIfExistsAsync(
         this IDbConnection db,
         string? schemaName,
         string tableName,
@@ -1251,7 +1258,7 @@ public static partial class IDbConnectionExtensions
     )
     {
         return await Database(db)
-            .DropIndexOnColumnIfExistsAsync(
+            .DropIndexesOnColumnIfExistsAsync(
                 db,
                 schemaName,
                 tableName,
