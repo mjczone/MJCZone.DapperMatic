@@ -80,6 +80,23 @@ public partial class SqliteMethods
                 columnSql +=
                     $" CONSTRAINT df_{tableName}_{columnName} DEFAULT {(column.DefaultExpression.Contains(' ') ? $"({column.DefaultExpression})" : column.DefaultExpression)}";
             }
+            else if (defaultConstraints != null && defaultConstraints.Length > 0)
+            {
+                foreach (var constraint in defaultConstraints)
+                {
+                    if (
+                        string.IsNullOrWhiteSpace(constraint.ColumnName)
+                        || !constraint.ColumnName.Equals(
+                            columnName,
+                            StringComparison.OrdinalIgnoreCase
+                        )
+                    )
+                        continue;
+
+                    columnSql +=
+                        $" CONSTRAINT {ToAlphaNumericString(constraint.ConstraintName)} DEFAULT {(constraint.Expression.Contains(' ') ? $"({constraint.Expression})" : constraint.Expression)}";
+                }
+            }
             if (
                 (checkConstraints == null || checkConstraints.Length == 0)
                 && !string.IsNullOrWhiteSpace(column.CheckExpression)
@@ -126,16 +143,6 @@ public partial class SqliteMethods
                 );
             }
         }
-        if (defaultConstraints != null && defaultConstraints.Length > 0)
-        {
-            foreach (var constraint in defaultConstraints)
-            {
-                var defaultConstraintName = ToAlphaNumericString(constraint.ConstraintName);
-                sql.AppendLine(
-                    $", CONSTRAINT {defaultConstraintName} DEFAULT {(constraint.Expression.Contains(' ') ? $"({constraint.Expression})" : constraint.Expression)}"
-                );
-            }
-        }
         if (foreignKeyConstraints != null && foreignKeyConstraints.Length > 0)
         {
             foreach (var constraint in foreignKeyConstraints)
@@ -148,6 +155,17 @@ public partial class SqliteMethods
                 );
                 sql.AppendLine($" ON DELETE {constraint.OnDelete}");
                 sql.AppendLine($" ON UPDATE {constraint.OnUpdate}");
+            }
+        }
+        if (uniqueConstraints != null && uniqueConstraints.Length > 0)
+        {
+            foreach (var constraint in uniqueConstraints)
+            {
+                var uniqueConstraintName = ToAlphaNumericString(constraint.ConstraintName);
+                var uniqueColumns = constraint.Columns.Select(c => c.ToString());
+                sql.AppendLine(
+                    $", CONSTRAINT {uniqueConstraintName} UNIQUE ({string.Join(", ", uniqueColumns)})"
+                );
             }
         }
         sql.AppendLine(")");

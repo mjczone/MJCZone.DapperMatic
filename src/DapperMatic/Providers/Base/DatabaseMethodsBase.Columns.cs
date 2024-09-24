@@ -143,26 +143,18 @@ public abstract partial class DatabaseMethodsBase : IDatabaseColumnMethods
 
         (schemaName, tableName, columnName) = NormalizeNames(schemaName, tableName, columnName);
 
-        if (await SupportsSchemasAsync(db, tx, cancellationToken))
-        {
-            // drop column
-            await ExecuteAsync(
-                    db,
-                    $@"ALTER TABLE {schemaName}.{tableName} DROP COLUMN {columnName}",
-                    transaction: tx
-                )
-                .ConfigureAwait(false);
-        }
-        else
-        {
-            // drop column
-            await ExecuteAsync(
-                    db,
-                    $@"ALTER TABLE {tableName} DROP COLUMN {columnName}",
-                    transaction: tx
-                )
-                .ConfigureAwait(false);
-        }
+        var compoundTableName = await SupportsSchemasAsync(db, tx, cancellationToken)
+            .ConfigureAwait(false)
+            ? $"{schemaName}.{tableName}"
+            : tableName;
+
+        // drop column
+        await ExecuteAsync(
+                db,
+                $@"ALTER TABLE {compoundTableName} DROP COLUMN {columnName}",
+                transaction: tx
+            )
+            .ConfigureAwait(false);
 
         return true;
     }
@@ -191,29 +183,20 @@ public abstract partial class DatabaseMethodsBase : IDatabaseColumnMethods
 
         (schemaName, tableName, columnName) = NormalizeNames(schemaName, tableName, columnName);
 
-        if (await SupportsSchemasAsync(db, tx, cancellationToken).ConfigureAwait(false))
-        {
-            await ExecuteAsync(
-                    db,
-                    $@"ALTER TABLE {schemaName}.{tableName} 
+        var compoundTableName = await SupportsSchemasAsync(db, tx, cancellationToken)
+            .ConfigureAwait(false)
+            ? $"{schemaName}.{tableName}"
+            : tableName;
+
+        // As of version 3.25.0 released September 2018, SQLite supports renaming columns
+        await ExecuteAsync(
+                db,
+                $@"ALTER TABLE {compoundTableName} 
                     RENAME COLUMN {columnName}
                             TO {newColumnName}",
-                    transaction: tx
-                )
-                .ConfigureAwait(false);
-        }
-        else
-        {
-            // As of version 3.25.0 released September 2018, SQLite supports renaming columns
-            await ExecuteAsync(
-                    db,
-                    $@"ALTER TABLE {tableName} 
-                    RENAME COLUMN {columnName}
-                            TO {newColumnName}",
-                    transaction: tx
-                )
-                .ConfigureAwait(false);
-        }
+                transaction: tx
+            )
+            .ConfigureAwait(false);
 
         return true;
     }

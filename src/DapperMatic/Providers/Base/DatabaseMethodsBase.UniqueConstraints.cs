@@ -169,14 +169,35 @@ public abstract partial class DatabaseMethodsBase : IDatabaseUniqueConstraintMet
         );
     }
 
-    public abstract Task<List<DxUniqueConstraint>> GetUniqueConstraintsAsync(
+    public virtual async Task<List<DxUniqueConstraint>> GetUniqueConstraintsAsync(
         IDbConnection db,
         string? schemaName,
         string tableName,
         string? constraintNameFilter = null,
         IDbTransaction? tx = null,
         CancellationToken cancellationToken = default
-    );
+    )
+    {
+        var table = await GetTableAsync(db, schemaName, tableName, tx, cancellationToken)
+            .ConfigureAwait(false);
+        if (table == null)
+            return new List<DxUniqueConstraint>();
+
+        (schemaName, tableName, _) = NormalizeNames(schemaName, tableName);
+
+        var filter = string.IsNullOrWhiteSpace(constraintNameFilter)
+            ? null
+            : ToAlphaNumericString(constraintNameFilter);
+
+        var constraints = table
+            ?.UniqueConstraints.Where(x =>
+                string.IsNullOrWhiteSpace(filter)
+                || IsWildcardPatternMatch(x.ConstraintName, filter)
+            )
+            .ToList();
+
+        return constraints ?? [];
+    }
 
     public virtual async Task<bool> DropUniqueConstraintIfExistsAsync(
         IDbConnection db,
@@ -208,26 +229,18 @@ public abstract partial class DatabaseMethodsBase : IDatabaseUniqueConstraintMet
             constraintName
         );
 
-        if (await SupportsSchemasAsync(db, tx, cancellationToken).ConfigureAwait(false))
-        {
-            await ExecuteAsync(
-                    db,
-                    $@"ALTER TABLE {schemaName}.{tableName} 
+        var compoundTableName = await SupportsSchemasAsync(db, tx, cancellationToken)
+            .ConfigureAwait(false)
+            ? $"{schemaName}.{tableName}"
+            : tableName;
+
+        await ExecuteAsync(
+                db,
+                $@"ALTER TABLE {compoundTableName} 
                     DROP CONSTRAINT {constraintName}",
-                    transaction: tx
-                )
-                .ConfigureAwait(false);
-        }
-        else
-        {
-            await ExecuteAsync(
-                    db,
-                    $@"ALTER TABLE {tableName} 
-                    DROP CONSTRAINT {constraintName}",
-                    transaction: tx
-                )
-                .ConfigureAwait(false);
-        }
+                transaction: tx
+            )
+            .ConfigureAwait(false);
 
         return true;
     }

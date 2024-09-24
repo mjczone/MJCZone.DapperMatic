@@ -1541,66 +1541,16 @@ public static partial class IDbConnectionExtensions
             .ConfigureAwait(false);
     }
 
-    public static async Task<bool> PrimaryKeyConstraintExistsOnColumnAsync(
-        this IDbConnection db,
-        string? schemaName,
-        string tableName,
-        string columnName,
-        IDbTransaction? tx = null,
-        CancellationToken cancellationToken = default
-    )
-    {
-        return await Database(db)
-            .PrimaryKeyConstraintExistsOnColumnAsync(
-                db,
-                schemaName,
-                tableName,
-                columnName,
-                tx,
-                cancellationToken
-            )
-            .ConfigureAwait(false);
-    }
-
     public static async Task<bool> PrimaryKeyConstraintExistsAsync(
         this IDbConnection db,
         string? schemaName,
         string tableName,
-        string constraintName,
         IDbTransaction? tx = null,
         CancellationToken cancellationToken = default
     )
     {
         return await Database(db)
-            .PrimaryKeyConstraintExistsAsync(
-                db,
-                schemaName,
-                tableName,
-                constraintName,
-                tx,
-                cancellationToken
-            )
-            .ConfigureAwait(false);
-    }
-
-    public static async Task<DxPrimaryKeyConstraint?> GetPrimaryKeyConstraintOnColumnAsync(
-        this IDbConnection db,
-        string? schemaName,
-        string tableName,
-        string columnName,
-        IDbTransaction? tx = null,
-        CancellationToken cancellationToken = default
-    )
-    {
-        return await Database(db)
-            .GetPrimaryKeyConstraintOnColumnAsync(
-                db,
-                schemaName,
-                tableName,
-                columnName,
-                tx,
-                cancellationToken
-            )
+            .PrimaryKeyConstraintExistsAsync(db, schemaName, tableName, tx, cancellationToken)
             .ConfigureAwait(false);
     }
 
@@ -1608,104 +1558,12 @@ public static partial class IDbConnectionExtensions
         this IDbConnection db,
         string? schemaName,
         string tableName,
-        string constraintName,
         IDbTransaction? tx = null,
         CancellationToken cancellationToken = default
     )
     {
         return await Database(db)
-            .GetPrimaryKeyConstraintAsync(
-                db,
-                schemaName,
-                tableName,
-                constraintName,
-                tx,
-                cancellationToken
-            )
-            .ConfigureAwait(false);
-    }
-
-    public static async Task<List<DxPrimaryKeyConstraint>> GetPrimaryKeyConstraintsAsync(
-        this IDbConnection db,
-        string? schemaName,
-        string tableName,
-        string? constraintNameFilter = null,
-        IDbTransaction? tx = null,
-        CancellationToken cancellationToken = default
-    )
-    {
-        return await Database(db)
-            .GetPrimaryKeyConstraintsAsync(
-                db,
-                schemaName,
-                tableName,
-                constraintNameFilter,
-                tx,
-                cancellationToken
-            )
-            .ConfigureAwait(false);
-    }
-
-    public static async Task<string?> GetPrimaryKeyConstraintNameOnColumnAsync(
-        this IDbConnection db,
-        string? schemaName,
-        string tableName,
-        string columnName,
-        IDbTransaction? tx = null,
-        CancellationToken cancellationToken = default
-    )
-    {
-        return await Database(db)
-            .GetPrimaryKeyConstraintNameOnColumnAsync(
-                db,
-                schemaName,
-                tableName,
-                columnName,
-                tx,
-                cancellationToken
-            )
-            .ConfigureAwait(false);
-    }
-
-    public static async Task<List<string>> GetPrimaryKeyConstraintNamesAsync(
-        this IDbConnection db,
-        string? schemaName,
-        string tableName,
-        string? constraintNameFilter = null,
-        IDbTransaction? tx = null,
-        CancellationToken cancellationToken = default
-    )
-    {
-        return await Database(db)
-            .GetPrimaryKeyConstraintNamesAsync(
-                db,
-                schemaName,
-                tableName,
-                constraintNameFilter,
-                tx,
-                cancellationToken
-            )
-            .ConfigureAwait(false);
-    }
-
-    public static async Task<bool> DropPrimaryKeyConstraintOnColumnIfExistsAsync(
-        this IDbConnection db,
-        string? schemaName,
-        string tableName,
-        string columnName,
-        IDbTransaction? tx = null,
-        CancellationToken cancellationToken = default
-    )
-    {
-        return await Database(db)
-            .DropPrimaryKeyConstraintOnColumnIfExistsAsync(
-                db,
-                schemaName,
-                tableName,
-                columnName,
-                tx,
-                cancellationToken
-            )
+            .GetPrimaryKeyConstraintAsync(db, schemaName, tableName, tx, cancellationToken)
             .ConfigureAwait(false);
     }
 
@@ -1713,20 +1571,12 @@ public static partial class IDbConnectionExtensions
         this IDbConnection db,
         string? schemaName,
         string tableName,
-        string constraintName,
         IDbTransaction? tx = null,
         CancellationToken cancellationToken = default
     )
     {
         return await Database(db)
-            .DropPrimaryKeyConstraintIfExistsAsync(
-                db,
-                schemaName,
-                tableName,
-                constraintName,
-                tx,
-                cancellationToken
-            )
+            .DropPrimaryKeyConstraintIfExistsAsync(db, schemaName, tableName, tx, cancellationToken)
             .ConfigureAwait(false);
     }
     #endregion // IDatabasePrimaryKeyConstraintMethods

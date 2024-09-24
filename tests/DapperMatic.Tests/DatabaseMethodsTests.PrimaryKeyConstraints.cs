@@ -28,11 +28,7 @@ public abstract partial class DatabaseMethodsTests
             ]
         );
         output.WriteLine($"Primary Key Exists: {tableName}.{primaryKeyName}");
-        var exists = await connection.PrimaryKeyConstraintExistsAsync(
-            null,
-            tableName,
-            primaryKeyName
-        );
+        var exists = await connection.PrimaryKeyConstraintExistsAsync(null, tableName);
         Assert.False(exists);
         output.WriteLine($"Creating primary key: {tableName}.{primaryKeyName}");
         await connection.CreatePrimaryKeyConstraintIfNotExistsAsync(
@@ -42,25 +38,12 @@ public abstract partial class DatabaseMethodsTests
             [new DxOrderedColumn(columnName)]
         );
         output.WriteLine($"Primary Key Exists: {tableName}.{primaryKeyName}");
-        exists = await connection.PrimaryKeyConstraintExistsAsync(null, tableName, primaryKeyName);
+        exists = await connection.PrimaryKeyConstraintExistsAsync(null, tableName);
         Assert.True(exists);
-        exists = await connection.PrimaryKeyConstraintExistsOnColumnAsync(
-            null,
-            tableName,
-            columnName
-        );
-        Assert.True(exists);
-        var primaryKeyNames = await connection.GetPrimaryKeyConstraintNamesAsync(null, tableName);
-        Assert.Contains(primaryKeyName, primaryKeyNames, StringComparer.OrdinalIgnoreCase);
-        var primaryKeys = await connection.GetPrimaryKeyConstraintsAsync(null, tableName);
-        Assert.Contains(
-            primaryKeys,
-            pk => pk.ConstraintName.Equals(primaryKeyName, StringComparison.OrdinalIgnoreCase)
-        );
         output.WriteLine($"Dropping primary key: {tableName}.{primaryKeyName}");
-        await connection.DropPrimaryKeyConstraintIfExistsAsync(null, tableName, primaryKeyName);
+        await connection.DropPrimaryKeyConstraintIfExistsAsync(null, tableName);
         output.WriteLine($"Primary Key Exists: {tableName}.{primaryKeyName}");
-        exists = await connection.PrimaryKeyConstraintExistsAsync(null, tableName, primaryKeyName);
+        exists = await connection.PrimaryKeyConstraintExistsAsync(null, tableName);
         Assert.False(exists);
         await connection.DropTableIfExistsAsync(null, tableName);
     }

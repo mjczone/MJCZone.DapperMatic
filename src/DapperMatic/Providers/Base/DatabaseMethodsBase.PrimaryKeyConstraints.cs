@@ -9,42 +9,11 @@ public abstract partial class DatabaseMethodsBase : IDatabasePrimaryKeyConstrain
         IDbConnection db,
         string? schemaName,
         string tableName,
-        string constraintName,
         IDbTransaction? tx = null,
         CancellationToken cancellationToken = default
     )
     {
-        if (string.IsNullOrWhiteSpace(constraintName))
-            throw new ArgumentException("Constraint name is required.", nameof(constraintName));
-
-        return await GetPrimaryKeyConstraintAsync(
-                    db,
-                    schemaName,
-                    tableName,
-                    constraintName,
-                    tx,
-                    cancellationToken
-                )
-                .ConfigureAwait(false) != null;
-    }
-
-    public virtual async Task<bool> PrimaryKeyConstraintExistsOnColumnAsync(
-        IDbConnection db,
-        string? schemaName,
-        string tableName,
-        string columnName,
-        IDbTransaction? tx = null,
-        CancellationToken cancellationToken = default
-    )
-    {
-        return await GetPrimaryKeyConstraintOnColumnAsync(
-                    db,
-                    schemaName,
-                    tableName,
-                    columnName,
-                    tx,
-                    cancellationToken
-                )
+        return await GetPrimaryKeyConstraintAsync(db, schemaName, tableName, tx, cancellationToken)
                 .ConfigureAwait(false) != null;
     }
 
@@ -80,191 +49,51 @@ public abstract partial class DatabaseMethodsBase : IDatabasePrimaryKeyConstrain
         IDbConnection db,
         string? schemaName,
         string tableName,
-        string constraintName,
         IDbTransaction? tx = null,
         CancellationToken cancellationToken = default
     )
     {
-        if (string.IsNullOrWhiteSpace(constraintName))
-            throw new ArgumentException("Constraint name is required.", nameof(constraintName));
-
-        var primaryKeyConstraints = await GetPrimaryKeyConstraintsAsync(
-                db,
-                schemaName,
-                tableName,
-                constraintName,
-                tx,
-                cancellationToken
-            )
+        var table = await GetTableAsync(db, schemaName, tableName, tx, cancellationToken)
             .ConfigureAwait(false);
-        return primaryKeyConstraints.SingleOrDefault();
+        if (table?.PrimaryKeyConstraint is null)
+            return null;
+
+        return table.PrimaryKeyConstraint;
     }
-
-    public virtual async Task<string?> GetPrimaryKeyConstraintNameOnColumnAsync(
-        IDbConnection db,
-        string? schemaName,
-        string tableName,
-        string columnName,
-        IDbTransaction? tx = null,
-        CancellationToken cancellationToken = default
-    )
-    {
-        return (
-            await GetPrimaryKeyConstraintOnColumnAsync(
-                    db,
-                    schemaName,
-                    tableName,
-                    columnName,
-                    tx,
-                    cancellationToken
-                )
-                .ConfigureAwait(false)
-        )?.ConstraintName;
-    }
-
-    public virtual async Task<List<string>> GetPrimaryKeyConstraintNamesAsync(
-        IDbConnection db,
-        string? schemaName,
-        string tableName,
-        string? constraintNameFilter = null,
-        IDbTransaction? tx = null,
-        CancellationToken cancellationToken = default
-    )
-    {
-        return (
-            await GetPrimaryKeyConstraintsAsync(
-                    db,
-                    schemaName,
-                    tableName,
-                    constraintNameFilter,
-                    tx,
-                    cancellationToken
-                )
-                .ConfigureAwait(false)
-        )
-            .Select(c => c.ConstraintName)
-            .ToList();
-    }
-
-    public virtual async Task<DxPrimaryKeyConstraint?> GetPrimaryKeyConstraintOnColumnAsync(
-        IDbConnection db,
-        string? schemaName,
-        string tableName,
-        string columnName,
-        IDbTransaction? tx = null,
-        CancellationToken cancellationToken = default
-    )
-    {
-        if (string.IsNullOrWhiteSpace(columnName))
-            throw new ArgumentException("Column name is required.", nameof(columnName));
-
-        var primaryKeyConstraints = await GetPrimaryKeyConstraintsAsync(
-                db,
-                schemaName,
-                tableName,
-                null,
-                tx,
-                cancellationToken
-            )
-            .ConfigureAwait(false);
-        return primaryKeyConstraints.FirstOrDefault(c =>
-            c.Columns.Length > 0
-            && c.Columns.Any(c =>
-                c.ColumnName.Equals(columnName, StringComparison.OrdinalIgnoreCase)
-            )
-        );
-    }
-
-    public abstract Task<List<DxPrimaryKeyConstraint>> GetPrimaryKeyConstraintsAsync(
-        IDbConnection db,
-        string? schemaName,
-        string tableName,
-        string? constraintNameFilter = null,
-        IDbTransaction? tx = null,
-        CancellationToken cancellationToken = default
-    );
 
     public virtual async Task<bool> DropPrimaryKeyConstraintIfExistsAsync(
         IDbConnection db,
         string? schemaName,
         string tableName,
-        string constraintName,
         IDbTransaction? tx = null,
         CancellationToken cancellationToken = default
     )
     {
-        if (
-            !(
-                await PrimaryKeyConstraintExistsAsync(
-                        db,
-                        schemaName,
-                        tableName,
-                        constraintName,
-                        tx,
-                        cancellationToken
-                    )
-                    .ConfigureAwait(false)
-            )
-        )
-            return false;
-
-        (schemaName, tableName, constraintName) = NormalizeNames(
+        var primaryKeyConstraint = await GetPrimaryKeyConstraintAsync(
+            db,
             schemaName,
             tableName,
-            constraintName
+            tx,
+            cancellationToken
         );
+        if (primaryKeyConstraint is null)
+            return false;
 
-        if (await SupportsSchemasAsync(db, tx, cancellationToken).ConfigureAwait(false))
-        {
-            await ExecuteAsync(
-                    db,
-                    $@"ALTER TABLE {schemaName}.{tableName} 
-                    DROP CONSTRAINT {constraintName}",
-                    transaction: tx
-                )
-                .ConfigureAwait(false);
-        }
-        else
-        {
-            await ExecuteAsync(
-                    db,
-                    $@"ALTER TABLE {tableName} 
-                    DROP CONSTRAINT {constraintName}",
-                    transaction: tx
-                )
-                .ConfigureAwait(false);
-        }
+        (schemaName, tableName, _) = NormalizeNames(schemaName, tableName);
 
-        return true;
-    }
+        var compoundTableName = await SupportsSchemasAsync(db, tx, cancellationToken)
+            .ConfigureAwait(false)
+            ? $"{schemaName}.{tableName}"
+            : tableName;
 
-    public virtual async Task<bool> DropPrimaryKeyConstraintOnColumnIfExistsAsync(
-        IDbConnection db,
-        string? schemaName,
-        string tableName,
-        string columnName,
-        IDbTransaction? tx = null,
-        CancellationToken cancellationToken = default
-    )
-    {
-        var constraintName = await GetPrimaryKeyConstraintNameOnColumnAsync(
+        await ExecuteAsync(
                 db,
-                schemaName,
-                tableName,
-                columnName,
-                tx,
-                cancellationToken
+                $@"ALTER TABLE {compoundTableName} 
+                    DROP CONSTRAINT {primaryKeyConstraint.ConstraintName}",
+                transaction: tx
             )
             .ConfigureAwait(false);
-        return constraintName != null
-            && await DropPrimaryKeyConstraintIfExistsAsync(
-                    db,
-                    schemaName,
-                    tableName,
-                    constraintName,
-                    tx,
-                    cancellationToken
-                )
-                .ConfigureAwait(false);
+
+        return true;
     }
 }
