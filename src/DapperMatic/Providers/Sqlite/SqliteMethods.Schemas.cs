@@ -14,7 +14,7 @@ public partial class SqliteMethods
         return Task.FromResult(false);
     }
 
-    public override Task<bool> SchemaExistsAsync(
+    public override Task<bool> DoesSchemaExistAsync(
         IDbConnection db,
         string schemaName,
         IDbTransaction? tx = null,

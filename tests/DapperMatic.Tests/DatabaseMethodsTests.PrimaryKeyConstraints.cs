@@ -28,7 +28,7 @@ public abstract partial class DatabaseMethodsTests
             ]
         );
         output.WriteLine($"Primary Key Exists: {tableName}.{primaryKeyName}");
-        var exists = await connection.PrimaryKeyConstraintExistsAsync(null, tableName);
+        var exists = await connection.DoesPrimaryKeyConstraintExistAsync(null, tableName);
         Assert.False(exists);
         output.WriteLine($"Creating primary key: {tableName}.{primaryKeyName}");
         await connection.CreatePrimaryKeyConstraintIfNotExistsAsync(
@@ -38,12 +38,12 @@ public abstract partial class DatabaseMethodsTests
             [new DxOrderedColumn(columnName)]
         );
         output.WriteLine($"Primary Key Exists: {tableName}.{primaryKeyName}");
-        exists = await connection.PrimaryKeyConstraintExistsAsync(null, tableName);
+        exists = await connection.DoesPrimaryKeyConstraintExistAsync(null, tableName);
         Assert.True(exists);
         output.WriteLine($"Dropping primary key: {tableName}.{primaryKeyName}");
         await connection.DropPrimaryKeyConstraintIfExistsAsync(null, tableName);
         output.WriteLine($"Primary Key Exists: {tableName}.{primaryKeyName}");
-        exists = await connection.PrimaryKeyConstraintExistsAsync(null, tableName);
+        exists = await connection.DoesPrimaryKeyConstraintExistAsync(null, tableName);
         Assert.False(exists);
         await connection.DropTableIfExistsAsync(null, tableName);
     }

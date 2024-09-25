@@ -21,4 +21,5 @@ public partial interface IDatabaseMethods
         CancellationToken cancellationToken = default
     );
     Type GetDotnetTypeFromSqlType(string sqlType);
+    string GetSqlTypeFromDotnetType(Type type, int? length, int? precision, int? scale);
 }

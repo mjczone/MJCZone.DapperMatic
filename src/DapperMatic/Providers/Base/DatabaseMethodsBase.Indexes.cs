@@ -5,7 +5,7 @@ namespace DapperMatic.Providers;
 
 public abstract partial class DatabaseMethodsBase : IDatabaseIndexMethods
 {
-    public virtual async Task<bool> IndexExistsAsync(
+    public virtual async Task<bool> DoesIndexExistAsync(
         IDbConnection db,
         string? schemaName,
         string tableName,
@@ -18,7 +18,7 @@ public abstract partial class DatabaseMethodsBase : IDatabaseIndexMethods
                 .ConfigureAwait(false) != null;
     }
 
-    public virtual async Task<bool> IndexesExistOnColumnAsync(
+    public virtual async Task<bool> DoesIndexExistOnColumnAsync(
         IDbConnection db,
         string? schemaName,
         string tableName,
@@ -179,7 +179,7 @@ public abstract partial class DatabaseMethodsBase : IDatabaseIndexMethods
     )
     {
         if (
-            !await IndexExistsAsync(db, schemaName, tableName, indexName, tx, cancellationToken)
+            !await DoesIndexExistAsync(db, schemaName, tableName, indexName, tx, cancellationToken)
                 .ConfigureAwait(false)
         )
             return false;

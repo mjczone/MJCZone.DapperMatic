@@ -15,7 +15,7 @@ public abstract partial class DatabaseMethodsTests
             [new DxColumn(null, "testTable", "testColumn", typeof(int))]
         );
         var constraintName = $"df_testTable_testColumn";
-        var exists = await connection.DefaultConstraintExistsAsync(
+        var exists = await connection.DoesDefaultConstraintExistAsync(
             null,
             "testTable",
             constraintName
@@ -31,7 +31,11 @@ public abstract partial class DatabaseMethodsTests
             "0"
         );
 
-        exists = await connection.DefaultConstraintExistsAsync(null, "testTable", constraintName);
+        exists = await connection.DoesDefaultConstraintExistAsync(
+            null,
+            "testTable",
+            constraintName
+        );
         Assert.True(exists);
 
         var existingConstraint = await connection.GetDefaultConstraintAsync(
@@ -50,7 +54,11 @@ public abstract partial class DatabaseMethodsTests
         );
         Assert.Contains(constraintName, defaultConstraintNames, StringComparer.OrdinalIgnoreCase);
         await connection.DropDefaultConstraintIfExistsAsync(null, "testTable", constraintName);
-        exists = await connection.DefaultConstraintExistsAsync(null, "testTable", constraintName);
+        exists = await connection.DoesDefaultConstraintExistAsync(
+            null,
+            "testTable",
+            constraintName
+        );
         Assert.False(exists);
 
         await connection.DropTableIfExistsAsync(null, "testTable");

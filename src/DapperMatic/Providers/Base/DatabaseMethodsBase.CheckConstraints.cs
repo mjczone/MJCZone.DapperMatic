@@ -5,7 +5,7 @@ namespace DapperMatic.Providers;
 
 public abstract partial class DatabaseMethodsBase : IDatabaseCheckConstraintMethods
 {
-    public virtual async Task<bool> CheckConstraintExistsAsync(
+    public virtual async Task<bool> DoesCheckConstraintExistAsync(
         IDbConnection db,
         string? schemaName,
         string tableName,
@@ -25,7 +25,7 @@ public abstract partial class DatabaseMethodsBase : IDatabaseCheckConstraintMeth
                 .ConfigureAwait(false) != null;
     }
 
-    public virtual async Task<bool> CheckConstraintExistsOnColumnAsync(
+    public virtual async Task<bool> DoesCheckConstraintExistOnColumnAsync(
         IDbConnection db,
         string? schemaName,
         string tableName,
@@ -247,7 +247,7 @@ public abstract partial class DatabaseMethodsBase : IDatabaseCheckConstraintMeth
     {
         if (
             !(
-                await CheckConstraintExistsAsync(
+                await DoesCheckConstraintExistAsync(
                         db,
                         schemaName,
                         tableName,

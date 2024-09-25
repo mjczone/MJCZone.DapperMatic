@@ -5,7 +5,7 @@ namespace DapperMatic.Providers;
 
 public abstract partial class DatabaseMethodsBase : IDatabaseSchemaMethods
 {
-    public abstract Task<bool> SchemaExistsAsync(
+    public abstract Task<bool> DoesSchemaExistAsync(
         IDbConnection db,
         string schemaName,
         IDbTransaction? tx = null,

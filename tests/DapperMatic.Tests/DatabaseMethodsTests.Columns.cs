@@ -41,7 +41,7 @@ public abstract partial class DatabaseMethodsTests
         await connection.DropColumnIfExistsAsync(null, tableName, columnName);
 
         output.WriteLine($"Column Exists: {tableName}.{columnName}");
-        var exists = await connection.ColumnExistsAsync(null, tableName, columnName);
+        var exists = await connection.DoesColumnExistAsync(null, tableName, columnName);
         Assert.False(exists);
 
         await connection.CreateTableIfNotExistsAsync(
@@ -69,14 +69,14 @@ public abstract partial class DatabaseMethodsTests
         );
 
         output.WriteLine($"Column Exists: {tableName}.{columnName}");
-        exists = await connection.ColumnExistsAsync(null, tableName, columnName);
+        exists = await connection.DoesColumnExistAsync(null, tableName, columnName);
         Assert.True(exists);
 
         output.WriteLine($"Dropping columnName: {tableName}.{columnName}");
         await connection.DropColumnIfExistsAsync(null, tableName, columnName);
 
         output.WriteLine($"Column Exists: {tableName}.{columnName}");
-        exists = await connection.ColumnExistsAsync(null, tableName, columnName);
+        exists = await connection.DoesColumnExistAsync(null, tableName, columnName);
         Assert.False(exists);
 
         // try adding a columnName of all the supported types

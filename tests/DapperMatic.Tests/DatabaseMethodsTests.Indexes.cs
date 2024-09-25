@@ -56,7 +56,7 @@ public abstract partial class DatabaseMethodsTests
             await connection.CreateTableIfNotExistsAsync(null, tableName, columns: [.. columns]);
 
             output.WriteLine($"Index Exists: {tableName}.{indexName}");
-            var exists = await connection.IndexExistsAsync(null, tableName, indexName);
+            var exists = await connection.DoesIndexExistAsync(null, tableName, indexName);
             Assert.False(exists);
 
             output.WriteLine($"Creating unique index: {tableName}.{indexName}");
@@ -96,11 +96,11 @@ public abstract partial class DatabaseMethodsTests
             );
 
             output.WriteLine($"Index Exists: {tableName}.{indexName}");
-            exists = await connection.IndexExistsAsync(null, tableName, indexName);
+            exists = await connection.DoesIndexExistAsync(null, tableName, indexName);
             Assert.True(exists);
-            exists = await connection.IndexExistsAsync(null, tableName, indexName + "_multi");
+            exists = await connection.DoesIndexExistAsync(null, tableName, indexName + "_multi");
             Assert.True(exists);
-            exists = await connection.IndexExistsAsync(null, tableName, indexName + "_multi2");
+            exists = await connection.DoesIndexExistAsync(null, tableName, indexName + "_multi2");
             Assert.True(exists);
 
             var indexNames = await connection.GetIndexNamesAsync(null, tableName);
@@ -157,7 +157,7 @@ public abstract partial class DatabaseMethodsTests
             await connection.DropIndexIfExistsAsync(null, tableName, indexName);
 
             output.WriteLine($"Index Exists: {tableName}.{indexName}");
-            exists = await connection.IndexExistsAsync(null, tableName, indexName);
+            exists = await connection.DoesIndexExistAsync(null, tableName, indexName);
             Assert.False(exists);
 
             await connection.DropTableIfExistsAsync(null, tableName);

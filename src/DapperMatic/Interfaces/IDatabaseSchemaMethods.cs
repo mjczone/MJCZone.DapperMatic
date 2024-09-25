@@ -17,7 +17,7 @@ public partial interface IDatabaseSchemaMethods
         CancellationToken cancellationToken = default
     );
 
-    Task<bool> SchemaExistsAsync(
+    Task<bool> DoesSchemaExistAsync(
         IDbConnection db,
         string schemaName,
         IDbTransaction? tx = null,

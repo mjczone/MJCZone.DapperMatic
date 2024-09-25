@@ -36,7 +36,7 @@ public abstract partial class DatabaseMethodsTests
         );
 
         output.WriteLine($"Foreign Key Exists: {tableName}.{foreignKeyName}");
-        var exists = await connection.ForeignKeyConstraintExistsAsync(
+        var exists = await connection.DoesForeignKeyConstraintExistAsync(
             null,
             tableName,
             foreignKeyName
@@ -56,9 +56,13 @@ public abstract partial class DatabaseMethodsTests
         Assert.True(created);
 
         output.WriteLine($"Foreign Key Exists: {tableName}.{foreignKeyName}");
-        exists = await connection.ForeignKeyConstraintExistsAsync(null, tableName, foreignKeyName);
+        exists = await connection.DoesForeignKeyConstraintExistAsync(
+            null,
+            tableName,
+            foreignKeyName
+        );
         Assert.True(exists);
-        exists = await connection.ForeignKeyConstraintExistsOnColumnAsync(
+        exists = await connection.DoesForeignKeyConstraintExistOnColumnAsync(
             null,
             tableName,
             columnName
@@ -93,9 +97,13 @@ public abstract partial class DatabaseMethodsTests
         await connection.DropForeignKeyConstraintIfExistsAsync(null, tableName, foreignKeyName);
 
         output.WriteLine($"Foreign Key Exists: {foreignKeyName}");
-        exists = await connection.ForeignKeyConstraintExistsAsync(null, tableName, foreignKeyName);
+        exists = await connection.DoesForeignKeyConstraintExistAsync(
+            null,
+            tableName,
+            foreignKeyName
+        );
         Assert.False(exists);
-        exists = await connection.ForeignKeyConstraintExistsOnColumnAsync(
+        exists = await connection.DoesForeignKeyConstraintExistOnColumnAsync(
             null,
             tableName,
             columnName

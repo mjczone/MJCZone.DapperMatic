@@ -22,7 +22,7 @@ public partial interface IDatabaseUniqueConstraintMethods
         CancellationToken cancellationToken = default
     );
 
-    Task<bool> UniqueConstraintExistsOnColumnAsync(
+    Task<bool> DoesUniqueConstraintExistOnColumnAsync(
         IDbConnection db,
         string? schemaName,
         string tableName,
@@ -31,7 +31,7 @@ public partial interface IDatabaseUniqueConstraintMethods
         CancellationToken cancellationToken = default
     );
 
-    Task<bool> UniqueConstraintExistsAsync(
+    Task<bool> DoesUniqueConstraintExistAsync(
         IDbConnection db,
         string? schemaName,
         string tableName,

@@ -5,7 +5,7 @@ namespace DapperMatic.Providers;
 
 public abstract partial class DatabaseMethodsBase : IDatabaseForeignKeyConstraintMethods
 {
-    public virtual async Task<bool> ForeignKeyConstraintExistsAsync(
+    public virtual async Task<bool> DoesForeignKeyConstraintExistAsync(
         IDbConnection db,
         string? schemaName,
         string tableName,
@@ -25,7 +25,7 @@ public abstract partial class DatabaseMethodsBase : IDatabaseForeignKeyConstrain
                 .ConfigureAwait(false) != null;
     }
 
-    public virtual async Task<bool> ForeignKeyConstraintExistsOnColumnAsync(
+    public virtual async Task<bool> DoesForeignKeyConstraintExistOnColumnAsync(
         IDbConnection db,
         string? schemaName,
         string tableName,
@@ -247,7 +247,7 @@ public abstract partial class DatabaseMethodsBase : IDatabaseForeignKeyConstrain
     {
         if (
             !(
-                await ForeignKeyConstraintExistsAsync(
+                await DoesForeignKeyConstraintExistAsync(
                         db,
                         schemaName,
                         tableName,

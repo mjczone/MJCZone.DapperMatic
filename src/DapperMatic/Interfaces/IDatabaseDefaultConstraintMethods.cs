@@ -23,7 +23,7 @@ public partial interface IDatabaseDefaultConstraintMethods
         CancellationToken cancellationToken = default
     );
 
-    Task<bool> DefaultConstraintExistsOnColumnAsync(
+    Task<bool> DoesDefaultConstraintExistOnColumnAsync(
         IDbConnection db,
         string? schemaName,
         string tableName,
@@ -32,7 +32,7 @@ public partial interface IDatabaseDefaultConstraintMethods
         CancellationToken cancellationToken = default
     );
 
-    Task<bool> DefaultConstraintExistsAsync(
+    Task<bool> DoesDefaultConstraintExistAsync(
         IDbConnection db,
         string? schemaName,
         string tableName,

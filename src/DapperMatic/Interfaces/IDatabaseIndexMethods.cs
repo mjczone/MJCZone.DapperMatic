@@ -23,7 +23,7 @@ public partial interface IDatabaseIndexMethods
         CancellationToken cancellationToken = default
     );
 
-    Task<bool> IndexesExistOnColumnAsync(
+    Task<bool> DoesIndexExistOnColumnAsync(
         IDbConnection db,
         string? schemaName,
         string tableName,
@@ -32,7 +32,7 @@ public partial interface IDatabaseIndexMethods
         CancellationToken cancellationToken = default
     );
 
-    Task<bool> IndexExistsAsync(
+    Task<bool> DoesIndexExistAsync(
         IDbConnection db,
         string? schemaName,
         string tableName,

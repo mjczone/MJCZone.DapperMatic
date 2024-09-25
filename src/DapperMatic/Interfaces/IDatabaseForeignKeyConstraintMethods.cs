@@ -26,7 +26,7 @@ public partial interface IDatabaseForeignKeyConstraintMethods
         CancellationToken cancellationToken = default
     );
 
-    Task<bool> ForeignKeyConstraintExistsOnColumnAsync(
+    Task<bool> DoesForeignKeyConstraintExistOnColumnAsync(
         IDbConnection db,
         string? schemaName,
         string tableName,
@@ -35,7 +35,7 @@ public partial interface IDatabaseForeignKeyConstraintMethods
         CancellationToken cancellationToken = default
     );
 
-    Task<bool> ForeignKeyConstraintExistsAsync(
+    Task<bool> DoesForeignKeyConstraintExistAsync(
         IDbConnection db,
         string? schemaName,
         string tableName,

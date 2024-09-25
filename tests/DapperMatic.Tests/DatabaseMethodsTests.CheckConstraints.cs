@@ -16,7 +16,11 @@ public abstract partial class DatabaseMethodsTests
         );
 
         var constraintName = $"ck_testTable";
-        var exists = await connection.CheckConstraintExistsAsync(null, "testTable", constraintName);
+        var exists = await connection.DoesCheckConstraintExistAsync(
+            null,
+            "testTable",
+            constraintName
+        );
 
         if (exists)
             await connection.DropCheckConstraintIfExistsAsync(null, "testTable", constraintName);
@@ -29,7 +33,7 @@ public abstract partial class DatabaseMethodsTests
             "testColumn > 0"
         );
 
-        exists = await connection.CheckConstraintExistsAsync(null, "testTable", constraintName);
+        exists = await connection.DoesCheckConstraintExistAsync(null, "testTable", constraintName);
         Assert.True(exists);
 
         var existingConstraint = await connection.GetCheckConstraintAsync(
@@ -47,7 +51,7 @@ public abstract partial class DatabaseMethodsTests
         Assert.Contains(constraintName, checkConstraintNames, StringComparer.OrdinalIgnoreCase);
 
         await connection.DropCheckConstraintIfExistsAsync(null, "testTable", constraintName);
-        exists = await connection.CheckConstraintExistsAsync(null, "testTable", constraintName);
+        exists = await connection.DoesCheckConstraintExistAsync(null, "testTable", constraintName);
         Assert.False(exists);
 
         await connection.DropTableIfExistsAsync(null, "testTable");

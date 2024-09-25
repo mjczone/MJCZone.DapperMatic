@@ -5,7 +5,7 @@ namespace DapperMatic.Providers;
 
 public abstract partial class DatabaseMethodsBase : IDatabaseColumnMethods
 {
-    public virtual async Task<bool> ColumnExistsAsync(
+    public virtual async Task<bool> DoesColumnExistAsync(
         IDbConnection db,
         string? schemaName,
         string tableName,
@@ -154,7 +154,14 @@ public abstract partial class DatabaseMethodsBase : IDatabaseColumnMethods
     )
     {
         if (
-            !await ColumnExistsAsync(db, schemaName, tableName, columnName, tx, cancellationToken)
+            !await DoesColumnExistAsync(
+                    db,
+                    schemaName,
+                    tableName,
+                    columnName,
+                    tx,
+                    cancellationToken
+                )
                 .ConfigureAwait(false)
         )
             return false;
@@ -188,13 +195,27 @@ public abstract partial class DatabaseMethodsBase : IDatabaseColumnMethods
     )
     {
         if (
-            !await ColumnExistsAsync(db, schemaName, tableName, columnName, tx, cancellationToken)
+            !await DoesColumnExistAsync(
+                    db,
+                    schemaName,
+                    tableName,
+                    columnName,
+                    tx,
+                    cancellationToken
+                )
                 .ConfigureAwait(false)
         )
             return false;
 
         if (
-            await ColumnExistsAsync(db, schemaName, tableName, newColumnName, tx, cancellationToken)
+            await DoesColumnExistAsync(
+                    db,
+                    schemaName,
+                    tableName,
+                    newColumnName,
+                    tx,
+                    cancellationToken
+                )
                 .ConfigureAwait(false)
         )
             return false;

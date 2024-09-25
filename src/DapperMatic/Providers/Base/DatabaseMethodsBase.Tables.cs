@@ -5,7 +5,7 @@ namespace DapperMatic.Providers;
 
 public abstract partial class DatabaseMethodsBase : IDatabaseTableMethods
 {
-    public virtual async Task<bool> TableExistsAsync(
+    public virtual async Task<bool> DoesTableExistAsync(
         IDbConnection db,
         string? schemaName,
         string tableName,
@@ -105,7 +105,7 @@ public abstract partial class DatabaseMethodsBase : IDatabaseTableMethods
     {
         if (
             !(
-                await TableExistsAsync(db, schemaName, tableName, tx, cancellationToken)
+                await DoesTableExistAsync(db, schemaName, tableName, tx, cancellationToken)
                     .ConfigureAwait(false)
             )
         )
@@ -136,7 +136,7 @@ public abstract partial class DatabaseMethodsBase : IDatabaseTableMethods
     {
         if (
             !(
-                await TableExistsAsync(db, schemaName, tableName, tx, cancellationToken)
+                await DoesTableExistAsync(db, schemaName, tableName, tx, cancellationToken)
                     .ConfigureAwait(false)
             )
         )
@@ -169,7 +169,7 @@ public abstract partial class DatabaseMethodsBase : IDatabaseTableMethods
     {
         if (
             !(
-                await TableExistsAsync(db, schemaName, tableName, tx, cancellationToken)
+                await DoesTableExistAsync(db, schemaName, tableName, tx, cancellationToken)
                     .ConfigureAwait(false)
             )
         )

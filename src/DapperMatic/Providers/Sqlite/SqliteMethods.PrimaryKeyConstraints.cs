@@ -22,7 +22,13 @@ public partial class SqliteMethods
             throw new ArgumentException("At least one column must be specified.", nameof(columns));
 
         if (
-            await PrimaryKeyConstraintExistsAsync(db, schemaName, tableName, tx, cancellationToken)
+            await DoesPrimaryKeyConstraintExistAsync(
+                    db,
+                    schemaName,
+                    tableName,
+                    tx,
+                    cancellationToken
+                )
                 .ConfigureAwait(false)
         )
             return false;

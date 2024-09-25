@@ -22,7 +22,7 @@ public partial class SqliteMethods
         }
 
         if (
-            await IndexExistsAsync(db, schemaName, tableName, indexName, tx, cancellationToken)
+            await DoesIndexExistAsync(db, schemaName, tableName, indexName, tx, cancellationToken)
                 .ConfigureAwait(false)
         )
         {
@@ -177,7 +177,7 @@ public partial class SqliteMethods
     )
     {
         if (
-            !await IndexExistsAsync(db, schemaName, tableName, indexName, tx, cancellationToken)
+            !await DoesIndexExistAsync(db, schemaName, tableName, indexName, tx, cancellationToken)
                 .ConfigureAwait(false)
         )
             return false;

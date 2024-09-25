@@ -6,7 +6,7 @@ namespace DapperMatic.Providers.Sqlite;
 
 public partial class SqliteMethods
 {
-    public override async Task<bool> TableExistsAsync(
+    public override async Task<bool> DoesTableExistAsync(
         IDbConnection db,
         string? schemaName,
         string tableName,
@@ -42,7 +42,7 @@ public partial class SqliteMethods
     )
     {
         if (
-            await TableExistsAsync(db, schemaName, tableName, tx, cancellationToken)
+            await DoesTableExistAsync(db, schemaName, tableName, tx, cancellationToken)
                 .ConfigureAwait(false)
         )
             return false;
@@ -300,7 +300,7 @@ public partial class SqliteMethods
     {
         if (
             !(
-                await TableExistsAsync(db, schemaName, tableName, tx, cancellationToken)
+                await DoesTableExistAsync(db, schemaName, tableName, tx, cancellationToken)
                     .ConfigureAwait(false)
             )
         )

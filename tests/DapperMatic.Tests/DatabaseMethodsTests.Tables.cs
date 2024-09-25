@@ -14,11 +14,11 @@ public abstract partial class DatabaseMethodsTests
 
         var tableName = "testTable";
 
-        var exists = await connection.TableExistsAsync(null, tableName);
+        var exists = await connection.DoesTableExistAsync(null, tableName);
         if (exists)
             await connection.DropTableIfExistsAsync(null, tableName);
 
-        exists = await connection.TableExistsAsync(null, tableName);
+        exists = await connection.DoesTableExistAsync(null, tableName);
         Assert.False(exists);
 
         var nonExistentTable = await connection.GetTableAsync(null, tableName);
@@ -46,7 +46,7 @@ public abstract partial class DatabaseMethodsTests
         var createdAgain = await connection.CreateTableIfNotExistsAsync(table);
         Assert.False(createdAgain);
 
-        exists = await connection.TableExistsAsync(null, tableName);
+        exists = await connection.DoesTableExistAsync(null, tableName);
         Assert.True(exists);
 
         var tableNames = await connection.GetTableNamesAsync(null);
@@ -69,10 +69,10 @@ public abstract partial class DatabaseMethodsTests
         var renamed = await connection.RenameTableIfExistsAsync(null, tableName, newName);
         Assert.True(renamed);
 
-        exists = await connection.TableExistsAsync(null, tableName);
+        exists = await connection.DoesTableExistAsync(null, tableName);
         Assert.False(exists);
 
-        exists = await connection.TableExistsAsync(null, newName);
+        exists = await connection.DoesTableExistAsync(null, newName);
         Assert.True(exists);
 
         existingTable = await connection.GetTableAsync(null, newName);
@@ -98,7 +98,7 @@ public abstract partial class DatabaseMethodsTests
         // drop the table
         await connection.DropTableIfExistsAsync(null, newName);
 
-        exists = await connection.TableExistsAsync(null, newName);
+        exists = await connection.DoesTableExistAsync(null, newName);
         Assert.False(exists);
 
         output.WriteLine($"Table names: {string.Join(", ", tableNames)}");

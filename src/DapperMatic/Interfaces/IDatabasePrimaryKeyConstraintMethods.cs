@@ -22,7 +22,7 @@ public partial interface IDatabasePrimaryKeyConstraintMethods
         CancellationToken cancellationToken = default
     );
 
-    Task<bool> PrimaryKeyConstraintExistsAsync(
+    Task<bool> DoesPrimaryKeyConstraintExistAsync(
         IDbConnection db,
         string? schemaName,
         string tableName,

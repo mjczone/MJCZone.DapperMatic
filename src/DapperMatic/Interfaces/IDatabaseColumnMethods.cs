@@ -38,7 +38,7 @@ public partial interface IDatabaseColumnMethods
         CancellationToken cancellationToken = default
     );
 
-    Task<bool> ColumnExistsAsync(
+    Task<bool> DoesColumnExistAsync(
         IDbConnection db,
         string? schemaName,
         string tableName,

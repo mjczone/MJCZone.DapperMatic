@@ -65,7 +65,7 @@ public static partial class IDbConnectionExtensions
             .ConfigureAwait(false);
     }
 
-    public static async Task<bool> SchemaExistsAsync(
+    public static async Task<bool> DoesSchemaExistAsync(
         this IDbConnection db,
         string schemaName,
         IDbTransaction? tx = null,
@@ -73,7 +73,7 @@ public static partial class IDbConnectionExtensions
     )
     {
         return await Database(db)
-            .SchemaExistsAsync(db, schemaName, tx, cancellationToken)
+            .DoesSchemaExistAsync(db, schemaName, tx, cancellationToken)
             .ConfigureAwait(false);
     }
 
@@ -104,7 +104,7 @@ public static partial class IDbConnectionExtensions
 
     #region IDatabaseTableMethods
 
-    public static async Task<bool> TableExistsAsync(
+    public static async Task<bool> DoesTableExistAsync(
         this IDbConnection db,
         string? schemaName,
         string tableName,
@@ -113,7 +113,7 @@ public static partial class IDbConnectionExtensions
     )
     {
         return await Database(db)
-            .TableExistsAsync(db, schemaName, tableName, tx, cancellationToken)
+            .DoesTableExistAsync(db, schemaName, tableName, tx, cancellationToken)
             .ConfigureAwait(false);
     }
 
@@ -318,7 +318,7 @@ public static partial class IDbConnectionExtensions
     #endregion // IDatabaseColumnMethods
 
     #region IDatabaseCheckConstraintMethods
-    public static async Task<bool> CheckConstraintExistsAsync(
+    public static async Task<bool> DoesCheckConstraintExistAsync(
         this IDbConnection db,
         string? schemaName,
         string tableName,
@@ -328,7 +328,7 @@ public static partial class IDbConnectionExtensions
     )
     {
         return await Database(db)
-            .CheckConstraintExistsAsync(
+            .DoesCheckConstraintExistAsync(
                 db,
                 schemaName,
                 tableName,
@@ -339,7 +339,7 @@ public static partial class IDbConnectionExtensions
             .ConfigureAwait(false);
     }
 
-    public static async Task<bool> CheckConstraintExistsOnColumnAsync(
+    public static async Task<bool> DoesCheckConstraintExistOnColumnAsync(
         this IDbConnection db,
         string? schemaName,
         string tableName,
@@ -349,7 +349,7 @@ public static partial class IDbConnectionExtensions
     )
     {
         return await Database(db)
-            .CheckConstraintExistsOnColumnAsync(
+            .DoesCheckConstraintExistOnColumnAsync(
                 db,
                 schemaName,
                 tableName,
@@ -360,7 +360,7 @@ public static partial class IDbConnectionExtensions
             .ConfigureAwait(false);
     }
 
-    public static async Task<bool> ColumnExistsAsync(
+    public static async Task<bool> DoesColumnExistAsync(
         this IDbConnection db,
         string? schemaName,
         string tableName,
@@ -370,7 +370,7 @@ public static partial class IDbConnectionExtensions
     )
     {
         return await Database(db)
-            .ColumnExistsAsync(db, schemaName, tableName, columnName, tx, cancellationToken)
+            .DoesColumnExistAsync(db, schemaName, tableName, columnName, tx, cancellationToken)
             .ConfigureAwait(false);
     }
 
@@ -515,7 +515,7 @@ public static partial class IDbConnectionExtensions
             .ConfigureAwait(false);
     }
 
-    public static async Task<bool> DefaultConstraintExistsAsync(
+    public static async Task<bool> DoesDefaultConstraintExistAsync(
         this IDbConnection db,
         string? schemaName,
         string tableName,
@@ -525,7 +525,7 @@ public static partial class IDbConnectionExtensions
     )
     {
         return await Database(db)
-            .DefaultConstraintExistsAsync(
+            .DoesDefaultConstraintExistAsync(
                 db,
                 schemaName,
                 tableName,
@@ -536,7 +536,7 @@ public static partial class IDbConnectionExtensions
             .ConfigureAwait(false);
     }
 
-    public static async Task<bool> DefaultConstraintExistsOnColumnAsync(
+    public static async Task<bool> DoesDefaultConstraintExistOnColumnAsync(
         this IDbConnection db,
         string? schemaName,
         string tableName,
@@ -546,7 +546,7 @@ public static partial class IDbConnectionExtensions
     )
     {
         return await Database(db)
-            .DefaultConstraintExistsOnColumnAsync(
+            .DoesDefaultConstraintExistOnColumnAsync(
                 db,
                 schemaName,
                 tableName,
@@ -914,7 +914,7 @@ public static partial class IDbConnectionExtensions
             .ConfigureAwait(false);
     }
 
-    public static async Task<bool> ForeignKeyConstraintExistsOnColumnAsync(
+    public static async Task<bool> DoesForeignKeyConstraintExistOnColumnAsync(
         this IDbConnection db,
         string? schemaName,
         string tableName,
@@ -924,7 +924,7 @@ public static partial class IDbConnectionExtensions
     )
     {
         return await Database(db)
-            .ForeignKeyConstraintExistsOnColumnAsync(
+            .DoesForeignKeyConstraintExistOnColumnAsync(
                 db,
                 schemaName,
                 tableName,
@@ -935,7 +935,7 @@ public static partial class IDbConnectionExtensions
             .ConfigureAwait(false);
     }
 
-    public static async Task<bool> ForeignKeyConstraintExistsAsync(
+    public static async Task<bool> DoesForeignKeyConstraintExistAsync(
         this IDbConnection db,
         string? schemaName,
         string tableName,
@@ -945,7 +945,7 @@ public static partial class IDbConnectionExtensions
     )
     {
         return await Database(db)
-            .ForeignKeyConstraintExistsAsync(
+            .DoesForeignKeyConstraintExistAsync(
                 db,
                 schemaName,
                 tableName,
@@ -1143,7 +1143,7 @@ public static partial class IDbConnectionExtensions
             .ConfigureAwait(false);
     }
 
-    public static async Task<bool> IndexesExistOnColumnAsync(
+    public static async Task<bool> DoesIndexExistOnColumnAsync(
         this IDbConnection db,
         string? schemaName,
         string tableName,
@@ -1153,11 +1153,18 @@ public static partial class IDbConnectionExtensions
     )
     {
         return await Database(db)
-            .IndexesExistOnColumnAsync(db, schemaName, tableName, columnName, tx, cancellationToken)
+            .DoesIndexExistOnColumnAsync(
+                db,
+                schemaName,
+                tableName,
+                columnName,
+                tx,
+                cancellationToken
+            )
             .ConfigureAwait(false);
     }
 
-    public static async Task<bool> IndexExistsAsync(
+    public static async Task<bool> DoesIndexExistAsync(
         this IDbConnection db,
         string? schemaName,
         string tableName,
@@ -1167,7 +1174,7 @@ public static partial class IDbConnectionExtensions
     )
     {
         return await Database(db)
-            .IndexExistsAsync(db, schemaName, tableName, indexName, tx, cancellationToken)
+            .DoesIndexExistAsync(db, schemaName, tableName, indexName, tx, cancellationToken)
             .ConfigureAwait(false);
     }
 
@@ -1321,7 +1328,7 @@ public static partial class IDbConnectionExtensions
             .ConfigureAwait(false);
     }
 
-    public static async Task<bool> UniqueConstraintExistsOnColumnAsync(
+    public static async Task<bool> DoesUniqueConstraintExistOnColumnAsync(
         this IDbConnection db,
         string? schemaName,
         string tableName,
@@ -1331,7 +1338,7 @@ public static partial class IDbConnectionExtensions
     )
     {
         return await Database(db)
-            .UniqueConstraintExistsOnColumnAsync(
+            .DoesUniqueConstraintExistOnColumnAsync(
                 db,
                 schemaName,
                 tableName,
@@ -1342,7 +1349,7 @@ public static partial class IDbConnectionExtensions
             .ConfigureAwait(false);
     }
 
-    public static async Task<bool> UniqueConstraintExistsAsync(
+    public static async Task<bool> DoesUniqueConstraintExistAsync(
         this IDbConnection db,
         string? schemaName,
         string tableName,
@@ -1352,7 +1359,7 @@ public static partial class IDbConnectionExtensions
     )
     {
         return await Database(db)
-            .UniqueConstraintExistsAsync(
+            .DoesUniqueConstraintExistAsync(
                 db,
                 schemaName,
                 tableName,
@@ -1548,7 +1555,7 @@ public static partial class IDbConnectionExtensions
             .ConfigureAwait(false);
     }
 
-    public static async Task<bool> PrimaryKeyConstraintExistsAsync(
+    public static async Task<bool> DoesPrimaryKeyConstraintExistAsync(
         this IDbConnection db,
         string? schemaName,
         string tableName,
@@ -1557,7 +1564,7 @@ public static partial class IDbConnectionExtensions
     )
     {
         return await Database(db)
-            .PrimaryKeyConstraintExistsAsync(db, schemaName, tableName, tx, cancellationToken)
+            .DoesPrimaryKeyConstraintExistAsync(db, schemaName, tableName, tx, cancellationToken)
             .ConfigureAwait(false);
     }
 

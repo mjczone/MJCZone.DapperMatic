@@ -5,7 +5,7 @@ namespace DapperMatic.Providers;
 
 public abstract partial class DatabaseMethodsBase : IDatabaseUniqueConstraintMethods
 {
-    public virtual async Task<bool> UniqueConstraintExistsAsync(
+    public virtual async Task<bool> DoesUniqueConstraintExistAsync(
         IDbConnection db,
         string? schemaName,
         string tableName,
@@ -25,7 +25,7 @@ public abstract partial class DatabaseMethodsBase : IDatabaseUniqueConstraintMet
                 .ConfigureAwait(false) != null;
     }
 
-    public virtual async Task<bool> UniqueConstraintExistsOnColumnAsync(
+    public virtual async Task<bool> DoesUniqueConstraintExistOnColumnAsync(
         IDbConnection db,
         string? schemaName,
         string tableName,
@@ -207,7 +207,7 @@ public abstract partial class DatabaseMethodsBase : IDatabaseUniqueConstraintMet
     {
         if (
             !(
-                await UniqueConstraintExistsAsync(
+                await DoesUniqueConstraintExistAsync(
                         db,
                         schemaName,
                         tableName,

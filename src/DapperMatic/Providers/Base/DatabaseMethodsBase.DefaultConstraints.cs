@@ -5,7 +5,7 @@ namespace DapperMatic.Providers;
 
 public abstract partial class DatabaseMethodsBase : IDatabaseDefaultConstraintMethods
 {
-    public virtual async Task<bool> DefaultConstraintExistsAsync(
+    public virtual async Task<bool> DoesDefaultConstraintExistAsync(
         IDbConnection db,
         string? schemaName,
         string tableName,
@@ -25,7 +25,7 @@ public abstract partial class DatabaseMethodsBase : IDatabaseDefaultConstraintMe
                 .ConfigureAwait(false) != null;
     }
 
-    public virtual async Task<bool> DefaultConstraintExistsOnColumnAsync(
+    public virtual async Task<bool> DoesDefaultConstraintExistOnColumnAsync(
         IDbConnection db,
         string? schemaName,
         string tableName,
@@ -247,7 +247,7 @@ public abstract partial class DatabaseMethodsBase : IDatabaseDefaultConstraintMe
     {
         if (
             !(
-                await DefaultConstraintExistsAsync(
+                await DoesDefaultConstraintExistAsync(
                         db,
                         schemaName,
                         tableName,

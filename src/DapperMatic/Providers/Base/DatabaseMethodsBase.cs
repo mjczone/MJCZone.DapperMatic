@@ -1,11 +1,10 @@
 using System.Collections.Concurrent;
 using System.Data;
 using Dapper;
-using DapperMatic.Models;
 
 namespace DapperMatic.Providers;
 
-public abstract partial class DatabaseMethodsBase : IDatabaseCheckConstraintMethods
+public abstract partial class DatabaseMethodsBase : IDatabaseMethods
 {
     protected abstract string DefaultSchema { get; }
 
@@ -17,7 +16,9 @@ public abstract partial class DatabaseMethodsBase : IDatabaseCheckConstraintMeth
         return DataTypes.FirstOrDefault(x => x.DotnetType == type);
     }
 
-    protected string GetSqlTypeString(
+    public abstract Type GetDotnetTypeFromSqlType(string sqlType);
+
+    public string GetSqlTypeFromDotnetType(
         Type type,
         int? length = null,
         int? precision = null,
@@ -116,6 +117,12 @@ public abstract partial class DatabaseMethodsBase : IDatabaseCheckConstraintMeth
         string,
         (string sql, object? parameters)
     > _lastSqls = new();
+
+    public abstract Task<string> GetDatabaseVersionAsync(
+        IDbConnection connection,
+        IDbTransaction? tx,
+        CancellationToken cancellationToken = default
+    );
 
     public string GetLastSql(IDbConnection connection)
     {

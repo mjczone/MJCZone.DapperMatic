@@ -14,7 +14,7 @@ public partial class SqliteMethods : DatabaseMethodsBase, IDatabaseMethods
 
     internal SqliteMethods() { }
 
-    public async Task<string> GetDatabaseVersionAsync(
+    public override async Task<string> GetDatabaseVersionAsync(
         IDbConnection db,
         IDbTransaction? tx = null,
         CancellationToken cancellationToken = default
@@ -24,7 +24,7 @@ public partial class SqliteMethods : DatabaseMethodsBase, IDatabaseMethods
                 .ConfigureAwait(false) ?? "";
     }
 
-    public Type GetDotnetTypeFromSqlType(string sqlType)
+    public override Type GetDotnetTypeFromSqlType(string sqlType)
     {
         return SqliteSqlParser.GetDotnetTypeFromSqlType(sqlType);
     }
@@ -216,7 +216,7 @@ public partial class SqliteMethods : DatabaseMethodsBase, IDatabaseMethods
     {
         columnName = NormalizeName(columnName);
         var columnType = string.IsNullOrWhiteSpace(providerDataType)
-            ? GetSqlTypeString(dotnetType, length, precision, scale)
+            ? GetSqlTypeFromDotnetType(dotnetType, length, precision, scale)
             : providerDataType;
 
         var columnSql = new StringBuilder();

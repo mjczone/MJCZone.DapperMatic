@@ -22,7 +22,7 @@ public partial class SqliteMethods
             throw new ArgumentException("At least one column must be specified.", nameof(columns));
 
         if (
-            await UniqueConstraintExistsAsync(
+            await DoesUniqueConstraintExistAsync(
                     db,
                     schemaName,
                     tableName,

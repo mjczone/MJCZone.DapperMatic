@@ -75,7 +75,7 @@ public abstract class DatabaseTests
             await connection.DropSchemaIfExistsAsync(schemaName);
     
             output.WriteLine($"Schema Exists: {schemaName}");
-            var exists = await connection.SchemaExistsAsync(schemaName);
+            var exists = await connection.DoesSchemaExistAsync(schemaName);
             Assert.False(exists);
     
             output.WriteLine($"Creating schemaName: {schemaName}");
@@ -135,7 +135,7 @@ public abstract class DatabaseTests
             await connection.DropTableIfExistsAsync(tableName);
     
             output.WriteLine($"Table Exists: {tableName}");
-            var exists = await connection.TableExistsAsync(tableName);
+            var exists = await connection.DoesTableExistAsync(tableName);
             Assert.False(exists);
     
             output.WriteLine($"Creating table: {tableName}");
@@ -163,7 +163,7 @@ public abstract class DatabaseTests
             const string columnIdName = "id";
     
             output.WriteLine($"Column Exists: {tableName}.{columnIdName}");
-            await connection.ColumnExistsAsync(tableName, columnIdName);
+            await connection.DoesColumnExistAsync(tableName, columnIdName);
     
             output.WriteLine($"Creating table with Guid PK: tableWithGuidPk");
             await connection.CreateTableIfNotExistsAsync(
@@ -171,7 +171,7 @@ public abstract class DatabaseTests
                 primaryKeyColumnNames: new[] { "guidId" },
                 primaryKeyDotnetTypes: new[] { typeof(Guid) }
             );
-            exists = await connection.TableExistsAsync("tableWithGuidPk");
+            exists = await connection.DoesTableExistAsync("tableWithGuidPk");
             Assert.True(exists);
     
             output.WriteLine($"Creating table with string PK: tableWithStringPk");
@@ -180,7 +180,7 @@ public abstract class DatabaseTests
                 primaryKeyColumnNames: new[] { "strId" },
                 primaryKeyDotnetTypes: new[] { typeof(string) }
             );
-            exists = await connection.TableExistsAsync("tableWithStringPk");
+            exists = await connection.DoesTableExistAsync("tableWithStringPk");
             Assert.True(exists);
     
             output.WriteLine($"Creating table with string PK 64 length: tableWithStringPk64");
@@ -190,7 +190,7 @@ public abstract class DatabaseTests
                 primaryKeyDotnetTypes: new[] { typeof(string) },
                 primaryKeyColumnLengths: new[] { (int?)64 }
             );
-            exists = await connection.TableExistsAsync("tableWithStringPk64");
+            exists = await connection.DoesTableExistAsync("tableWithStringPk64");
             Assert.True(exists);
     
             output.WriteLine($"Creating table with compound PK: tableWithCompoundPk");
@@ -200,7 +200,7 @@ public abstract class DatabaseTests
                 primaryKeyDotnetTypes: new[] { typeof(long), typeof(Guid), typeof(string) },
                 primaryKeyColumnLengths: new int?[] { null, null, 128 }
             );
-            exists = await connection.TableExistsAsync("tableWithCompoundPk");
+            exists = await connection.DoesTableExistAsync("tableWithCompoundPk");
             Assert.True(exists);
         }
     
@@ -240,7 +240,7 @@ public abstract class DatabaseTests
             await connection.CreateTableIfNotExistsAsync(tableName);
     
             output.WriteLine($"Column Exists: {tableName}.{columnName}");
-            var exists = await connection.ColumnExistsAsync(tableName, columnName);
+            var exists = await connection.DoesColumnExistAsync(tableName, columnName);
             Assert.False(exists);
     
             output.WriteLine($"Creating columnName: {tableName}.{columnName}");
@@ -253,14 +253,14 @@ public abstract class DatabaseTests
             );
     
             output.WriteLine($"Column Exists: {tableName}.{columnName}");
-            exists = await connection.ColumnExistsAsync(tableName, columnName);
+            exists = await connection.DoesColumnExistAsync(tableName, columnName);
             Assert.True(exists);
     
             output.WriteLine($"Dropping columnName: {tableName}.{columnName}");
             await connection.DropColumnIfExistsAsync(tableName, columnName);
     
             output.WriteLine($"Column Exists: {tableName}.{columnName}");
-            exists = await connection.ColumnExistsAsync(tableName, columnName);
+            exists = await connection.DoesColumnExistAsync(tableName, columnName);
             Assert.False(exists);
     
             // try adding a columnName of all the supported types
@@ -469,7 +469,7 @@ public abstract class DatabaseTests
                 }
     
                 output.WriteLine($"Index Exists: {tableName}.{indexName}");
-                var exists = await connection.IndexExistsAsync(tableName, columnName, indexName);
+                var exists = await connection.DoesIndexExistAsync(tableName, columnName, indexName);
                 Assert.False(exists);
     
                 output.WriteLine($"Creating unique index: {tableName}.{indexName}");
@@ -500,11 +500,11 @@ public abstract class DatabaseTests
                 );
     
                 output.WriteLine($"Index Exists: {tableName}.{indexName}");
-                exists = await connection.IndexExistsAsync(tableName, indexName);
+                exists = await connection.DoesIndexExistAsync(tableName, indexName);
                 Assert.True(exists);
-                exists = await connection.IndexExistsAsync(tableName, indexName + "_multi");
+                exists = await connection.DoesIndexExistAsync(tableName, indexName + "_multi");
                 Assert.True(exists);
-                exists = await connection.IndexExistsAsync(tableName, indexName + "_multi2");
+                exists = await connection.DoesIndexExistAsync(tableName, indexName + "_multi2");
                 Assert.True(exists);
     
                 var indexNames = await connection.GetIndexNamesAsync(tableName);
@@ -583,7 +583,7 @@ public abstract class DatabaseTests
                 await connection.DropIndexIfExistsAsync(tableName, indexName);
     
                 output.WriteLine($"Index Exists: {tableName}.{indexName}");
-                exists = await connection.IndexExistsAsync(tableName, indexName);
+                exists = await connection.DoesIndexExistAsync(tableName, indexName);
                 Assert.False(exists);
     
                 await connection.DropTableIfExistsAsync(tableName);
@@ -695,7 +695,7 @@ public abstract class DatabaseTests
             );
     
             output.WriteLine($"Unique Constraint Exists: {tableName}.{uniqueConstraintName}");
-            var exists = await connection.UniqueConstraintExistsAsync(
+            var exists = await connection.DoesUniqueConstraintExistAsync(
                 tableName,
                 columnName,
                 uniqueConstraintName
@@ -710,14 +710,14 @@ public abstract class DatabaseTests
             );
     
             output.WriteLine($"Unique Constraint Exists: {tableName}.{uniqueConstraintName}");
-            exists = await connection.UniqueConstraintExistsAsync(tableName, uniqueConstraintName);
+            exists = await connection.DoesUniqueConstraintExistAsync(tableName, uniqueConstraintName);
             Assert.True(exists);
     
             output.WriteLine($"Dropping unique constraint: {tableName}.{uniqueConstraintName}");
             await connection.DropUniqueConstraintIfExistsAsync(tableName, uniqueConstraintName);
     
             output.WriteLine($"Unique Constraint Exists: {tableName}.{uniqueConstraintName}");
-            exists = await connection.UniqueConstraintExistsAsync(tableName, uniqueConstraintName);
+            exists = await connection.DoesUniqueConstraintExistAsync(tableName, uniqueConstraintName);
             Assert.False(exists);
         }
     */

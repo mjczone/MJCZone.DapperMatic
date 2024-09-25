@@ -16,17 +16,17 @@ public abstract partial class DatabaseMethodsTests
 
         var schemaName = "test";
 
-        var exists = await connection.SchemaExistsAsync(schemaName);
+        var exists = await connection.DoesSchemaExistAsync(schemaName);
         if (exists)
             await connection.DropSchemaIfExistsAsync(schemaName);
 
-        exists = await connection.SchemaExistsAsync(schemaName);
+        exists = await connection.DoesSchemaExistAsync(schemaName);
         Assert.False(exists);
 
         output.WriteLine($"Creating schemaName: {schemaName}");
         var created = await connection.CreateSchemaIfNotExistsAsync(schemaName);
         Assert.True(created);
-        exists = await connection.SchemaExistsAsync(schemaName);
+        exists = await connection.DoesSchemaExistAsync(schemaName);
         Assert.True(exists);
 
         var schemas = await connection.GetSchemaNamesAsync();
@@ -36,7 +36,7 @@ public abstract partial class DatabaseMethodsTests
         var dropped = await connection.DropSchemaIfExistsAsync(schemaName);
         Assert.True(dropped);
 
-        exists = await connection.SchemaExistsAsync(schemaName);
+        exists = await connection.DoesSchemaExistAsync(schemaName);
         Assert.False(exists);
     }
 }

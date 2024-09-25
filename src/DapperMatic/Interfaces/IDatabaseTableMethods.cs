@@ -5,7 +5,7 @@ namespace DapperMatic;
 
 public partial interface IDatabaseTableMethods
 {
-    Task<bool> TableExistsAsync(
+    Task<bool> DoesTableExistAsync(
         IDbConnection db,
         string? schemaName,
         string tableName,

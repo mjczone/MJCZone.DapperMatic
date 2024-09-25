@@ -5,7 +5,7 @@ namespace DapperMatic.Providers;
 
 public abstract partial class DatabaseMethodsBase : IDatabasePrimaryKeyConstraintMethods
 {
-    public virtual async Task<bool> PrimaryKeyConstraintExistsAsync(
+    public virtual async Task<bool> DoesPrimaryKeyConstraintExistAsync(
         IDbConnection db,
         string? schemaName,
         string tableName,
