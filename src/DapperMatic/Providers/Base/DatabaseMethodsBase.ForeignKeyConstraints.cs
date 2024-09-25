@@ -266,26 +266,18 @@ public abstract partial class DatabaseMethodsBase : IDatabaseForeignKeyConstrain
             constraintName
         );
 
-        if (await SupportsSchemasAsync(db, tx, cancellationToken).ConfigureAwait(false))
-        {
-            await ExecuteAsync(
-                    db,
-                    $@"ALTER TABLE {schemaName}.{tableName} 
+        var compoundTableName = await SupportsSchemasAsync(db, tx, cancellationToken)
+            .ConfigureAwait(false)
+            ? $"{schemaName}.{tableName}"
+            : tableName;
+
+        await ExecuteAsync(
+                db,
+                $@"ALTER TABLE {compoundTableName} 
                     DROP CONSTRAINT {constraintName}",
-                    transaction: tx
-                )
-                .ConfigureAwait(false);
-        }
-        else
-        {
-            await ExecuteAsync(
-                    db,
-                    $@"ALTER TABLE {tableName} 
-                    DROP CONSTRAINT {constraintName}",
-                    transaction: tx
-                )
-                .ConfigureAwait(false);
-        }
+                transaction: tx
+            )
+            .ConfigureAwait(false);
 
         return true;
     }

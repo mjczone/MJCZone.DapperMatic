@@ -1,5 +1,6 @@
 namespace DapperMatic.Models;
 
+[Serializable]
 public enum DxConstraintType
 {
     PrimaryKey,

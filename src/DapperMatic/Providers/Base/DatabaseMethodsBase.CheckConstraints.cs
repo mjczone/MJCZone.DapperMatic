@@ -177,14 +177,34 @@ public abstract partial class DatabaseMethodsBase : IDatabaseCheckConstraintMeth
         );
     }
 
-    public abstract Task<List<DxCheckConstraint>> GetCheckConstraintsAsync(
+    public virtual async Task<List<DxCheckConstraint>> GetCheckConstraintsAsync(
         IDbConnection db,
         string? schemaName,
         string tableName,
         string? constraintNameFilter = null,
         IDbTransaction? tx = null,
         CancellationToken cancellationToken = default
-    );
+    )
+    {
+        if (string.IsNullOrWhiteSpace(tableName))
+            throw new ArgumentException("Table name is required.", nameof(tableName));
+
+        var table = await GetTableAsync(db, schemaName, tableName, tx, cancellationToken)
+            .ConfigureAwait(false);
+
+        if (table == null)
+            return [];
+
+        var filter = string.IsNullOrWhiteSpace(constraintNameFilter)
+            ? null
+            : ToAlphaNumericString(constraintNameFilter);
+
+        return string.IsNullOrWhiteSpace(filter)
+            ? table.CheckConstraints
+            : table
+                .CheckConstraints.Where(c => IsWildcardPatternMatch(c.ConstraintName, filter))
+                .ToList();
+    }
 
     public virtual async Task<bool> DropCheckConstraintOnColumnIfExistsAsync(
         IDbConnection db,
@@ -246,26 +266,18 @@ public abstract partial class DatabaseMethodsBase : IDatabaseCheckConstraintMeth
             constraintName
         );
 
-        if (await SupportsSchemasAsync(db, tx, cancellationToken).ConfigureAwait(false))
-        {
-            await ExecuteAsync(
-                    db,
-                    $@"ALTER TABLE {schemaName}.{tableName} 
+        var compoundTableName = await SupportsSchemasAsync(db, tx, cancellationToken)
+            .ConfigureAwait(false)
+            ? $"{schemaName}.{tableName}"
+            : tableName;
+
+        await ExecuteAsync(
+                db,
+                $@"ALTER TABLE {compoundTableName} 
                     DROP CONSTRAINT {constraintName}",
-                    transaction: tx
-                )
-                .ConfigureAwait(false);
-        }
-        else
-        {
-            await ExecuteAsync(
-                    db,
-                    $@"ALTER TABLE {tableName} 
-                    DROP CONSTRAINT {constraintName}",
-                    transaction: tx
-                )
-                .ConfigureAwait(false);
-        }
+                transaction: tx
+            )
+            .ConfigureAwait(false);
 
         return true;
     }

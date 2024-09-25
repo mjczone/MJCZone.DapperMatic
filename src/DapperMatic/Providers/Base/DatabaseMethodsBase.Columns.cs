@@ -117,14 +117,32 @@ public abstract partial class DatabaseMethodsBase : IDatabaseColumnMethods
         return columns.Select(x => x.ColumnName).ToList();
     }
 
-    public abstract Task<List<DxColumn>> GetColumnsAsync(
+    public virtual async Task<List<DxColumn>> GetColumnsAsync(
         IDbConnection db,
         string? schemaName,
         string tableName,
         string? columnNameFilter = null,
         IDbTransaction? tx = null,
         CancellationToken cancellationToken = default
-    );
+    )
+    {
+        if (string.IsNullOrWhiteSpace(tableName))
+            throw new ArgumentException("Table name is required.", nameof(tableName));
+
+        var table = await GetTableAsync(db, schemaName, tableName, tx, cancellationToken)
+            .ConfigureAwait(false);
+
+        if (table == null)
+            return [];
+
+        var filter = string.IsNullOrWhiteSpace(columnNameFilter)
+            ? null
+            : ToAlphaNumericString(columnNameFilter);
+
+        return string.IsNullOrWhiteSpace(filter)
+            ? table.Columns
+            : table.Columns.Where(c => IsWildcardPatternMatch(c.ColumnName, filter)).ToList();
+    }
 
     public virtual async Task<bool> DropColumnIfExistsAsync(
         IDbConnection db,

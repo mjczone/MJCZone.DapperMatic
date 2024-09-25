@@ -113,18 +113,14 @@ public abstract partial class DatabaseMethodsBase : IDatabaseTableMethods
 
         (schemaName, tableName, _) = NormalizeNames(schemaName, tableName);
 
-        if (await SupportsSchemasAsync(db, tx, cancellationToken))
-        {
-            // drop index
-            await ExecuteAsync(db, $@"DROP TABLE {schemaName}.{tableName}", transaction: tx)
-                .ConfigureAwait(false);
-        }
-        else
-        {
-            // drop index
-            await ExecuteAsync(db, $@"DROP TABLE {tableName}", transaction: tx)
-                .ConfigureAwait(false);
-        }
+        var compoundTableName = await SupportsSchemasAsync(db, tx, cancellationToken)
+            .ConfigureAwait(false)
+            ? $"{schemaName}.{tableName}"
+            : tableName;
+
+        // drop table
+        await ExecuteAsync(db, $@"DROP TABLE {compoundTableName}", transaction: tx)
+            .ConfigureAwait(false);
 
         return true;
     }
@@ -148,26 +144,17 @@ public abstract partial class DatabaseMethodsBase : IDatabaseTableMethods
 
         (schemaName, tableName, _) = NormalizeNames(schemaName, tableName);
 
-        if (await SupportsSchemasAsync(db, tx, cancellationToken))
-        {
-            // drop index
-            await ExecuteAsync(
-                    db,
-                    $@"ALTER TABLE {schemaName}.{tableName} RENAME TO {newTableName}",
-                    transaction: tx
-                )
-                .ConfigureAwait(false);
-        }
-        else
-        {
-            // drop index
-            await ExecuteAsync(
-                    db,
-                    $@"ALTER TABLE {tableName} RENAME TO {newTableName}",
-                    transaction: tx
-                )
-                .ConfigureAwait(false);
-        }
+        var compoundTableName = await SupportsSchemasAsync(db, tx, cancellationToken)
+            .ConfigureAwait(false)
+            ? $"{schemaName}.{tableName}"
+            : tableName;
+
+        await ExecuteAsync(
+                db,
+                $@"ALTER TABLE {compoundTableName} RENAME TO {newTableName}",
+                transaction: tx
+            )
+            .ConfigureAwait(false);
 
         return true;
     }
@@ -190,18 +177,13 @@ public abstract partial class DatabaseMethodsBase : IDatabaseTableMethods
 
         (schemaName, tableName, _) = NormalizeNames(schemaName, tableName);
 
-        if (await SupportsSchemasAsync(db, tx, cancellationToken))
-        {
-            // drop index
-            await ExecuteAsync(db, $@"TRUNCATE TABLE {schemaName}.{tableName}", transaction: tx)
-                .ConfigureAwait(false);
-        }
-        else
-        {
-            // drop index
-            await ExecuteAsync(db, $@"TRUNCATE TABLE {tableName}", transaction: tx)
-                .ConfigureAwait(false);
-        }
+        var compoundTableName = await SupportsSchemasAsync(db, tx, cancellationToken)
+            .ConfigureAwait(false)
+            ? $"{schemaName}.{tableName}"
+            : tableName;
+
+        await ExecuteAsync(db, $@"TRUNCATE TABLE {compoundTableName}", transaction: tx)
+            .ConfigureAwait(false);
 
         return true;
     }

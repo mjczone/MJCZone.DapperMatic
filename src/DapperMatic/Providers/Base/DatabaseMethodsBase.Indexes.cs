@@ -186,22 +186,14 @@ public abstract partial class DatabaseMethodsBase : IDatabaseIndexMethods
 
         (schemaName, tableName, indexName) = NormalizeNames(schemaName, tableName, indexName);
 
-        if (await SupportsSchemasAsync(db, tx, cancellationToken))
-        {
-            // drop index
-            await ExecuteAsync(
-                    db,
-                    $@"DROP INDEX {indexName} ON {schemaName}.{tableName}",
-                    transaction: tx
-                )
-                .ConfigureAwait(false);
-        }
-        else
-        {
-            // drop index
-            await ExecuteAsync(db, $@"DROP INDEX {indexName} ON {tableName}", transaction: tx)
-                .ConfigureAwait(false);
-        }
+        var compoundTableName = await SupportsSchemasAsync(db, tx, cancellationToken)
+            .ConfigureAwait(false)
+            ? $"{schemaName}.{tableName}"
+            : tableName;
+
+        // drop index
+        await ExecuteAsync(db, $@"DROP INDEX {indexName} ON {compoundTableName}", transaction: tx)
+            .ConfigureAwait(false);
 
         return true;
     }

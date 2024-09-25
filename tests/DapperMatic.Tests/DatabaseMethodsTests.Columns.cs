@@ -1,3 +1,5 @@
+using DapperMatic.Models;
+
 namespace DapperMatic.Tests;
 
 public abstract partial class DatabaseMethodsTests
@@ -36,20 +38,34 @@ public abstract partial class DatabaseMethodsTests
                 break;
         }
 
-        await connection.CreateTableIfNotExistsAsync(null, tableName);
+        await connection.DropColumnIfExistsAsync(null, tableName, columnName);
 
         output.WriteLine($"Column Exists: {tableName}.{columnName}");
         var exists = await connection.ColumnExistsAsync(null, tableName, columnName);
         Assert.False(exists);
 
-        output.WriteLine($"Creating columnName: {tableName}.{columnName}");
-        await connection.CreateColumnIfNotExistsAsync(
+        await connection.CreateTableIfNotExistsAsync(
             null,
             tableName,
-            columnName,
-            typeof(int),
-            defaultExpression: "1",
-            isNullable: false
+            [
+                new DxColumn(
+                    null,
+                    tableName,
+                    "id",
+                    typeof(int),
+                    isPrimaryKey: true,
+                    isAutoIncrement: true,
+                    isNullable: false
+                ),
+                new DxColumn(
+                    null,
+                    tableName,
+                    columnName,
+                    typeof(int),
+                    defaultExpression: "1",
+                    isNullable: false
+                )
+            ]
         );
 
         output.WriteLine($"Column Exists: {tableName}.{columnName}");
@@ -64,7 +80,11 @@ public abstract partial class DatabaseMethodsTests
         Assert.False(exists);
 
         // try adding a columnName of all the supported types
-        await connection.CreateTableIfNotExistsAsync(null, "testWithAllColumns");
+        await connection.CreateTableIfNotExistsAsync(
+            null,
+            "testWithAllColumns",
+            [new DxColumn(null, "testWithAllColumns", "id", typeof(int), isPrimaryKey: true)]
+        );
         var columnCount = 1;
         await connection.CreateColumnIfNotExistsAsync(
             null,

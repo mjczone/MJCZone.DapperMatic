@@ -41,96 +41,68 @@ public partial class SqliteMethods
         CancellationToken cancellationToken = default
     )
     {
-        if (await TableExistsAsync(db, schemaName, tableName, tx, cancellationToken))
+        if (
+            await TableExistsAsync(db, schemaName, tableName, tx, cancellationToken)
+                .ConfigureAwait(false)
+        )
             return false;
 
         (_, tableName, _) = NormalizeNames(schemaName, tableName, null);
 
+        var additionalIndexes = new List<DxIndex>();
+
         var sql = new StringBuilder();
 
-        sql.AppendLine($"CREATE TABLE {ToAlphaNumericString(tableName)} (");
+        sql.AppendLine($"CREATE TABLE {tableName} (");
         var columnDefinitionClauses = new List<string>();
         for (var i = 0; i < columns?.Length; i++)
         {
             var column = columns[i];
-            var columnName = ToAlphaNumericString(column.ColumnName);
-            var columnType = string.IsNullOrWhiteSpace(column.ProviderDataType)
-                ? GetSqlTypeString(column.DotnetType, column.Length, column.Precision, column.Scale)
-                : column.ProviderDataType;
-            var columnSql = $"{columnName} {columnType}";
-            if (column.IsNullable)
-                columnSql += " NULL";
-            else
-                columnSql += " NOT NULL";
-            if (primaryKey == null && column.IsPrimaryKey)
-            {
-                columnSql += $" CONSTRAINT pk_{tableName}_{columnName}  PRIMARY KEY";
-                if (column.IsAutoIncrement)
-                    columnSql += " AUTOINCREMENT";
-            }
-            if ((uniqueConstraints == null || uniqueConstraints.Length == 0) && column.IsUnique)
-            {
-                columnSql += $" CONSTRAINT uc_{tableName}_{columnName}  UNIQUE";
-            }
-            if (
-                (defaultConstraints == null || defaultConstraints.Length == 0)
-                && !string.IsNullOrWhiteSpace(column.DefaultExpression)
-            )
-            {
-                columnSql +=
-                    $" CONSTRAINT df_{tableName}_{columnName} DEFAULT {(column.DefaultExpression.Contains(' ') ? $"({column.DefaultExpression})" : column.DefaultExpression)}";
-            }
-            else if (defaultConstraints != null && defaultConstraints.Length > 0)
-            {
-                foreach (var constraint in defaultConstraints)
-                {
-                    if (
-                        string.IsNullOrWhiteSpace(constraint.ColumnName)
-                        || !constraint.ColumnName.Equals(
-                            columnName,
-                            StringComparison.OrdinalIgnoreCase
-                        )
-                    )
-                        continue;
 
-                    columnSql +=
-                        $" CONSTRAINT {ToAlphaNumericString(constraint.ConstraintName)} DEFAULT {(constraint.Expression.Contains(' ') ? $"({constraint.Expression})" : constraint.Expression)}";
-                }
-            }
-            if (
-                (checkConstraints == null || checkConstraints.Length == 0)
-                && !string.IsNullOrWhiteSpace(column.CheckExpression)
-            )
-            {
-                columnSql +=
-                    $" CONSTRAINT cf_{tableName}_{columnName} CHECK ({column.CheckExpression})";
-            }
-            if (
-                (foreignKeyConstraints == null || foreignKeyConstraints.Length == 0)
-                && column.IsForeignKey
-                && !string.IsNullOrWhiteSpace(column.ReferencedTableName)
-                && !string.IsNullOrWhiteSpace(column.ReferencedColumnName)
-            )
-            {
-                columnSql +=
-                    $" CONSTRAINT fk_{tableName}_{columnName}_{column.ReferencedTableName}_{column.ReferencedColumnName} FOREIGN KEY ({columnName}) REFERENCES {ToAlphaNumericString(column.ReferencedTableName)} ({ToAlphaNumericString(column.ReferencedColumnName)})";
-                if (column.OnDelete.HasValue)
-                    columnSql +=
-                        $" ON DELETE {(column.OnDelete ?? DxForeignKeyAction.NoAction).ToSql()}";
-                if (column.OnUpdate.HasValue)
-                    columnSql +=
-                        $" ON UPDATE {(column.OnUpdate ?? DxForeignKeyAction.NoAction).ToSql()}";
-            }
-            columnDefinitionClauses.Add(columnSql);
+            var colSql = BuildColumnDefinitionSql(
+                tableName,
+                column.ColumnName,
+                column.DotnetType,
+                column.ProviderDataType,
+                column.Length,
+                column.Precision,
+                column.Scale,
+                column.CheckExpression,
+                column.DefaultExpression,
+                column.IsNullable,
+                column.IsPrimaryKey,
+                column.IsAutoIncrement,
+                column.IsUnique,
+                column.IsIndexed,
+                column.IsForeignKey,
+                column.ReferencedTableName,
+                column.ReferencedColumnName,
+                column.OnDelete,
+                column.OnUpdate,
+                primaryKey,
+                checkConstraints,
+                defaultConstraints,
+                uniqueConstraints,
+                foreignKeyConstraints,
+                indexes,
+                additionalIndexes
+            );
+
+            columnDefinitionClauses.Add(colSql.ToString());
         }
         sql.AppendLine(string.Join(", ", columnDefinitionClauses));
-        if (primaryKey != null)
+
+        // add primary key constraint
+        if (primaryKey != null && primaryKey.Columns.Length > 0)
         {
             var pkColumns = primaryKey.Columns.Select(c => c.ToString());
+            var pkColumnNames = primaryKey.Columns.Select(c => c.ColumnName);
             sql.AppendLine(
-                $", CONSTRAINT pk_{tableName} PRIMARY KEY ({string.Join(", ", pkColumns)})"
+                $", CONSTRAINT pk_{tableName}_{string.Join('_', pkColumnNames)} PRIMARY KEY ({string.Join(", ", pkColumns)})"
             );
         }
+
+        // add check constraints
         if (checkConstraints != null && checkConstraints.Length > 0)
         {
             foreach (
@@ -145,6 +117,8 @@ public partial class SqliteMethods
                 );
             }
         }
+
+        // add foreign key constraints
         if (foreignKeyConstraints != null && foreignKeyConstraints.Length > 0)
         {
             foreach (var constraint in foreignKeyConstraints)
@@ -159,6 +133,8 @@ public partial class SqliteMethods
                 sql.AppendLine($" ON UPDATE {constraint.OnUpdate.ToSql()}");
             }
         }
+
+        // add unique constraints
         if (uniqueConstraints != null && uniqueConstraints.Length > 0)
         {
             foreach (var constraint in uniqueConstraints)
@@ -170,22 +146,24 @@ public partial class SqliteMethods
                 );
             }
         }
+
         sql.AppendLine(")");
         var createTableSql = sql.ToString();
         await ExecuteAsync(db, createTableSql, transaction: tx).ConfigureAwait(false);
 
-        if (indexes != null && indexes.Length > 0)
+        var combinedIndexes = (indexes ?? []).Union(additionalIndexes).ToList();
+
+        foreach (var index in combinedIndexes)
         {
-            foreach (var index in indexes)
-            {
-                var indexName = ToAlphaNumericString(index.IndexName);
-                var indexColumns = index.Columns.Select(c => c.ToString());
-                // create index sql
-                var createIndexSql =
-                    $"CREATE {(index.IsUnique ? "UNIQUE INDEX" : "INDEX")} ix_{tableName}_{indexName} ON {tableName} ({string.Join(", ", indexColumns)})";
-                await ExecuteAsync(db, createIndexSql, transaction: tx).ConfigureAwait(false);
-            }
+            var indexName = NormalizeName(index.IndexName);
+            var indexColumns = index.Columns.Select(c => c.ToString());
+            var indexColumnNames = index.Columns.Select(c => c.ColumnName);
+            // create index sql
+            var createIndexSql =
+                $"CREATE {(index.IsUnique ? "UNIQUE INDEX" : "INDEX")} ix_{tableName}_{string.Join('_', indexColumnNames)} ON {tableName} ({string.Join(", ", indexColumns)})";
+            await ExecuteAsync(db, createIndexSql, transaction: tx).ConfigureAwait(false);
         }
+
         return true;
     }
 

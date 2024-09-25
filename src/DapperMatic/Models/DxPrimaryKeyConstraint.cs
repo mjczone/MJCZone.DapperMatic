@@ -2,6 +2,7 @@ using System.Diagnostics.CodeAnalysis;
 
 namespace DapperMatic.Models;
 
+[Serializable]
 public class DxPrimaryKeyConstraint : DxConstraint
 {
     /// <summary>
