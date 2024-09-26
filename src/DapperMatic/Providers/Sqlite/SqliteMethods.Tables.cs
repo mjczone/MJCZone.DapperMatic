@@ -1,6 +1,8 @@
 using System.Data;
+using System.Data.Common;
 using System.Text;
 using DapperMatic.Models;
+using Microsoft.Extensions.Logging;
 
 namespace DapperMatic.Providers.Sqlite;
 
@@ -49,7 +51,7 @@ public partial class SqliteMethods
 
         (_, tableName, _) = NormalizeNames(schemaName, tableName, null);
 
-        var additionalIndexes = new List<DxIndex>();
+        var fillWithAdditionalIndexesToCreate = new List<DxIndex>();
 
         var sql = new StringBuilder();
 
@@ -85,15 +87,16 @@ public partial class SqliteMethods
                 uniqueConstraints,
                 foreignKeyConstraints,
                 indexes,
-                additionalIndexes
+                fillWithAdditionalIndexesToCreate
             );
 
             columnDefinitionClauses.Add(colSql.ToString());
         }
         sql.AppendLine(string.Join(", ", columnDefinitionClauses));
 
-        // add primary key constraint
-        if (primaryKey != null && primaryKey.Columns.Length > 0)
+        // add single column primary key constraints as column definitions; and,
+        // add multi column primary key constraints here
+        if (primaryKey != null && primaryKey.Columns.Length > 1)
         {
             var pkColumns = primaryKey.Columns.Select(c => c.ToString());
             var pkColumnNames = primaryKey.Columns.Select(c => c.ColumnName);
@@ -149,19 +152,28 @@ public partial class SqliteMethods
 
         sql.AppendLine(")");
         var createTableSql = sql.ToString();
+
+        Logger.LogDebug(
+            "Generated table definition SQL: {sql} for table '{tableName}'",
+            createTableSql,
+            tableName
+        );
+
         await ExecuteAsync(db, createTableSql, transaction: tx).ConfigureAwait(false);
 
-        var combinedIndexes = (indexes ?? []).Union(additionalIndexes).ToList();
+        var combinedIndexes = (indexes ?? []).Union(fillWithAdditionalIndexesToCreate).ToList();
 
         foreach (var index in combinedIndexes)
         {
-            var indexName = NormalizeName(index.IndexName);
-            var indexColumns = index.Columns.Select(c => c.ToString());
-            var indexColumnNames = index.Columns.Select(c => c.ColumnName);
-            // create index sql
-            var createIndexSql =
-                $"CREATE {(index.IsUnique ? "UNIQUE INDEX" : "INDEX")} ix_{tableName}_{string.Join('_', indexColumnNames)} ON {tableName} ({string.Join(", ", indexColumns)})";
-            await ExecuteAsync(db, createIndexSql, transaction: tx).ConfigureAwait(false);
+            await CreateIndexIfNotExistsAsync(db, index, tx, cancellationToken)
+                .ConfigureAwait(false);
+            // var indexName = NormalizeName(index.IndexName);
+            // var indexColumns = index.Columns.Select(c => c.ToString());
+            // var indexColumnNames = index.Columns.Select(c => c.ColumnName);
+            // // create index sql
+            // var createIndexSql =
+            //     $"CREATE {(index.IsUnique ? "UNIQUE INDEX" : "INDEX")} ix_{tableName}_{string.Join('_', indexColumnNames)} ON {tableName} ({string.Join(", ", indexColumns)})";
+            // await ExecuteAsync(db, createIndexSql, transaction: tx).ConfigureAwait(false);
         }
 
         return true;
@@ -328,5 +340,180 @@ public partial class SqliteMethods
             .ConfigureAwait(false);
         await ExecuteAsync(db, createTableSql, transaction: tx).ConfigureAwait(false);
         return true;
+    }
+
+    private async Task<bool> AlterTableUsingRecreateTableStrategyAsync(
+        IDbConnection db,
+        string? schemaName,
+        string tableName,
+        Func<DxTable, bool>? validateTable,
+        Func<DxTable, DxTable> updateTable,
+        IDbTransaction? tx,
+        CancellationToken cancellationToken
+    )
+    {
+        var table = await GetTableAsync(db, schemaName, tableName, tx, cancellationToken)
+            .ConfigureAwait(false);
+
+        if (table == null)
+            return false;
+
+        if (validateTable != null && !validateTable(table))
+            return false;
+
+        // create a temporary table with the updated schema
+        var tmpTable = new DxTable(
+            table.SchemaName,
+            table.TableName,
+            [.. table.Columns],
+            table.PrimaryKeyConstraint,
+            [.. table.CheckConstraints],
+            [.. table.DefaultConstraints],
+            [.. table.UniqueConstraints],
+            [.. table.ForeignKeyConstraints],
+            [.. table.Indexes]
+        );
+        var newTable = updateTable(tmpTable);
+
+        await AlterTableUsingRecreateTableStrategyAsync(
+            db,
+            schemaName,
+            table,
+            newTable,
+            tx,
+            cancellationToken
+        );
+
+        return true;
+    }
+
+    private async Task AlterTableUsingRecreateTableStrategyAsync(
+        IDbConnection db,
+        string? schemaName,
+        DxTable existingTable,
+        DxTable updatedTable,
+        IDbTransaction? tx,
+        CancellationToken cancellationToken
+    )
+    {
+        var tableName = existingTable.TableName;
+        var tempTableName = $"{tableName}_temp";
+        // updatedTable.TableName = newTableName;
+
+        // get the create index sql statements for the existing table
+        // var createIndexStatements = await GetCreateIndexSqlStatementsForTable(
+        //         db,
+        //         schemaName,
+        //         tableName,
+        //         tx,
+        //         cancellationToken
+        //     )
+        //     .ConfigureAwait(false);
+
+        // disable foreign key constraints temporarily
+        await ExecuteAsync(db, "PRAGMA foreign_keys = 0", tx).ConfigureAwait(false);
+
+        var innerTx = (DbTransaction)(
+            tx
+            ?? await (db as DbConnection)!
+                .BeginTransactionAsync(cancellationToken)
+                .ConfigureAwait(false)
+        );
+        try
+        {
+            // create a temporary table from the existing table's data
+            await ExecuteAsync(
+                    db,
+                    $@"CREATE TEMP TABLE {tempTableName} AS SELECT * FROM {tableName}",
+                    transaction: innerTx
+                )
+                .ConfigureAwait(false);
+
+            // drop the old table
+            await ExecuteAsync(db, $@"DROP TABLE {tableName}", transaction: innerTx)
+                .ConfigureAwait(false);
+
+            var created = await CreateTableIfNotExistsAsync(
+                    db,
+                    updatedTable,
+                    innerTx,
+                    cancellationToken
+                )
+                .ConfigureAwait(false);
+
+            if (created)
+            {
+                // populate the new table with the data from the old table
+                var previousColumnNames = existingTable.Columns.Select(c => c.ColumnName);
+
+                // make sure to only copy columns that exist in both tables
+                var columnNamesInBothTables = previousColumnNames.Where(c =>
+                    updatedTable.Columns.Any(x =>
+                        x.ColumnName.Equals(c, StringComparison.OrdinalIgnoreCase)
+                    )
+                );
+
+                if (columnNamesInBothTables.Count() > 0)
+                {
+                    var columnsToCopyString = string.Join(", ", columnNamesInBothTables);
+                    await ExecuteAsync(
+                            db,
+                            $@"INSERT INTO {updatedTable.TableName} ({columnsToCopyString}) SELECT {columnsToCopyString} FROM {tempTableName}",
+                            transaction: innerTx
+                        )
+                        .ConfigureAwait(false);
+                }
+
+                // drop the temp table
+                await ExecuteAsync(db, $@"DROP TABLE {tempTableName}", transaction: innerTx)
+                    .ConfigureAwait(false);
+
+                // // drop the old table
+                // await ExecuteAsync(db, $@"DROP TABLE {tableName}", transaction: innerTx)
+                //     .ConfigureAwait(false);
+
+                // rename the new table to the old table name
+                // await ExecuteAsync(
+                //         db,
+                //         $@"ALTER TABLE {updatedTable.TableName} RENAME TO {tableName}",
+                //         transaction: innerTx
+                //     )
+                //     .ConfigureAwait(false);
+
+                // add back the indexes to the new table
+                // foreach (var createIndexStatement in createIndexStatements)
+                // {
+                //     await ExecuteAsync(db, createIndexStatement, null, transaction: innerTx)
+                //         .ConfigureAwait(false);
+                // }
+
+                //TODO: add back the triggers to the new table
+
+                //TODO: add back the views to the new table
+
+                // commit the transaction
+                if (tx == null)
+                {
+                    await innerTx.CommitAsync(cancellationToken).ConfigureAwait(false);
+                }
+            }
+        }
+        catch
+        {
+            if (tx == null)
+            {
+                await innerTx.RollbackAsync(cancellationToken).ConfigureAwait(false);
+            }
+            throw;
+        }
+        finally
+        {
+            if (tx == null)
+            {
+                await innerTx.DisposeAsync();
+            }
+            // re-enable foreign key constraints
+            await ExecuteAsync(db, "PRAGMA foreign_keys = 1", tx).ConfigureAwait(false);
+        }
     }
 }

@@ -1,3 +1,5 @@
+using Microsoft.Extensions.Logging;
+
 namespace DapperMatic.Tests;
 
 public abstract partial class DatabaseMethodsTests
@@ -10,7 +12,7 @@ public abstract partial class DatabaseMethodsTests
         var supportsSchemas = await connection.SupportsSchemasAsync();
         if (!supportsSchemas)
         {
-            output.WriteLine("This test requires a database that supports schemas.");
+            Logger.LogInformation("This test requires a database that supports schemas.");
             return;
         }
 
@@ -23,7 +25,7 @@ public abstract partial class DatabaseMethodsTests
         exists = await connection.DoesSchemaExistAsync(schemaName);
         Assert.False(exists);
 
-        output.WriteLine($"Creating schemaName: {schemaName}");
+        Logger.LogInformation("Creating schemaName: {schemaName}", schemaName);
         var created = await connection.CreateSchemaIfNotExistsAsync(schemaName);
         Assert.True(created);
         exists = await connection.DoesSchemaExistAsync(schemaName);
@@ -32,7 +34,7 @@ public abstract partial class DatabaseMethodsTests
         var schemas = await connection.GetSchemaNamesAsync();
         Assert.Contains(schemaName, schemas, StringComparer.OrdinalIgnoreCase);
 
-        output.WriteLine($"Dropping schemaName: {schemaName}");
+        Logger.LogInformation("Dropping schemaName: {schemaName}", schemaName);
         var dropped = await connection.DropSchemaIfExistsAsync(schemaName);
         Assert.True(dropped);
 

@@ -9,9 +9,7 @@ public static class DataTypeMapFactory
         List<DataTypeMap>
     > _databaseTypeDataTypeMappings = new();
 
-    public static List<DataTypeMap> GetDefaultDatabaseTypeDataTypeMap(
-        DbProviderType databaseType
-    )
+    public static List<DataTypeMap> GetDefaultDatabaseTypeDataTypeMap(DbProviderType databaseType)
     {
         return _databaseTypeDataTypeMappings.GetOrAdd(
             databaseType,
@@ -33,13 +31,24 @@ public static class DataTypeMapFactory
     {
         var types = new List<DataTypeMap>
         {
-            new DataTypeMap { DotnetType = typeof(string), SqlType = "TEXT" },
+            new DataTypeMap
+            {
+                DotnetType = typeof(string),
+                SqlType = "TEXT",
+                SqlTypeWithMaxLength = "TEXT",
+                SqlTypeWithLength = "NVARCHAR({0})"
+            },
             new DataTypeMap { DotnetType = typeof(Guid), SqlType = "TEXT" },
             new DataTypeMap { DotnetType = typeof(int), SqlType = "INTEGER" },
             new DataTypeMap { DotnetType = typeof(long), SqlType = "INTEGER" },
             new DataTypeMap { DotnetType = typeof(float), SqlType = "REAL" },
             new DataTypeMap { DotnetType = typeof(double), SqlType = "REAL" },
-            new DataTypeMap { DotnetType = typeof(decimal), SqlType = "NUMERIC" },
+            new DataTypeMap
+            {
+                DotnetType = typeof(decimal),
+                SqlType = "NUMERIC",
+                SqlTypeWithPrecisionAndScale = "DECIMAL({0}, {1})"
+            },
             new DataTypeMap { DotnetType = typeof(bool), SqlType = "INTEGER" },
             new DataTypeMap { DotnetType = typeof(DateTime), SqlType = "TEXT" },
             new DataTypeMap { DotnetType = typeof(DateTimeOffset), SqlType = "TEXT" },

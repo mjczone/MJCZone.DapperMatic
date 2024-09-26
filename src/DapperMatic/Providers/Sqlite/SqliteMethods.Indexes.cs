@@ -1,5 +1,6 @@
 using System.Data;
 using DapperMatic.Models;
+using Microsoft.Extensions.Logging;
 
 namespace DapperMatic.Providers.Sqlite;
 
@@ -33,6 +34,13 @@ public partial class SqliteMethods
 
         var createIndexSql =
             $"CREATE {(isUnique ? "UNIQUE INDEX" : "INDEX")} {indexName} ON {tableName} ({string.Join(", ", columns.Select(c => c.ToString()))})";
+
+        Logger.LogDebug(
+            "Generated index definition SQL: {sql} for index '{indexName}' ON {tableName}",
+            createIndexSql,
+            indexName,
+            tableName
+        );
 
         await ExecuteAsync(db, createIndexSql, transaction: tx).ConfigureAwait(false);
 
@@ -158,13 +166,32 @@ public partial class SqliteMethods
                     AND m.sql IS NOT NULL
                  ORDER BY m.name, il.name, ii.seqno
         ";
-        return await QueryAsync<string>(
-                db,
-                getSqlCreateIndexStatements,
-                new { tableName },
-                transaction: tx
-            )
-            .ConfigureAwait(false);
+        return (
+            await QueryAsync<string>(
+                    db,
+                    getSqlCreateIndexStatements,
+                    new { tableName },
+                    transaction: tx
+                )
+                .ConfigureAwait(false)
+        )
+            .Select(sql =>
+            {
+                return sql.Contains("IF NOT EXISTS", StringComparison.OrdinalIgnoreCase)
+                    ? sql
+                    : sql.Replace(
+                            "CREATE INDEX",
+                            "CREATE INDEX IF NOT EXISTS",
+                            StringComparison.OrdinalIgnoreCase
+                        )
+                        .Replace(
+                            "CREATE UNIQUE INDEX",
+                            "CREATE UNIQUE INDEX IF NOT EXISTS",
+                            StringComparison.OrdinalIgnoreCase
+                        )
+                        .Trim();
+            })
+            .ToList();
     }
 
     public override async Task<bool> DropIndexIfExistsAsync(

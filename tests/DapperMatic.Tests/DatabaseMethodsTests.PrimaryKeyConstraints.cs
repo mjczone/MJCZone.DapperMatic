@@ -1,4 +1,5 @@
 using DapperMatic.Models;
+using Microsoft.Extensions.Logging;
 
 namespace DapperMatic.Tests;
 
@@ -27,22 +28,42 @@ public abstract partial class DatabaseMethodsTests
                 )
             ]
         );
-        output.WriteLine($"Primary Key Exists: {tableName}.{primaryKeyName}");
+        Logger.LogInformation(
+            "Primary Key Exists: {tableName}.{primaryKeyName}",
+            tableName,
+            primaryKeyName
+        );
         var exists = await connection.DoesPrimaryKeyConstraintExistAsync(null, tableName);
         Assert.False(exists);
-        output.WriteLine($"Creating primary key: {tableName}.{primaryKeyName}");
+        Logger.LogInformation(
+            "Creating primary key: {tableName}.{primaryKeyName}",
+            tableName,
+            primaryKeyName
+        );
         await connection.CreatePrimaryKeyConstraintIfNotExistsAsync(
             null,
             tableName,
             primaryKeyName,
             [new DxOrderedColumn(columnName)]
         );
-        output.WriteLine($"Primary Key Exists: {tableName}.{primaryKeyName}");
+        Logger.LogInformation(
+            "Primary Key Exists: {tableName}.{primaryKeyName}",
+            tableName,
+            primaryKeyName
+        );
         exists = await connection.DoesPrimaryKeyConstraintExistAsync(null, tableName);
         Assert.True(exists);
-        output.WriteLine($"Dropping primary key: {tableName}.{primaryKeyName}");
+        Logger.LogInformation(
+            "Dropping primary key: {tableName}.{primaryKeyName}",
+            tableName,
+            primaryKeyName
+        );
         await connection.DropPrimaryKeyConstraintIfExistsAsync(null, tableName);
-        output.WriteLine($"Primary Key Exists: {tableName}.{primaryKeyName}");
+        Logger.LogInformation(
+            "Primary Key Exists: {tableName}.{primaryKeyName}",
+            tableName,
+            primaryKeyName
+        );
         exists = await connection.DoesPrimaryKeyConstraintExistAsync(null, tableName);
         Assert.False(exists);
         await connection.DropTableIfExistsAsync(null, tableName);

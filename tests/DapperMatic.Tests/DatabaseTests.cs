@@ -6,16 +6,10 @@ using Xunit.Abstractions;
 
 namespace DapperMatic.Tests;
 
-public abstract class DatabaseTests
+public abstract class DatabaseTests : TestBase
 {
-    private readonly ITestOutputHelper output;
-
-    protected DatabaseTests(ITestOutputHelper output)
-    {
-        Console.WriteLine($"Initializing tests for {GetType().Name}");
-        output.WriteLine($"Initializing tests for {GetType().Name}");
-        this.output = output;
-    }
+    public DatabaseTests(ITestOutputHelper output)
+        : base(output) { }
 
     public abstract Task<IDbConnection> OpenConnectionAsync();
 
@@ -721,5 +715,8 @@ public abstract class DatabaseTests
             Assert.False(exists);
         }
     */
-    public virtual void Dispose() => output.WriteLine(GetType().Name);
+    public virtual void Dispose()
+    {
+        /* do nothing */
+    }
 }

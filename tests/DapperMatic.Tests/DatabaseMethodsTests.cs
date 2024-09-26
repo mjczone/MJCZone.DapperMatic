@@ -1,19 +1,16 @@
 using System.Data;
+using Microsoft.Extensions.Logging;
 using Newtonsoft.Json;
 using Xunit.Abstractions;
 
 namespace DapperMatic.Tests;
 
-public abstract partial class DatabaseMethodsTests
+public abstract partial class DatabaseMethodsTests : TestBase, IDisposable
 {
-    private readonly ITestOutputHelper output;
+    private bool disposedValue;
 
     protected DatabaseMethodsTests(ITestOutputHelper output)
-    {
-        Console.WriteLine($"Initializing tests for {GetType().Name}");
-        output.WriteLine($"Initializing tests for {GetType().Name}");
-        this.output = output;
-    }
+        : base(output) { }
 
     public abstract Task<IDbConnection> OpenConnectionAsync();
 
@@ -25,7 +22,7 @@ public abstract partial class DatabaseMethodsTests
         var version = await connection.GetDatabaseVersionAsync();
         Assert.NotEmpty(version);
 
-        output.WriteLine($"Database version: {version}");
+        Logger.LogInformation("Database version: {version}", version);
     }
 
     [Fact]
@@ -39,8 +36,11 @@ public abstract partial class DatabaseMethodsTests
         Assert.NotEmpty(lastSql);
         Assert.NotNull(lastParams);
 
-        output.WriteLine($"Last SQL: {lastSql}");
-        output.WriteLine($"Last Parameters: {JsonConvert.SerializeObject(lastParams)}");
+        Logger.LogInformation("Last SQL: {sql}", lastSql);
+        Logger.LogInformation(
+            "Last Parameters: {parameters}",
+            JsonConvert.SerializeObject(lastParams)
+        );
     }
 
     [Fact]
@@ -53,8 +53,28 @@ public abstract partial class DatabaseMethodsTests
         var lastSql = connection.GetLastSql();
         Assert.NotEmpty(lastSql);
 
-        output.WriteLine($"Last SQL: {lastSql}");
+        Logger.LogInformation("Last SQL: {sql}", lastSql);
     }
 
-    public virtual void Dispose() => output.WriteLine(GetType().Name);
+    protected virtual void Dispose(bool disposing)
+    {
+        if (!disposedValue)
+        {
+            if (disposing)
+            {
+                // TODO: dispose managed state (managed objects)
+            }
+
+            // TODO: free unmanaged resources (unmanaged objects) and override finalizer
+            // TODO: set large fields to null
+            disposedValue = true;
+        }
+    }
+
+    public virtual void Dispose()
+    {
+        // Do not change this code. Put cleanup code in 'Dispose(bool disposing)' method
+        Dispose(disposing: true);
+        GC.SuppressFinalize(this);
+    }
 }

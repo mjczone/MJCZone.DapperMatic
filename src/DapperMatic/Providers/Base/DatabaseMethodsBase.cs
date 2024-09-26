@@ -1,12 +1,16 @@
 using System.Collections.Concurrent;
 using System.Data;
+using System.Text.Json;
 using Dapper;
+using DapperMatic.Logging;
+using Microsoft.Extensions.Logging;
 
 namespace DapperMatic.Providers;
 
 public abstract partial class DatabaseMethodsBase : IDatabaseMethods
 {
     protected abstract string DefaultSchema { get; }
+    protected virtual ILogger Logger => DxLogger.CreateLogger(GetType());
 
     protected abstract List<DataTypeMap> DataTypes { get; }
 
@@ -33,27 +37,44 @@ public abstract partial class DatabaseMethodsBase : IDatabaseMethods
             throw new NotSupportedException($"Type {type} is not supported.");
         }
 
+        string? sqlType = null;
+
         if (length != null && length > 0)
         {
-            if (length == int.MaxValue)
+            // there are times where a length is passed in, but the datatype supports precision instead, accommodate for that case
+            if (
+                precision == null
+                && scale == null
+                && string.IsNullOrWhiteSpace(dataType.SqlTypeWithLength)
+                && string.IsNullOrWhiteSpace(dataType.SqlTypeWithMaxLength)
+                && !string.IsNullOrWhiteSpace(dataType.SqlTypeWithPrecisionAndScale)
+            )
             {
-                return string.Format(dataType.SqlTypeWithMaxLength ?? dataType.SqlType, length);
+                sqlType = string.Format(
+                    dataType.SqlTypeWithPrecisionAndScale ?? dataType.SqlType,
+                    length,
+                    0
+                );
+            }
+            else if (length == int.MaxValue)
+            {
+                sqlType = string.Format(dataType.SqlTypeWithMaxLength ?? dataType.SqlType, length);
             }
             else
             {
-                return string.Format(dataType.SqlTypeWithLength ?? dataType.SqlType, length);
+                sqlType = string.Format(dataType.SqlTypeWithLength ?? dataType.SqlType, length);
             }
         }
         else if (precision != null)
         {
-            return string.Format(
+            sqlType = string.Format(
                 dataType.SqlTypeWithPrecisionAndScale ?? dataType.SqlType,
                 precision,
                 scale ?? 0
             );
         }
 
-        return dataType.SqlType;
+        return sqlType ?? dataType.SqlType;
     }
 
     protected virtual string NormalizeName(string name)
@@ -163,8 +184,13 @@ public abstract partial class DatabaseMethodsBase : IDatabaseMethods
         }
         catch (Exception ex)
         {
-            Console.WriteLine(ex.Message);
-            Console.WriteLine("SQL: " + sql);
+            Logger.LogError(
+                ex,
+                "An error occurred while executing SQL query: {sql}, with parameters {parameters}.\n{message}",
+                sql,
+                param == null ? "{}" : JsonSerializer.Serialize(param),
+                ex.Message
+            );
             throw;
         }
     }
@@ -191,8 +217,13 @@ public abstract partial class DatabaseMethodsBase : IDatabaseMethods
         }
         catch (Exception ex)
         {
-            Console.WriteLine(ex.Message);
-            Console.WriteLine("SQL: " + sql);
+            Logger.LogError(
+                ex,
+                "An error occurred while executing SQL scalar query: {sql}, with parameters {parameters}.\n{message}",
+                sql,
+                param == null ? "{}" : JsonSerializer.Serialize(param),
+                ex.Message
+            );
             throw;
         }
     }
@@ -219,8 +250,13 @@ public abstract partial class DatabaseMethodsBase : IDatabaseMethods
         }
         catch (Exception ex)
         {
-            Console.WriteLine(ex.Message);
-            Console.WriteLine("SQL: " + sql);
+            Logger.LogError(
+                ex,
+                "An error occurred while executing SQL statement: {sql}, with parameters {parameters}.\n{message}",
+                sql,
+                param == null ? "{}" : JsonSerializer.Serialize(param),
+                ex.Message
+            );
             throw;
         }
     }

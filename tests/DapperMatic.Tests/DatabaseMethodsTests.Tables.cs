@@ -1,5 +1,6 @@
 using Dapper;
 using DapperMatic.Models;
+using Microsoft.Extensions.Logging;
 
 namespace DapperMatic.Tests;
 
@@ -101,6 +102,6 @@ public abstract partial class DatabaseMethodsTests
         exists = await connection.DoesTableExistAsync(null, newName);
         Assert.False(exists);
 
-        output.WriteLine($"Table names: {string.Join(", ", tableNames)}");
+        Logger.LogInformation($"Table names: {tableNames}", string.Join(", ", tableNames));
     }
 }

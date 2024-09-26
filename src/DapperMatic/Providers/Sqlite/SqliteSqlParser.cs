@@ -79,20 +79,68 @@ public static partial class SqliteSqlParser
                 if (string.IsNullOrWhiteSpace(columnDataType))
                     continue;
 
+                int? length = null;
+                int? precision = null;
+                int? scale = null;
+
+                var remainingWordsIndex = 2;
+                if (columnDefinition.children!.Count > 2)
+                {
+                    var thirdChild = columnDefinition.GetChild<SqlCompoundClause>(2);
+                    if (
+                        thirdChild != null
+                        && thirdChild.children.Count > 0
+                        && thirdChild.children.Count <= 2
+                    )
+                    {
+                        if (thirdChild.children.Count == 1)
+                        {
+                            if (
+                                thirdChild.children[0] is SqlWordClause sw1
+                                && int.TryParse(sw1.text, out var intValue)
+                            )
+                            {
+                                length = intValue;
+                            }
+                        }
+                        if (thirdChild.children.Count == 2)
+                        {
+                            if (
+                                thirdChild.children[0] is SqlWordClause sw1
+                                && int.TryParse(sw1.text, out var intValue)
+                            )
+                            {
+                                precision = intValue;
+                            }
+                            if (
+                                thirdChild.children[1] is SqlWordClause sw2
+                                && int.TryParse(sw2.text, out var intValue2)
+                            )
+                            {
+                                scale = intValue2;
+                            }
+                        }
+                        remainingWordsIndex = 3;
+                    }
+                }
+
                 var column = new DxColumn(
                     null,
                     tableName,
                     columnName,
                     GetDotnetTypeFromSqlType(columnDataType),
-                    columnDataType
+                    columnDataType,
+                    length,
+                    precision,
+                    scale
                 );
                 table.Columns.Add(column);
 
                 // remaining words are optional in the column definition
-                if (columnDefinition.children!.Count > 2)
+                if (columnDefinition.children!.Count > remainingWordsIndex)
                 {
                     string? inlineConstraintName = null;
-                    for (var i = 2; i < columnDefinition.children.Count; i++)
+                    for (var i = remainingWordsIndex; i < columnDefinition.children.Count; i++)
                     {
                         var opt = columnDefinition.children[i];
                         if (opt is SqlWordClause swc)
@@ -348,8 +396,6 @@ public static partial class SqliteSqlParser
                                     )
                                     {
                                         column.IsPrimaryKey = true;
-                                        if (pkColumnNames.Length == 1)
-                                            column.IsUnique = true;
                                     }
                                 }
                                 continue; // we're done with this clause, so we can move on to the next constraint
@@ -622,8 +668,13 @@ public static partial class SqliteSqlParser
             {
                 clauseBuilder.AddPart(part);
             }
-            clauseBuilder.Complete();
-            statements.Add(clauseBuilder.GetRootClause());
+            // clauseBuilder.Complete();
+
+            var rootClause = clauseBuilder.GetRootClause();
+            if (rootClause != null)
+                rootClause = clauseBuilder.ReduceNesting(rootClause);
+            if (rootClause != null)
+                statements.Add(rootClause);
         }
 
         return statements;
@@ -1159,7 +1210,9 @@ public static partial class SqliteSqlParser
 
         public void Complete()
         {
-            foreach (var c in allCompoundClauses.Where(x => x.parenthesis))
+            foreach (
+                var c in allCompoundClauses /*.Where(x => x.parenthesis)*/
+            )
             {
                 if (c.children.Count == 1)
                 {
@@ -1168,7 +1221,7 @@ public static partial class SqliteSqlParser
                     {
                         if (scc.children.Count == 1)
                         {
-                            // reduce indentation
+                            // reduce indentation, reduce nesting
                             var gscc = scc.children[0];
                             gscc.SetParent(c);
                             c.children = new List<SqlClause> { gscc };
@@ -1176,6 +1229,31 @@ public static partial class SqliteSqlParser
                     }
                 }
             }
+        }
+
+        public SqlClause ReduceNesting(SqlClause clause)
+        {
+            var currentClause = clause;
+            if (currentClause is SqlCompoundClause scc)
+            {
+                var children = new List<SqlClause>();
+                foreach (var child in scc.children)
+                {
+                    var reducedChild = ReduceNesting(child);
+                    children.Add(reducedChild);
+                }
+                scc.children = children;
+
+                // reduce nesting
+                if (!scc.parenthesis && children.Count == 1 && children[0] is SqlWordClause cswc)
+                {
+                    return cswc;
+                }
+
+                return scc;
+            }
+
+            return currentClause;
         }
     }
 

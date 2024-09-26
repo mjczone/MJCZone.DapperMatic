@@ -181,7 +181,7 @@ public class DxColumn
             + $"{(IsUnique ? " UNIQUE" : "")}"
             + $"{(IsIndexed ? " INDEXED" : "")}"
             + $"{(IsForeignKey ? $" FOREIGN KEY({fkName})" : "")}"
-            + $"{(IsAutoIncrement ? " AUTO_INCREMENT" : "")}"
+            + $"{(IsAutoIncrement ? " AUTOINCREMENT" : "")}"
             + $"{(!string.IsNullOrWhiteSpace(CheckExpression) ? $" CHECK {CheckExpression}" : "")}"
             + $"{(!string.IsNullOrWhiteSpace(DefaultExpression) ? $" DEFAULT {DefaultExpression}" : "")}";
     }

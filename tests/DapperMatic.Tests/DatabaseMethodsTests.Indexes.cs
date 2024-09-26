@@ -1,4 +1,5 @@
 using DapperMatic.Models;
+using Microsoft.Extensions.Logging;
 
 namespace DapperMatic.Tests;
 
@@ -55,11 +56,15 @@ public abstract partial class DatabaseMethodsTests
             await connection.DropTableIfExistsAsync(null, tableName);
             await connection.CreateTableIfNotExistsAsync(null, tableName, columns: [.. columns]);
 
-            output.WriteLine($"Index Exists: {tableName}.{indexName}");
+            Logger.LogInformation("Index Exists: {tableName}.{indexName}", tableName, indexName);
             var exists = await connection.DoesIndexExistAsync(null, tableName, indexName);
             Assert.False(exists);
 
-            output.WriteLine($"Creating unique index: {tableName}.{indexName}");
+            Logger.LogInformation(
+                "Creating unique index: {tableName}.{indexName}",
+                tableName,
+                indexName
+            );
             await connection.CreateIndexIfNotExistsAsync(
                 null,
                 tableName,
@@ -68,8 +73,10 @@ public abstract partial class DatabaseMethodsTests
                 isUnique: true
             );
 
-            output.WriteLine(
-                $"Creating multiple column unique index: {tableName}.{indexName}_multi"
+            Logger.LogInformation(
+                "Creating multiple column unique index: {tableName}.{indexName}_multi",
+                tableName,
+                indexName + "_multi"
             );
             await connection.CreateIndexIfNotExistsAsync(
                 null,
@@ -82,8 +89,10 @@ public abstract partial class DatabaseMethodsTests
                 isUnique: true
             );
 
-            output.WriteLine(
-                $"Creating multiple column non unique index: {tableName}.{indexName}_multi2"
+            Logger.LogInformation(
+                "Creating multiple column non unique index: {tableName}.{indexName}_multi2",
+                tableName,
+                indexName
             );
             await connection.CreateIndexIfNotExistsAsync(
                 null,
@@ -95,7 +104,7 @@ public abstract partial class DatabaseMethodsTests
                 ]
             );
 
-            output.WriteLine($"Index Exists: {tableName}.{indexName}");
+            Logger.LogInformation("Index Exists: {tableName}.{indexName}", tableName, indexName);
             exists = await connection.DoesIndexExistAsync(null, tableName, indexName);
             Assert.True(exists);
             exists = await connection.DoesIndexExistAsync(null, tableName, indexName + "_multi");
@@ -153,10 +162,14 @@ public abstract partial class DatabaseMethodsTests
             );
             Assert.NotEmpty(indexesOnColumn);
 
-            output.WriteLine($"Dropping indexName: {tableName}.{indexName}");
+            Logger.LogInformation(
+                "Dropping indexName: {tableName}.{indexName}",
+                tableName,
+                indexName
+            );
             await connection.DropIndexIfExistsAsync(null, tableName, indexName);
 
-            output.WriteLine($"Index Exists: {tableName}.{indexName}");
+            Logger.LogInformation("Index Exists: {tableName}.{indexName}", tableName, indexName);
             exists = await connection.DoesIndexExistAsync(null, tableName, indexName);
             Assert.False(exists);
 
@@ -165,7 +178,7 @@ public abstract partial class DatabaseMethodsTests
         finally
         {
             var sql = connection.GetLastSql();
-            output.WriteLine("Last sql: " + sql);
+            Logger.LogInformation("Last sql: {sql}", sql);
         }
     }
 }
