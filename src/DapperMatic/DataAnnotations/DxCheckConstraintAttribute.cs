@@ -7,7 +7,11 @@ namespace DapperMatic.DataAnnotations;
 /// [DxCheckConstraint("Age > 18")]
 /// public int Age { get; set; }
 /// </example>
-[AttributeUsage(AttributeTargets.Property, Inherited = false, AllowMultiple = false)]
+[AttributeUsage(
+    AttributeTargets.Property | AttributeTargets.Class,
+    Inherited = false,
+    AllowMultiple = false
+)]
 public class DxCheckConstraintAttribute : Attribute
 {
     public DxCheckConstraintAttribute(string expression)

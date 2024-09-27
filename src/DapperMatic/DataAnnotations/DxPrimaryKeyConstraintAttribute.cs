@@ -9,14 +9,16 @@ namespace DapperMatic.DataAnnotations;
 )]
 public class DxPrimaryKeyConstraintAttribute : Attribute
 {
+    public DxPrimaryKeyConstraintAttribute() { }
+
+    public DxPrimaryKeyConstraintAttribute(string constraintName)
+    {
+        ConstraintName = constraintName;
+    }
+
     public DxPrimaryKeyConstraintAttribute(string constraintName, params string[] columnNames)
     {
         ConstraintName = constraintName;
-        Columns = columnNames?.Select(columnName => new DxOrderedColumn(columnName)).ToArray();
-    }
-
-    public DxPrimaryKeyConstraintAttribute(params string[] columnNames)
-    {
         Columns = columnNames?.Select(columnName => new DxOrderedColumn(columnName)).ToArray();
     }
 

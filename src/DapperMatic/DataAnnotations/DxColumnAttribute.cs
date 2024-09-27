@@ -6,13 +6,14 @@ namespace DapperMatic.DataAnnotations;
 public class DxColumnAttribute : Attribute
 {
     public DxColumnAttribute(
-        string? columnName = null,
+        string columnName,
         string? providerDataType = null,
         int? length = null,
         int? precision = null,
         int? scale = null,
+        string? checkExpression = null,
         string? defaultExpression = null,
-        bool isNullable = false,
+        bool isNullable = true,
         bool isPrimaryKey = false,
         bool isAutoIncrement = false,
         bool isUnique = false,
@@ -29,6 +30,7 @@ public class DxColumnAttribute : Attribute
         Length = length;
         Precision = precision;
         Scale = scale;
+        CheckExpression = checkExpression;
         DefaultExpression = defaultExpression;
         IsNullable = isNullable;
         IsPrimaryKey = isPrimaryKey;
@@ -47,6 +49,7 @@ public class DxColumnAttribute : Attribute
     public int? Length { get; }
     public int? Precision { get; }
     public int? Scale { get; }
+    public string? CheckExpression { get; }
     public string? DefaultExpression { get; }
     public bool IsNullable { get; }
     public bool IsPrimaryKey { get; }

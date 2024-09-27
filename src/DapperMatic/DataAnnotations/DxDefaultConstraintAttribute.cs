@@ -7,7 +7,7 @@ namespace DapperMatic.DataAnnotations;
 /// [DxDefaultConstraint("0")]
 /// public int Age { get; set; }
 /// </example>
-[AttributeUsage(AttributeTargets.Property, Inherited = false, AllowMultiple = false)]
+[AttributeUsage(AttributeTargets.Property, Inherited = false, AllowMultiple = true)]
 public class DxDefaultConstraintAttribute : Attribute
 {
     public DxDefaultConstraintAttribute(string expression)

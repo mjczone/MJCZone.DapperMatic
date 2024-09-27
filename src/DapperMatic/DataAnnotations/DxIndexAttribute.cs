@@ -11,7 +11,7 @@ public class DxIndexAttribute : Attribute
 {
     public DxIndexAttribute(string constraintName, bool isUnique, params string[] columnNames)
     {
-        ConstraintName = constraintName;
+        IndexName = constraintName;
         IsUnique = isUnique;
         Columns = columnNames?.Select(columnName => new DxOrderedColumn(columnName)).ToArray();
     }
@@ -24,7 +24,7 @@ public class DxIndexAttribute : Attribute
 
     public DxIndexAttribute(string constraintName, bool isUnique, params DxOrderedColumn[] columns)
     {
-        ConstraintName = constraintName;
+        IndexName = constraintName;
         IsUnique = isUnique;
         Columns = columns;
     }
@@ -35,7 +35,7 @@ public class DxIndexAttribute : Attribute
         Columns = columns;
     }
 
-    public string? ConstraintName { get; }
+    public string? IndexName { get; }
     public bool IsUnique { get; }
     public DxOrderedColumn[]? Columns { get; }
 }
