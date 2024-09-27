@@ -1594,4 +1594,131 @@ public static partial class IDbConnectionExtensions
             .ConfigureAwait(false);
     }
     #endregion // IDatabasePrimaryKeyConstraintMethods
+
+    #region IDatabaseViewMethods
+    public static async Task<bool> DoesViewExistAsync(
+        this IDbConnection db,
+        string? schemaName,
+        string viewName,
+        IDbTransaction? tx = null,
+        CancellationToken cancellationToken = default
+    )
+    {
+        return await Database(db)
+            .DoesViewExistAsync(db, schemaName, viewName, tx, cancellationToken)
+            .ConfigureAwait(false);
+    }
+
+    public static async Task<bool> CreateViewIfNotExistsAsync(
+        this IDbConnection db,
+        string? schemaName,
+        string viewName,
+        string viewDefinition,
+        IDbTransaction? tx = null,
+        CancellationToken cancellationToken = default
+    )
+    {
+        return await Database(db)
+            .CreateViewIfNotExistsAsync(
+                db,
+                schemaName,
+                viewName,
+                viewDefinition,
+                tx,
+                cancellationToken
+            )
+            .ConfigureAwait(false);
+    }
+
+    public static async Task<bool> UpdateViewIfExistsAsync(
+        this IDbConnection db,
+        string? schemaName,
+        string viewName,
+        string viewDefinition,
+        IDbTransaction? tx = null,
+        CancellationToken cancellationToken = default
+    )
+    {
+        if (
+            !await db.DropViewIfExistsAsync(schemaName, viewName, tx, cancellationToken)
+                .ConfigureAwait(false)
+        )
+            return false;
+
+        return await db.CreateViewIfNotExistsAsync(
+                schemaName,
+                viewName,
+                viewDefinition,
+                tx,
+                cancellationToken
+            )
+            .ConfigureAwait(false);
+    }
+
+    public static async Task<DxView?> GetViewAsync(
+        this IDbConnection db,
+        string? schemaName,
+        string viewName,
+        IDbTransaction? tx = null,
+        CancellationToken cancellationToken = default
+    )
+    {
+        return await Database(db)
+            .GetViewAsync(db, schemaName, viewName, tx, cancellationToken)
+            .ConfigureAwait(false);
+    }
+
+    public static async Task<List<DxView>> GetViewsAsync(
+        this IDbConnection db,
+        string? schemaName,
+        string? viewNameFilter = null,
+        IDbTransaction? tx = null,
+        CancellationToken cancellationToken = default
+    )
+    {
+        return await Database(db)
+            .GetViewsAsync(db, schemaName, viewNameFilter, tx, cancellationToken)
+            .ConfigureAwait(false);
+    }
+
+    public static async Task<List<string>> GetViewNamesAsync(
+        this IDbConnection db,
+        string? schemaName,
+        string? viewNameFilter = null,
+        IDbTransaction? tx = null,
+        CancellationToken cancellationToken = default
+    )
+    {
+        return await Database(db)
+            .GetViewNamesAsync(db, schemaName, viewNameFilter, tx, cancellationToken)
+            .ConfigureAwait(false);
+    }
+
+    public static async Task<bool> DropViewIfExistsAsync(
+        this IDbConnection db,
+        string? schemaName,
+        string viewName,
+        IDbTransaction? tx = null,
+        CancellationToken cancellationToken = default
+    )
+    {
+        return await Database(db)
+            .DropViewIfExistsAsync(db, schemaName, viewName, tx, cancellationToken)
+            .ConfigureAwait(false);
+    }
+
+    public static async Task<bool> RenameViewIfExistsAsync(
+        this IDbConnection db,
+        string? schemaName,
+        string viewName,
+        string newViewName,
+        IDbTransaction? tx = null,
+        CancellationToken cancellationToken = default
+    )
+    {
+        return await Database(db)
+            .RenameViewIfExistsAsync(db, schemaName, viewName, newViewName, tx, cancellationToken)
+            .ConfigureAwait(false);
+    }
+    #endregion // IDatabaseViewMethods
 }

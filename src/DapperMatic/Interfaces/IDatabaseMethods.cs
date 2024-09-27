@@ -11,7 +11,8 @@ public partial interface IDatabaseMethods
         IDatabasePrimaryKeyConstraintMethods,
         IDatabaseUniqueConstraintMethods,
         IDatabaseForeignKeyConstraintMethods,
-        IDatabaseSchemaMethods
+        IDatabaseSchemaMethods,
+        IDatabaseViewMethods
 {
     string GetLastSql(IDbConnection db);
     (string sql, object? parameters) GetLastSqlWithParams(IDbConnection db);

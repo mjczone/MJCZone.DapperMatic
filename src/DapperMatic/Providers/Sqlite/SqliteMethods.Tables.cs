@@ -217,7 +217,9 @@ public partial class SqliteMethods
 
         var sql = new StringBuilder();
         sql.AppendLine(
-            "SELECT name as table_name, sql as table_sql FROM sqlite_master WHERE type = 'table' AND name NOT LIKE 'sqlite_%'"
+            @"SELECT name as table_name, sql as table_sql 
+                FROM sqlite_master 
+                WHERE type = 'table' AND name NOT LIKE 'sqlite_%'"
         );
         if (!string.IsNullOrWhiteSpace(where))
             sql.AppendLine(" AND name LIKE @where");
