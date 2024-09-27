@@ -153,8 +153,8 @@ public partial class SqliteMethods
         sql.AppendLine(")");
         var createTableSql = sql.ToString();
 
-        Logger.LogDebug(
-            "Generated table definition SQL: {sql} for table '{tableName}'",
+        Logger.LogInformation(
+            "Generated table SQL: \n{sql}\n for table '{tableName}'",
             createTableSql,
             tableName
         );

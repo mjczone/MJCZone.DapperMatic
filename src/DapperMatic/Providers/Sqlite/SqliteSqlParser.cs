@@ -264,8 +264,11 @@ public static partial class SqliteSqlParser
                                     // see: https://www.sqlite.org/syntax/foreign-key-clause.html
                                     column.IsForeignKey = true;
 
+                                    var referenceTableNameIndex = i + 1;
+                                    var referenceColumnNamesIndex = i + 2;
+
                                     var referencedTableName = columnDefinition
-                                        .GetChild<SqlWordClause>(i + 1)
+                                        .GetChild<SqlWordClause>(referenceTableNameIndex)
                                         ?.text;
                                     if (string.IsNullOrWhiteSpace(referencedTableName))
                                         break;
@@ -275,7 +278,7 @@ public static partial class SqliteSqlParser
 
                                     // TODO: sqlite doesn't require the referenced column name, but we will for now in our library
                                     var referenceColumnName = columnDefinition
-                                        .GetChild<SqlCompoundClause>(i + 2)
+                                        .GetChild<SqlCompoundClause>(referenceColumnNamesIndex)
                                         ?.GetChild<SqlWordClause>(0)
                                         ?.text;
                                     if (string.IsNullOrWhiteSpace(referenceColumnName))
@@ -320,6 +323,15 @@ public static partial class SqliteSqlParser
                                         if (!string.IsNullOrWhiteSpace(onUpdate))
                                             foreignKey.OnUpdate = onUpdate.ToForeignKeyAction();
                                     }
+
+                                    column.ReferencedTableName = foreignKey.ReferencedTableName;
+                                    column.ReferencedColumnName = foreignKey
+                                        .ReferencedColumns[0]
+                                        .ColumnName;
+                                    column.OnDelete = foreignKey.OnDelete;
+                                    column.OnUpdate = foreignKey.OnUpdate;
+
+                                    table.ForeignKeyConstraints.Add(foreignKey);
 
                                     inlineConstraintName = null;
                                     break;
@@ -425,18 +437,14 @@ public static partial class SqliteSqlParser
                                 table.UniqueConstraints.Add(ucConstraint);
                                 if (ucConstraint.Columns.Length == 1)
                                 {
-                                    foreach (var column in table.Columns)
-                                    {
-                                        if (
-                                            ucColumnNames.Contains(
-                                                column.ColumnName,
-                                                StringComparer.OrdinalIgnoreCase
-                                            )
+                                    var column = table.Columns.FirstOrDefault(c =>
+                                        c.ColumnName.Equals(
+                                            ucConstraint.Columns[0].ColumnName,
+                                            StringComparison.OrdinalIgnoreCase
                                         )
-                                        {
-                                            column.IsUnique = true;
-                                        }
-                                    }
+                                    );
+                                    if (column != null)
+                                        column.IsUnique = true;
                                 }
                                 continue; // we're done with this clause, so we can move on to the next constraint
                             case "CHECK":
@@ -517,7 +525,6 @@ public static partial class SqliteSqlParser
                                     referencedTableName,
                                     fkOrderedReferencedColumns
                                 );
-                                table.ForeignKeyConstraints.Add(foreignKey);
 
                                 var onDeleteTokenIndex = tableConstraint.FindTokenIndex(
                                     "ON DELETE"
@@ -542,6 +549,31 @@ public static partial class SqliteSqlParser
                                     if (!string.IsNullOrWhiteSpace(onUpdate))
                                         foreignKey.OnUpdate = onUpdate.ToForeignKeyAction();
                                 }
+
+                                if (
+                                    fkSourceColumnNames.Length == 1
+                                    && fkReferencedColumnNames.Length == 1
+                                )
+                                {
+                                    var column = table.Columns.FirstOrDefault(c =>
+                                        c.ColumnName.Equals(
+                                            fkSourceColumnNames[0],
+                                            StringComparison.OrdinalIgnoreCase
+                                        )
+                                    );
+                                    if (column != null)
+                                    {
+                                        column.IsForeignKey = true;
+                                        column.ReferencedTableName = foreignKey.ReferencedTableName;
+                                        column.ReferencedColumnName = foreignKey
+                                            .ReferencedColumns[0]
+                                            .ColumnName;
+                                        column.OnDelete = foreignKey.OnDelete;
+                                        column.OnUpdate = foreignKey.OnUpdate;
+                                    }
+                                }
+
+                                table.ForeignKeyConstraints.Add(foreignKey);
                                 continue; // we're done processing the FOREIGN KEY clause, so we can move on to the next constraint
                         }
                     }

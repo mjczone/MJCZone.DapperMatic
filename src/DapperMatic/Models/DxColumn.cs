@@ -168,21 +168,13 @@ public class DxColumn
     // ToString override to display column definition
     public override string ToString()
     {
-        var fkName = string.IsNullOrWhiteSpace(ReferencedTableName)
-            ? ""
-            : (
-                string.IsNullOrWhiteSpace(ReferencedColumnName)
-                    ? ReferencedTableName
-                    : $"{ReferencedTableName}.{ReferencedColumnName}"
-            );
-
         return $"{ColumnName} ({ProviderDataType}) {(IsNullable ? "NULL" : "NOT NULL")}"
             + $"{(IsPrimaryKey ? " PRIMARY KEY" : "")}"
             + $"{(IsUnique ? " UNIQUE" : "")}"
             + $"{(IsIndexed ? " INDEXED" : "")}"
-            + $"{(IsForeignKey ? $" FOREIGN KEY({fkName})" : "")}"
+            + $"{(IsForeignKey ? $" FOREIGN KEY({ReferencedTableName ?? ""}) REFERENCES({ReferencedColumnName ?? ""})" : "")}"
             + $"{(IsAutoIncrement ? " AUTOINCREMENT" : "")}"
-            + $"{(!string.IsNullOrWhiteSpace(CheckExpression) ? $" CHECK {CheckExpression}" : "")}"
-            + $"{(!string.IsNullOrWhiteSpace(DefaultExpression) ? $" DEFAULT {DefaultExpression}" : "")}";
+            + $"{(!string.IsNullOrWhiteSpace(CheckExpression) ? $" CHECK ({CheckExpression})" : "")}"
+            + $"{(!string.IsNullOrWhiteSpace(DefaultExpression) ? $" DEFAULT {(DefaultExpression.Contains(' ') ? $"({DefaultExpression})" : DefaultExpression)}" : "")}";
     }
 }

@@ -110,6 +110,32 @@ public partial class SqliteMethods
                 },
                 table =>
                 {
+                    var foreignKey = table.ForeignKeyConstraints.FirstOrDefault(x =>
+                        x.ConstraintName.Equals(constraintName, StringComparison.OrdinalIgnoreCase)
+                    );
+                    if (foreignKey is not null)
+                    {
+                        // remove the foreign key from the related column
+                        foreach (var column in foreignKey.SourceColumns)
+                        {
+                            var sc = table.Columns.FirstOrDefault(x =>
+                                x.ColumnName.Equals(
+                                    column.ColumnName,
+                                    StringComparison.OrdinalIgnoreCase
+                                )
+                            );
+                            if (sc is not null)
+                            {
+                                sc.IsForeignKey = false;
+                                sc.ReferencedTableName = null;
+                                sc.ReferencedColumnName = null;
+                                sc.OnDelete = null;
+                                sc.OnUpdate = null;
+                            }
+                        }
+
+                        table.ForeignKeyConstraints.Remove(foreignKey);
+                    }
                     table.ForeignKeyConstraints.RemoveAll(x =>
                         x.ConstraintName.Equals(constraintName, StringComparison.OrdinalIgnoreCase)
                     );

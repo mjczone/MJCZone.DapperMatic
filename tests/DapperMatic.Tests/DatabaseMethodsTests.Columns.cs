@@ -107,109 +107,109 @@ public abstract partial class DatabaseMethodsTests
                 isIndexed: true
             ),
             new(null, "testWithAllColumns", "id" + columnCount++, typeof(int), isIndexed: true),
-            //     new(
-            //         null,
-            //         "testWithAllColumns",
-            //         "id" + columnCount++,
-            //         typeof(int),
-            //         isForeignKey: true,
-            //         referencedTableName: tableName,
-            //         referencedColumnName: "id",
-            //         onDelete: DxForeignKeyAction.Cascade,
-            //         onUpdate: DxForeignKeyAction.Cascade
-            //     ),
-            //     new(
-            //         null,
-            //         "testWithAllColumns",
-            //         "createdDateColumn" + columnCount++,
-            //         typeof(DateTime),
-            //         defaultExpression: defaultDateTimeSql
-            //     ),
-            //     new(
-            //         null,
-            //         "testWithAllColumns",
-            //         "newidColumn" + columnCount++,
-            //         typeof(Guid),
-            //         defaultExpression: defaultGuidSql
-            //     ),
-            //     new(null, "testWithAllColumns", "bigintColumn" + columnCount++, typeof(long)),
-            //     new(null, "testWithAllColumns", "binaryColumn" + columnCount++, typeof(byte[])),
-            //     new(null, "testWithAllColumns", "bitColumn" + columnCount++, typeof(bool)),
-            //     new(
-            //         null,
-            //         "testWithAllColumns",
-            //         "charColumn" + columnCount++,
-            //         typeof(string),
-            //         length: 10
-            //     ),
-            //     new(null, "testWithAllColumns", "dateColumn" + columnCount++, typeof(DateTime)),
-            //     new(null, "testWithAllColumns", "datetimeColumn" + columnCount++, typeof(DateTime)),
-            //     new(null, "testWithAllColumns", "datetime2Column" + columnCount++, typeof(DateTime)),
-            //     new(
-            //         null,
-            //         "testWithAllColumns",
-            //         "datetimeoffsetColumn" + columnCount++,
-            //         typeof(DateTimeOffset)
-            //     ),
-            //     new(null, "testWithAllColumns", "decimalColumn" + columnCount++, typeof(decimal)),
-            //     new(
-            //         null,
-            //         "testWithAllColumns",
-            //         "decimalColumnWithPrecision" + columnCount++,
-            //         typeof(decimal),
-            //         precision: 10
-            //     ),
-            //     new(
-            //         null,
-            //         "testWithAllColumns",
-            //         "decimalColumnWithPrecisionAndScale" + columnCount++,
-            //         typeof(decimal),
-            //         precision: 10,
-            //         scale: 5
-            //     ),
-            //     new(null, "testWithAllColumns", "floatColumn" + columnCount++, typeof(double)),
-            //     new(null, "testWithAllColumns", "imageColumn" + columnCount++, typeof(byte[])),
-            //     new(null, "testWithAllColumns", "intColumn" + columnCount++, typeof(int)),
-            //     new(null, "testWithAllColumns", "moneyColumn" + columnCount++, typeof(decimal)),
-            //     new(
-            //         null,
-            //         "testWithAllColumns",
-            //         "ncharColumn" + columnCount++,
-            //         typeof(string),
-            //         length: 10
-            //     ),
-            //     new(
-            //         null,
-            //         "testWithAllColumns",
-            //         "ntextColumn" + columnCount++,
-            //         typeof(string),
-            //         length: int.MaxValue
-            //     ),
-            //     new(null, "testWithAllColumns", "floatColumn2" + columnCount++, typeof(float)),
-            //     new(null, "testWithAllColumns", "doubleColumn2" + columnCount++, typeof(double)),
-            //     new(null, "testWithAllColumns", "guidArrayColumn" + columnCount++, typeof(Guid[])),
-            //     new(null, "testWithAllColumns", "intArrayColumn" + columnCount++, typeof(int[])),
-            //     new(null, "testWithAllColumns", "longArrayColumn" + columnCount++, typeof(long[])),
-            //     new(null, "testWithAllColumns", "doubleArrayColumn" + columnCount++, typeof(double[])),
-            //     new(
-            //         null,
-            //         "testWithAllColumns",
-            //         "decimalArrayColumn" + columnCount++,
-            //         typeof(decimal[])
-            //     ),
-            //     new(null, "testWithAllColumns", "stringArrayColumn" + columnCount++, typeof(string[])),
-            //     new(
-            //         null,
-            //         "testWithAllColumns",
-            //         "stringDectionaryArrayColumn" + columnCount++,
-            //         typeof(Dictionary<string, string>)
-            //     ),
-            //     new(
-            //         null,
-            //         "testWithAllColumns",
-            //         "objectDectionaryArrayColumn" + columnCount++,
-            //         typeof(Dictionary<string, object>)
-            //     )
+            new(
+                null,
+                "testWithAllColumns",
+                "colWithFk" + columnCount++,
+                typeof(int),
+                isForeignKey: true,
+                referencedTableName: tableName,
+                referencedColumnName: "id",
+                onDelete: DxForeignKeyAction.Cascade,
+                onUpdate: DxForeignKeyAction.Cascade
+            ),
+            new(
+                null,
+                "testWithAllColumns",
+                "createdDateColumn" + columnCount++,
+                typeof(DateTime),
+                defaultExpression: defaultDateTimeSql
+            ),
+            new(
+                null,
+                "testWithAllColumns",
+                "newidColumn" + columnCount++,
+                typeof(Guid),
+                defaultExpression: defaultGuidSql
+            ),
+            new(null, "testWithAllColumns", "bigintColumn" + columnCount++, typeof(long)),
+            new(null, "testWithAllColumns", "binaryColumn" + columnCount++, typeof(byte[])),
+            new(null, "testWithAllColumns", "bitColumn" + columnCount++, typeof(bool)),
+            new(
+                null,
+                "testWithAllColumns",
+                "charColumn" + columnCount++,
+                typeof(string),
+                length: 10
+            ),
+            new(null, "testWithAllColumns", "dateColumn" + columnCount++, typeof(DateTime)),
+            new(null, "testWithAllColumns", "datetimeColumn" + columnCount++, typeof(DateTime)),
+            new(null, "testWithAllColumns", "datetime2Column" + columnCount++, typeof(DateTime)),
+            new(
+                null,
+                "testWithAllColumns",
+                "datetimeoffsetColumn" + columnCount++,
+                typeof(DateTimeOffset)
+            ),
+            new(null, "testWithAllColumns", "decimalColumn" + columnCount++, typeof(decimal)),
+            new(
+                null,
+                "testWithAllColumns",
+                "decimalColumnWithPrecision" + columnCount++,
+                typeof(decimal),
+                precision: 10
+            ),
+            new(
+                null,
+                "testWithAllColumns",
+                "decimalColumnWithPrecisionAndScale" + columnCount++,
+                typeof(decimal),
+                precision: 10,
+                scale: 5
+            ),
+            new(null, "testWithAllColumns", "floatColumn" + columnCount++, typeof(double)),
+            new(null, "testWithAllColumns", "imageColumn" + columnCount++, typeof(byte[])),
+            new(null, "testWithAllColumns", "intColumn" + columnCount++, typeof(int)),
+            new(null, "testWithAllColumns", "moneyColumn" + columnCount++, typeof(decimal)),
+            new(
+                null,
+                "testWithAllColumns",
+                "ncharColumn" + columnCount++,
+                typeof(string),
+                length: 10
+            ),
+            new(
+                null,
+                "testWithAllColumns",
+                "ntextColumn" + columnCount++,
+                typeof(string),
+                length: int.MaxValue
+            ),
+            new(null, "testWithAllColumns", "floatColumn2" + columnCount++, typeof(float)),
+            new(null, "testWithAllColumns", "doubleColumn2" + columnCount++, typeof(double)),
+            new(null, "testWithAllColumns", "guidArrayColumn" + columnCount++, typeof(Guid[])),
+            new(null, "testWithAllColumns", "intArrayColumn" + columnCount++, typeof(int[])),
+            new(null, "testWithAllColumns", "longArrayColumn" + columnCount++, typeof(long[])),
+            new(null, "testWithAllColumns", "doubleArrayColumn" + columnCount++, typeof(double[])),
+            new(
+                null,
+                "testWithAllColumns",
+                "decimalArrayColumn" + columnCount++,
+                typeof(decimal[])
+            ),
+            new(null, "testWithAllColumns", "stringArrayColumn" + columnCount++, typeof(string[])),
+            new(
+                null,
+                "testWithAllColumns",
+                "stringDectionaryArrayColumn" + columnCount++,
+                typeof(Dictionary<string, string>)
+            ),
+            new(
+                null,
+                "testWithAllColumns",
+                "objectDectionaryArrayColumn" + columnCount++,
+                typeof(Dictionary<string, object>)
+            )
         };
         await connection.CreateTableIfNotExistsAsync(null, "testWithAllColumns", [addColumns[0]]);
         foreach (var col in addColumns.Skip(1))
@@ -231,8 +231,15 @@ public abstract partial class DatabaseMethodsTests
                 Assert.Equal(col.IsAutoIncrement, column.IsAutoIncrement);
                 Assert.Equal(col.IsNullable, column.IsNullable);
                 Assert.Equal(col.IsForeignKey, column.IsForeignKey);
-                // Assert.Equal(col.DotnetType, column.DotnetType);
-                // Assert.Equal(col.ProviderDataType, column.ProviderDataType);
+                if (col.IsForeignKey)
+                {
+                    Assert.Equal(col.ReferencedTableName, column.ReferencedTableName);
+                    Assert.Equal(col.ReferencedColumnName, column.ReferencedColumnName);
+                    Assert.Equal(col.OnDelete, column.OnDelete);
+                    Assert.Equal(col.OnUpdate, column.OnUpdate);
+                }
+                Assert.Equal(col.ProviderDataType, column.ProviderDataType);
+                Assert.Equal(col.DotnetType, column.DotnetType);
                 Assert.Equal(col.Length, column.Length);
                 Assert.Equal(col.Precision, column.Precision);
                 Assert.Equal(col.Scale ?? 0, column.Scale ?? 0);

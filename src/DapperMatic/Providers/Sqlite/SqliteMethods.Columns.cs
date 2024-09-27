@@ -247,14 +247,14 @@ public partial class SqliteMethods
             ? GetSqlTypeFromDotnetType(dotnetType, length, precision, scale)
             : providerDataType;
 
-        Logger.LogInformation(
-            "Converted type {dotnetType} with length: {length}, precision: {precision}, scale: {scale} to {sqlType}",
-            dotnetType,
-            length,
-            precision,
-            scale,
-            columnType
-        );
+        // Logger.LogInformation(
+        //     "Converted type {dotnetType} with length: {length}, precision: {precision}, scale: {scale} to {sqlType}",
+        //     dotnetType,
+        //     length,
+        //     precision,
+        //     scale,
+        //     columnType
+        // );
 
         var columnSql = new StringBuilder();
         columnSql.Append($"{columnName} {columnType}");
@@ -397,12 +397,13 @@ public partial class SqliteMethods
 
         var columnSqlString = columnSql.ToString();
 
-        Logger.LogDebug(
-            "Generated column definition SQL: {sql} for column '{columnName}' in table '{tableName}'",
+        Logger.LogInformation(
+            "Generated column SQL: \n{sql}\n for column '{columnName}' in table '{tableName}'",
             columnSqlString,
             columnName,
             tableName
         );
+
         return columnSqlString;
     }
 }

@@ -35,8 +35,8 @@ public partial class SqliteMethods
         var createIndexSql =
             $"CREATE {(isUnique ? "UNIQUE INDEX" : "INDEX")} {indexName} ON {tableName} ({string.Join(", ", columns.Select(c => c.ToString()))})";
 
-        Logger.LogDebug(
-            "Generated index definition SQL: {sql} for index '{indexName}' ON {tableName}",
+        Logger.LogInformation(
+            "Generated index SQL: \n{sql}\n for index '{indexName}' ON {tableName}",
             createIndexSql,
             indexName,
             tableName
