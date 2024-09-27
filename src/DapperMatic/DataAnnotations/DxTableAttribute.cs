@@ -1,6 +1,6 @@
 namespace DapperMatic.DataAnnotations;
 
-[AttributeUsage(AttributeTargets.Class, Inherited = false, AllowMultiple = false)]
+[AttributeUsage(AttributeTargets.Class, Inherited = true, AllowMultiple = false)]
 public class DxTableAttribute : Attribute
 {
     public DxTableAttribute() { }

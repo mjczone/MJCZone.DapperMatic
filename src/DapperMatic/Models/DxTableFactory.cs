@@ -8,19 +8,69 @@ namespace DapperMatic.Models;
 public static class DxTableFactory
 {
     private static ConcurrentDictionary<Type, DxTable> _cache = new();
+    private static ConcurrentDictionary<Type, Dictionary<string, DxColumn>> _propertyCache = new();
+
+    private static Action<Type, DxTable>? _customMappingAction = null;
+
+    /// <summary>
+    /// Configure ahead of time any custom configuration for mapping types to DxTable instances. Call this
+    /// before the application attempts to map types to DxTable instances, as the mappings are cached once generated
+    /// the very first time.
+    /// </summary>
+    /// <param name="configure">A delegate that receives the Type that is currently being mapped to a DxTable, and an initial DxTable that represents the default mapping before any customizations are applied. The delegate will run when the GetTable method is run for the first time each particular type.</param>
+    public static void Configure(Action<Type, DxTable> configure)
+    {
+        _customMappingAction = configure;
+    }
+
+    /// <summary>
+    /// Configure a specific type to your liking. This method can be used to customize the behavior of DxTable generation.
+    /// </summary>
+    /// <param name="configure">A delegate that receives an initial DxTable that represents the default mapping before any customizations are applied. The type mapping is created immediately and the delegate is run immediately as well.</param>
+    /// <typeparam name="T">Type that should be mapped to a DxTable instance.</typeparam>
+    public static void Configure<T>(Action<DxTable> configure)
+    {
+        Configure(typeof(T), configure);
+    }
+
+    /// <summary>
+    /// Configure a specific type to your liking. This method can be used to customize the behavior of DxTable generation.
+    /// </summary>
+    /// <param name="type">Type that should be mapped to a DxTable instance.</param>
+    /// <param name="configure">A delegate that receives an initial DxTable that represents the default mapping before any customizations are applied. The type mapping is created immediately and the delegate is run immediately as well.</param>
+    public static void Configure(Type type, Action<DxTable> configure)
+    {
+        var table = GetTable(type);
+        configure(table);
+        _cache.AddOrUpdate(type, table, (_, _) => table);
+    }
 
     /// <summary>
     /// Returns an instance of a DxTable for the given type. If the type is not a valid DxTable,
     /// denoted by the use of a DxTableAAttribute on the class, this method returns null.
     /// </summary>
-    public static DxTable? GetTable(Type type)
+    public static DxTable GetTable(Type type)
     {
         if (_cache.TryGetValue(type, out var table))
             return table;
 
-        var tableAttribute = type.GetCustomAttribute<DxTableAttribute>();
-        if (tableAttribute == null)
-            return null;
+        var propertyNameToColumnMap = new Dictionary<string, DxColumn>();
+        table = GetTableInternal(type, propertyNameToColumnMap);
+
+        _customMappingAction?.Invoke(type, table);
+
+        _cache.TryAdd(type, table);
+        _propertyCache.TryAdd(type, propertyNameToColumnMap);
+        return table;
+    }
+
+    private static DxTable GetTableInternal(
+        Type type,
+        Dictionary<string, DxColumn> propertyMappings
+    )
+    {
+        var tableAttribute =
+            type.GetCustomAttribute<DxTableAttribute>() ?? new DxTableAttribute(null, type.Name);
 
         var schemaName = string.IsNullOrWhiteSpace(tableAttribute.SchemaName)
             ? null
@@ -33,7 +83,6 @@ public static class DxTableFactory
         // columns must bind to public properties that can be both read and written
         var properties = type.GetProperties(BindingFlags.Public | BindingFlags.Instance)
             .Where(p => p.CanRead && p.CanWrite);
-        var propertyNameToColumnMap = new Dictionary<string, DxColumn>();
 
         DxPrimaryKeyConstraint? primaryKey = null;
         var columns = new List<DxColumn>();
@@ -45,6 +94,10 @@ public static class DxTableFactory
 
         foreach (var property in properties)
         {
+            var ignoreAttribute = property.GetCustomAttribute<DxIgnoreAttribute>();
+            if (ignoreAttribute != null)
+                continue;
+
             var columnAttribute = property.GetCustomAttribute<DxColumnAttribute>();
             var columnName = string.IsNullOrWhiteSpace(tableAttribute?.TableName)
                 ? type.Name
@@ -81,7 +134,7 @@ public static class DxTableFactory
                 columnAttribute?.OnUpdate ?? null
             );
             columns.Add(column);
-            propertyNameToColumnMap.Add(property.Name, column);
+            propertyMappings.Add(property.Name, column);
 
             if (column.Length == null)
             {
@@ -400,7 +453,7 @@ public static class DxTableFactory
             }
         }
 
-        table = new DxTable(
+        var table = new DxTable(
             schemaName,
             tableName,
             [.. columns],
@@ -411,8 +464,6 @@ public static class DxTableFactory
             [.. foreignKeyConstraints],
             [.. indexes]
         );
-
-        _cache.TryAdd(type, table);
         return table;
     }
 }

@@ -2,7 +2,7 @@ using DapperMatic.Models;
 
 namespace DapperMatic.DataAnnotations;
 
-[AttributeUsage(AttributeTargets.Property, Inherited = false, AllowMultiple = false)]
+[AttributeUsage(AttributeTargets.Property, Inherited = true, AllowMultiple = false)]
 public class DxColumnAttribute : Attribute
 {
     public DxColumnAttribute(

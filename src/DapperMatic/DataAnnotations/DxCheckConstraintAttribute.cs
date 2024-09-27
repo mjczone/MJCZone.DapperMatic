@@ -9,7 +9,7 @@ namespace DapperMatic.DataAnnotations;
 /// </example>
 [AttributeUsage(
     AttributeTargets.Property | AttributeTargets.Class,
-    Inherited = false,
+    Inherited = true,
     AllowMultiple = false
 )]
 public class DxCheckConstraintAttribute : Attribute
