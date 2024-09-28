@@ -12,10 +12,10 @@ The following table outlines the various extension methods available for `IDbCon
 
 | Method Name                              | Description                                                                                       |
 |------------------------------------------|---------------------------------------------------------------------------------------------------|
-
-| **Database Methods** | |
+| **Database Methods**                     |                                                                                                   |
+| `GetDotnetTypeFromSqlType`               | Converts a provider sql type into a .NET type (e.g.: nvarchar -> typeof(string))                  |
 | `GetDatabaseVersionAsync`                | Retrieves the version of the database.                                                            |
-| **Schema Methods** | |
+| **Schema Methods**                       |                                                                                                   |
 | `SupportsSchemasAsync`                   | Checks if the database supports schemas.                                                          |
 | `DoesSchemaExistAsync`                   | Checks if a schema exists in the database.                                                        |
 | `CreateSchemaIfNotExistsAsync`           | Creates a schema if it does not already exist in the database.                                    |
@@ -50,13 +50,13 @@ The following table outlines the various extension methods available for `IDbCon
 | **Foreign Key Constraint Methods**       |                                                                                                   |
 | `GetForeignKeyNamesAsync`                | Retrieves the names of foreign keys in a specified table.                                         |
 | `GetForeignKeyConstraintOnColumnAsync`   | Retrieves the foreign key constraint on a specified column.                                       |
-| `CreateForeignKeyConstraintIfNotExistsAsync` | Creates a foreign key constraint if it does not already exist on a specified table.               |
+| `CreateForeignKeyConstraintIfNotExistsAsync` | Creates a foreign key constraint if it does not already exist on a specified table.           |
 | `DropForeignKeyConstraintIfExistsAsync`  | Drops a foreign key constraint if it exists on a specified table.                                 |
 | `RenameForeignKeyConstraintIfExistsAsync`| Renames a foreign key constraint if it exists on a specified table.                               |
 | `DoesForeignKeyConstraintExistAsync`     | Checks if a foreign key constraint exists on a specified table.                                   |
 | **Primary Key Constraint Methods**       |                                                                                                   |
 | `GetPrimaryKeyNamesAsync`                | Retrieves the names of primary keys in a specified table.                                         |
-| `CreatePrimaryKeyConstraintIfNotExistsAsync` | Creates a primary key constraint if it does not already exist on a specified table.               |
+| `CreatePrimaryKeyConstraintIfNotExistsAsync` | Creates a primary key constraint if it does not already exist on a specified table.           |
 | `DropPrimaryKeyConstraintIfExistsAsync`  | Drops a primary key constraint if it exists on a specified table.                                 |
 | `RenamePrimaryKeyConstraintIfExistsAsync`| Renames a primary key constraint if it exists on a specified table.                               |
 | `DoesPrimaryKeyConstraintExistAsync`     | Checks if a primary key constraint exists on a specified table.                                   |
@@ -71,7 +71,7 @@ The following table outlines the various extension methods available for `IDbCon
 | `CreateCheckConstraintIfNotExistsAsync`  | Creates a check constraint if it does not already exist on a specified table.                     |
 | `DropCheckConstraintIfExistsAsync`       | Drops a check constraint if it exists on a specified table.                                       |
 | `RenameCheckConstraintIfExistsAsync`     | Renames a check constraint if it exists on a specified table.                                     |
-| `DoesCheckConstraintExistAsync`          | Checks if a check constraint exists on a specified table.
+| `DoesCheckConstraintExistAsync`          | Checks if a check constraint exists on a specified table.                                         |
 
 ## Implementation details
 
