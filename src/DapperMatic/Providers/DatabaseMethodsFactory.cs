@@ -24,7 +24,7 @@ public static class DatabaseMethodsFactory
         databaseMethods = providerType switch
         {
             DbProviderType.Sqlite => new Sqlite.SqliteMethods(),
-            // DbProviderType.SqlServer => new SqlServer.SqlServerMethods(),
+            DbProviderType.SqlServer => new SqlServer.SqlServerMethods(),
             // DbProviderType.MySql => new MySql.MySqlMethods(),
             // DbProviderType.PostgreSql => new PostgreSql.PostgreSqlMethods(),
             _ => throw new NotSupportedException($"Provider {providerType} is not supported.")
