@@ -8,7 +8,7 @@ public partial class MySqlMethods : DatabaseMethodsBase, IDatabaseMethods
     protected override string DefaultSchema => "";
 
     protected override List<DataTypeMap> DataTypes =>
-        DataTypeMapFactory.GetDefaultDatabaseTypeDataTypeMap(DbProviderType.MySql);
+        DataTypeMapFactory.GetDefaultDbProviderDataTypeMap(DbProviderType.MySql);
 
     internal MySqlMethods() { }
 
@@ -18,12 +18,17 @@ public partial class MySqlMethods : DatabaseMethodsBase, IDatabaseMethods
         CancellationToken cancellationToken = default
     )
     {
-        return await ExecuteScalarAsync<string>(db, $@"select sqlite_version()", transaction: tx)
+        return await ExecuteScalarAsync<string>(db, $@"SELECT VERSION()", transaction: tx)
                 .ConfigureAwait(false) ?? "";
     }
 
     public override Type GetDotnetTypeFromSqlType(string sqlType)
     {
-        throw new NotImplementedException();
+        return MySqlSqlParser.GetDotnetTypeFromSqlType(sqlType);
+    }
+
+    protected override string GetSchemaQualifiedTableName(string schemaName, string tableName)
+    {
+        return tableName;
     }
 }

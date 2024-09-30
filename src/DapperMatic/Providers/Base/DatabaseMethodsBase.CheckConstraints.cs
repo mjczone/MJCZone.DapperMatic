@@ -5,6 +5,8 @@ namespace DapperMatic.Providers;
 
 public abstract partial class DatabaseMethodsBase : IDatabaseCheckConstraintMethods
 {
+    protected abstract string GetSchemaQualifiedTableName(string schemaName, string tableName);
+
     public virtual async Task<bool> DoesCheckConstraintExistAsync(
         IDbConnection db,
         string? schemaName,
@@ -266,14 +268,11 @@ public abstract partial class DatabaseMethodsBase : IDatabaseCheckConstraintMeth
             constraintName
         );
 
-        var compoundTableName = await SupportsSchemasAsync(db, tx, cancellationToken)
-            .ConfigureAwait(false)
-            ? $"{schemaName}.{tableName}"
-            : tableName;
+        var schemaQualifiedTableName = GetSchemaQualifiedTableName(schemaName, tableName);
 
         await ExecuteAsync(
                 db,
-                $@"ALTER TABLE {compoundTableName} 
+                $@"ALTER TABLE {schemaQualifiedTableName} 
                     DROP CONSTRAINT {constraintName}",
                 transaction: tx
             )

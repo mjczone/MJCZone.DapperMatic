@@ -266,14 +266,11 @@ public abstract partial class DatabaseMethodsBase : IDatabaseForeignKeyConstrain
             constraintName
         );
 
-        var compoundTableName = await SupportsSchemasAsync(db, tx, cancellationToken)
-            .ConfigureAwait(false)
-            ? $"{schemaName}.{tableName}"
-            : tableName;
+        var schemaQualifiedTableName = GetSchemaQualifiedTableName(schemaName, tableName);
 
         await ExecuteAsync(
                 db,
-                $@"ALTER TABLE {compoundTableName} 
+                $@"ALTER TABLE {schemaQualifiedTableName} 
                     DROP CONSTRAINT {constraintName}",
                 transaction: tx
             )

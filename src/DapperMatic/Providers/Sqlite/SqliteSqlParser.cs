@@ -6,6 +6,66 @@ namespace DapperMatic.Providers.Sqlite;
 
 public static partial class SqliteSqlParser
 {
+    public static Type GetDotnetTypeFromSqlType(string sqlType)
+    {
+        var simpleSqlType = sqlType.Split('(')[0].ToLower();
+
+        var match = DataTypeMapFactory
+            .GetDefaultDbProviderDataTypeMap(DbProviderType.Sqlite)
+            .FirstOrDefault(x =>
+                x.SqlType.Equals(simpleSqlType, StringComparison.OrdinalIgnoreCase)
+            )
+            ?.DotnetType;
+
+        if (match != null)
+            return match;
+
+        // SQLite specific types, see https://www.sqlite.org/datatype3.html
+        switch (simpleSqlType)
+        {
+            case "int":
+            case "integer":
+            case "mediumint":
+            case "int2":
+            case "int8":
+                return typeof(int);
+            case "tinyint":
+            case "smallint":
+                return typeof(short);
+            case "bigint":
+            case "unsigned big int":
+                return typeof(long);
+            case "character":
+            case "varchar":
+            case "varying character":
+            case "nchar":
+            case "native character":
+            case "nvarchar":
+            case "text":
+            case "clob":
+                return typeof(string);
+            case "blob":
+                return typeof(byte[]);
+            case "real":
+            case "double":
+                return typeof(double);
+            case "float":
+            case "double precision":
+            case "numeric":
+            case "decimal":
+                return typeof(decimal);
+            case "date":
+            case "datetime":
+                return typeof(DateTime);
+            case "boolean":
+            case "bool":
+                return typeof(bool);
+            default:
+                // If no match, default to object
+                return typeof(object);
+        }
+    }
+
     public static DxTable? ParseCreateTableStatement(string createTableSql)
     {
         var statements = ParseDdlSql(createTableSql);
@@ -623,66 +683,6 @@ public static partial class SqliteSqlParser
             .Cast<DxOrderedColumn>()
             .ToArray();
         return pkOrderedColumns;
-    }
-
-    public static Type GetDotnetTypeFromSqlType(string sqlType)
-    {
-        var simpleSqlType = sqlType.Split('(')[0].ToLower();
-
-        var match = DataTypeMapFactory
-            .GetDefaultDatabaseTypeDataTypeMap(DbProviderType.Sqlite)
-            .FirstOrDefault(x =>
-                x.SqlType.Equals(simpleSqlType, StringComparison.OrdinalIgnoreCase)
-            )
-            ?.DotnetType;
-
-        if (match != null)
-            return match;
-
-        // SQLite specific types, see https://www.sqlite.org/datatype3.html
-        switch (simpleSqlType)
-        {
-            case "int":
-            case "integer":
-            case "mediumint":
-            case "int2":
-            case "int8":
-                return typeof(int);
-            case "tinyint":
-            case "smallint":
-                return typeof(short);
-            case "bigint":
-            case "unsigned big int":
-                return typeof(long);
-            case "character":
-            case "varchar":
-            case "varying character":
-            case "nchar":
-            case "native character":
-            case "nvarchar":
-            case "text":
-            case "clob":
-                return typeof(string);
-            case "blob":
-                return typeof(byte[]);
-            case "real":
-            case "double":
-                return typeof(double);
-            case "float":
-            case "double precision":
-            case "numeric":
-            case "decimal":
-                return typeof(decimal);
-            case "date":
-            case "datetime":
-                return typeof(DateTime);
-            case "boolean":
-            case "bool":
-                return typeof(bool);
-            default:
-                // If no match, default to object
-                return typeof(object);
-        }
     }
 }
 

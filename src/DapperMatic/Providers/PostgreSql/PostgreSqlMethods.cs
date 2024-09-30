@@ -5,10 +5,17 @@ namespace DapperMatic.Providers.PostgreSql;
 
 public partial class PostgreSqlMethods : DatabaseMethodsBase, IDatabaseMethods
 {
-    protected override string DefaultSchema => "";
+    private static string _defaultSchema = "public";
+
+    public static void SetDefaultSchema(string schema)
+    {
+        _defaultSchema = schema;
+    }
+
+    protected override string DefaultSchema => _defaultSchema;
 
     protected override List<DataTypeMap> DataTypes =>
-        DataTypeMapFactory.GetDefaultDatabaseTypeDataTypeMap(DbProviderType.PostgreSql);
+        DataTypeMapFactory.GetDefaultDbProviderDataTypeMap(DbProviderType.PostgreSql);
 
     internal PostgreSqlMethods() { }
 
@@ -18,12 +25,17 @@ public partial class PostgreSqlMethods : DatabaseMethodsBase, IDatabaseMethods
         CancellationToken cancellationToken = default
     )
     {
-        return await ExecuteScalarAsync<string>(db, $@"select sqlite_version()", transaction: tx)
+        return await ExecuteScalarAsync<string>(db, $@"SELECT version()", transaction: tx)
                 .ConfigureAwait(false) ?? "";
     }
 
     public override Type GetDotnetTypeFromSqlType(string sqlType)
     {
-        throw new NotImplementedException();
+        return PostgreSqlSqlParser.GetDotnetTypeFromSqlType(sqlType);
+    }
+
+    protected override string GetSchemaQualifiedTableName(string schemaName, string tableName)
+    {
+        return string.IsNullOrWhiteSpace(schemaName) ? $"{tableName}" : $"{schemaName}.{tableName}";
     }
 }

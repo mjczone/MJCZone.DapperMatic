@@ -9,7 +9,17 @@ public static class DataTypeMapFactory
         List<DataTypeMap>
     > _databaseTypeDataTypeMappings = new();
 
-    public static List<DataTypeMap> GetDefaultDatabaseTypeDataTypeMap(DbProviderType databaseType)
+    public static void UpdateDefaultDbProviderDataTypeMap(
+        DbProviderType dbProviderType,
+        Func<List<DataTypeMap>, List<DataTypeMap>> updateFunc
+    )
+    {
+        var dataTypeMap = GetDefaultDbProviderDataTypeMap(dbProviderType);
+        var newDataTypeMap = updateFunc([.. dataTypeMap]);
+        _databaseTypeDataTypeMappings.TryUpdate(dbProviderType, newDataTypeMap, dataTypeMap);
+    }
+
+    public static List<DataTypeMap> GetDefaultDbProviderDataTypeMap(DbProviderType databaseType)
     {
         return _databaseTypeDataTypeMappings.GetOrAdd(
             databaseType,

@@ -14,7 +14,7 @@ public abstract partial class DatabaseMethodsBase : IDatabaseMethods
 
     protected abstract List<DataTypeMap> DataTypes { get; }
 
-    protected DataTypeMap? GetDbType(Type type)
+    protected DataTypeMap? GetDataType(Type type)
     {
         var dotnetType = Nullable.GetUnderlyingType(type) ?? type;
         return DataTypes.FirstOrDefault(x => x.DotnetType == type);
@@ -30,7 +30,7 @@ public abstract partial class DatabaseMethodsBase : IDatabaseMethods
     )
     {
         var dotnetType = Nullable.GetUnderlyingType(type) ?? type;
-        var dataType = GetDbType(dotnetType);
+        var dataType = GetDataType(dotnetType);
 
         if (dataType == null)
         {
@@ -77,11 +77,21 @@ public abstract partial class DatabaseMethodsBase : IDatabaseMethods
         return sqlType ?? dataType.SqlType;
     }
 
+    /// <summary>
+    /// The default implementation simply removes all non-alphanumeric characters from the provided name identifier, replacing them with underscores.
+    /// </summary>
     protected virtual string NormalizeName(string name)
     {
         return ToAlphaNumericString(name, "_");
     }
 
+    /// <summary>
+    /// The schema name is normalized to the default schema if it is null or empty.
+    /// If the default schema is null or empty,
+    /// the implementation simply removes all non-alphanumeric characters from the provided name, replacing them with underscores.
+    /// </summary>
+    /// <param name="schemaName"></param>
+    /// <returns></returns>
     protected virtual string NormalizeSchemaName(string? schemaName)
     {
         if (string.IsNullOrWhiteSpace(schemaName))
@@ -92,6 +102,15 @@ public abstract partial class DatabaseMethodsBase : IDatabaseMethods
         return schemaName;
     }
 
+    /// <summary>
+    /// The default implementation simply removes all non-alphanumeric characters from the schema, table, and identifier names, replacing them with underscores.
+    /// The schema name is normalized to the default schema if it is null or empty.
+    /// If the default schema is null or empty, the schema name is normalized as the other names.
+    /// </summary>
+    /// <param name="schemaName"></param>
+    /// <param name="tableName"></param>
+    /// <param name="identifierName"></param>
+    /// <returns></returns>
     protected virtual (string schemaName, string tableName, string identifierName) NormalizeNames(
         string? schemaName = null,
         string? tableName = null,

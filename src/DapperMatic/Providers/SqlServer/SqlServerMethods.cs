@@ -4,10 +4,17 @@ namespace DapperMatic.Providers.SqlServer;
 
 public partial class SqlServerMethods : DatabaseMethodsBase, IDatabaseMethods
 {
-    protected override string DefaultSchema => "";
+    private static string _defaultSchema = "dbo";
+
+    public static void SetDefaultSchema(string schema)
+    {
+        _defaultSchema = schema;
+    }
+
+    protected override string DefaultSchema => _defaultSchema;
 
     protected override List<DataTypeMap> DataTypes =>
-        DataTypeMapFactory.GetDefaultDatabaseTypeDataTypeMap(DbProviderType.SqlServer);
+        DataTypeMapFactory.GetDefaultDbProviderDataTypeMap(DbProviderType.SqlServer);
 
     internal SqlServerMethods() { }
 
@@ -17,12 +24,29 @@ public partial class SqlServerMethods : DatabaseMethodsBase, IDatabaseMethods
         CancellationToken cancellationToken = default
     )
     {
-        return await ExecuteScalarAsync<string>(db, $@"select sqlite_version()", transaction: tx)
+        /*
+            SELECT
+            SERVERPROPERTY('Productversion') As [SQL Server Version],
+            SERVERPROPERTY('Productlevel') As [SQL Server Build Level],
+            SERVERPROPERTY('edition') As [SQL Server Edition]
+         */
+        return await ExecuteScalarAsync<string>(
+                    db,
+                    $@"SELECT SERVERPROPERTY('Productversion')",
+                    transaction: tx
+                )
                 .ConfigureAwait(false) ?? "";
     }
 
     public override Type GetDotnetTypeFromSqlType(string sqlType)
     {
-        throw new NotImplementedException();
+        return SqlServerSqlParser.GetDotnetTypeFromSqlType(sqlType);
+    }
+
+    protected override string GetSchemaQualifiedTableName(string schemaName, string tableName)
+    {
+        return string.IsNullOrWhiteSpace(schemaName)
+            ? $"[{tableName}]"
+            : $"[{schemaName}].[{tableName}]";
     }
 }

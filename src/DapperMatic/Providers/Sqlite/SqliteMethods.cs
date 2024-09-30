@@ -1,7 +1,4 @@
 using System.Data;
-using System.Data.Common;
-using System.Text;
-using DapperMatic.Models;
 
 namespace DapperMatic.Providers.Sqlite;
 
@@ -10,7 +7,7 @@ public partial class SqliteMethods : DatabaseMethodsBase, IDatabaseMethods
     protected override string DefaultSchema => "";
 
     protected override List<DataTypeMap> DataTypes =>
-        DataTypeMapFactory.GetDefaultDatabaseTypeDataTypeMap(DbProviderType.Sqlite);
+        DataTypeMapFactory.GetDefaultDbProviderDataTypeMap(DbProviderType.Sqlite);
 
     internal SqliteMethods() { }
 
@@ -27,5 +24,10 @@ public partial class SqliteMethods : DatabaseMethodsBase, IDatabaseMethods
     public override Type GetDotnetTypeFromSqlType(string sqlType)
     {
         return SqliteSqlParser.GetDotnetTypeFromSqlType(sqlType);
+    }
+
+    protected override string GetSchemaQualifiedTableName(string schemaName, string tableName)
+    {
+        return tableName;
     }
 }

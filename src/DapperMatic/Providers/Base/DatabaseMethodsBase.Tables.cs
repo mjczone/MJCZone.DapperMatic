@@ -113,13 +113,10 @@ public abstract partial class DatabaseMethodsBase : IDatabaseTableMethods
 
         (schemaName, tableName, _) = NormalizeNames(schemaName, tableName);
 
-        var compoundTableName = await SupportsSchemasAsync(db, tx, cancellationToken)
-            .ConfigureAwait(false)
-            ? $"{schemaName}.{tableName}"
-            : tableName;
+        var schemaQualifiedTableName = GetSchemaQualifiedTableName(schemaName, tableName);
 
         // drop table
-        await ExecuteAsync(db, $@"DROP TABLE {compoundTableName}", transaction: tx)
+        await ExecuteAsync(db, $@"DROP TABLE {schemaQualifiedTableName}", transaction: tx)
             .ConfigureAwait(false);
 
         return true;
@@ -144,14 +141,11 @@ public abstract partial class DatabaseMethodsBase : IDatabaseTableMethods
 
         (schemaName, tableName, _) = NormalizeNames(schemaName, tableName);
 
-        var compoundTableName = await SupportsSchemasAsync(db, tx, cancellationToken)
-            .ConfigureAwait(false)
-            ? $"{schemaName}.{tableName}"
-            : tableName;
+        var schemaQualifiedTableName = GetSchemaQualifiedTableName(schemaName, tableName);
 
         await ExecuteAsync(
                 db,
-                $@"ALTER TABLE {compoundTableName} RENAME TO {newTableName}",
+                $@"ALTER TABLE {schemaQualifiedTableName} RENAME TO {newTableName}",
                 transaction: tx
             )
             .ConfigureAwait(false);
@@ -177,12 +171,9 @@ public abstract partial class DatabaseMethodsBase : IDatabaseTableMethods
 
         (schemaName, tableName, _) = NormalizeNames(schemaName, tableName);
 
-        var compoundTableName = await SupportsSchemasAsync(db, tx, cancellationToken)
-            .ConfigureAwait(false)
-            ? $"{schemaName}.{tableName}"
-            : tableName;
+        var schemaQualifiedTableName = GetSchemaQualifiedTableName(schemaName, tableName);
 
-        await ExecuteAsync(db, $@"TRUNCATE TABLE {compoundTableName}", transaction: tx)
+        await ExecuteAsync(db, $@"TRUNCATE TABLE {schemaQualifiedTableName}", transaction: tx)
             .ConfigureAwait(false);
 
         return true;
