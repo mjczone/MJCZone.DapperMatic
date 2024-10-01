@@ -16,7 +16,11 @@ public partial class SqliteMethods
         CancellationToken cancellationToken = default
     )
     {
-        (_, tableName, constraintName) = NormalizeNames(schemaName, tableName, constraintName);
+        if (string.IsNullOrWhiteSpace(tableName))
+            throw new ArgumentException("Table name is required.", nameof(tableName));
+
+        if (string.IsNullOrWhiteSpace(constraintName))
+            throw new ArgumentException("Constraint name is required.", nameof(constraintName));
 
         if (columns.Length == 0)
             throw new ArgumentException("At least one column must be specified.", nameof(columns));
@@ -32,125 +36,32 @@ public partial class SqliteMethods
                 .ConfigureAwait(false)
         )
             return false;
-        // get the create table sql for the existing table
-        var sql = await ExecuteScalarAsync<string>(
-                db,
-                $@"SELECT sql FROM sqlite_master WHERE type = 'table' AND name = @tableName",
-                new { tableName },
-                transaction: tx
-            )
-            .ConfigureAwait(false);
-        if (string.IsNullOrWhiteSpace(sql))
-            return false;
 
-        // get the create index sql statements for the existing table
-        var createIndexStatements = await GetCreateIndexSqlStatementsForTable(
+        (_, tableName, constraintName) = NormalizeNames(schemaName, tableName, constraintName);
+
+        return await AlterTableUsingRecreateTableStrategyAsync(
                 db,
                 schemaName,
                 tableName,
+                table =>
+                {
+                    return table.PrimaryKeyConstraint is null;
+                },
+                table =>
+                {
+                    table.PrimaryKeyConstraint = new DxPrimaryKeyConstraint(
+                        schemaName,
+                        tableName,
+                        constraintName,
+                        columns
+                    );
+
+                    return table;
+                },
                 tx,
                 cancellationToken
             )
             .ConfigureAwait(false);
-
-        // create a new table with the same name as the old table, but with a temporary suffix
-        // this is the safest approach as it will not break any existing data or references
-        // however, it might be risky if there are foreign key constraints or other dependencies on the old table
-        var newTableName = $"{tableName}_temp";
-        // try renaming the table in the sql statement from safest approach to most risky approach
-        var newTableSql = sql.Replace(
-            $"CREATE TABLE {tableName}",
-            $"CREATE TABLE {newTableName}",
-            StringComparison.OrdinalIgnoreCase
-        );
-        if (newTableSql == sql)
-            newTableSql = sql.Replace(
-                $"CREATE TABLE \"{tableName}\"",
-                $"CREATE TABLE \"{newTableName}\"",
-                StringComparison.OrdinalIgnoreCase
-            );
-        if (newTableSql == sql)
-            newTableSql = sql.Replace(tableName, newTableName, StringComparison.OrdinalIgnoreCase);
-        if (newTableSql == sql)
-            return false;
-
-        // add the constraint to the end of the sql statement
-        newTableSql = newTableSql.Insert(
-            newTableSql.LastIndexOf(")"),
-            $", CONSTRAINT {constraintName} PRIMARY KEY ({string.Join(", ", columns.Select(c => c.ToString()))})"
-        );
-
-        // disable foreign key constraints temporarily
-        await ExecuteAsync(db, "PRAGMA foreign_keys = 0", tx).ConfigureAwait(false);
-
-        var innerTx = (DbTransaction)(
-            tx
-            ?? await (db as DbConnection)!
-                .BeginTransactionAsync(cancellationToken)
-                .ConfigureAwait(false)
-        );
-        try
-        {
-            // create the new table
-            await ExecuteAsync(db, newTableSql, transaction: innerTx).ConfigureAwait(false);
-
-            // populate the new table with the data from the old table
-            await ExecuteAsync(
-                    db,
-                    $@"INSERT INTO {newTableName} SELECT * FROM {tableName}",
-                    transaction: innerTx
-                )
-                .ConfigureAwait(false);
-
-            // drop the old table
-            await ExecuteAsync(db, $@"DROP TABLE {tableName}", transaction: innerTx)
-                .ConfigureAwait(false);
-
-            // rename the new table to the old table name
-            await ExecuteAsync(
-                    db,
-                    $@"ALTER TABLE {newTableName} RENAME TO {tableName}",
-                    transaction: innerTx
-                )
-                .ConfigureAwait(false);
-
-            // add back the indexes to the new table
-            foreach (var createIndexStatement in createIndexStatements)
-            {
-                await ExecuteAsync(db, createIndexStatement, null, transaction: innerTx)
-                    .ConfigureAwait(false);
-            }
-
-            //TODO: add back the triggers to the new table
-
-            //TODO: add back the views to the new table
-
-            // commit the transaction
-            if (tx == null)
-            {
-                await innerTx.CommitAsync(cancellationToken).ConfigureAwait(false);
-            }
-        }
-        catch
-        {
-            if (tx == null)
-            {
-                await innerTx.RollbackAsync(cancellationToken).ConfigureAwait(false);
-            }
-            throw;
-        }
-        finally
-        {
-            if (tx == null)
-            {
-                await innerTx.DisposeAsync();
-                innerTx = null;
-            }
-            // re-enable foreign key constraints
-            await ExecuteAsync(db, "PRAGMA foreign_keys = 1", tx).ConfigureAwait(false);
-        }
-
-        return true;
     }
 
     public override async Task<bool> DropPrimaryKeyConstraintIfExistsAsync(
@@ -161,116 +72,41 @@ public partial class SqliteMethods
         CancellationToken cancellationToken = default
     )
     {
-        var table = await GetTableAsync(db, schemaName, tableName, tx, cancellationToken)
-            .ConfigureAwait(false);
-        if (table?.PrimaryKeyConstraint is null)
+        if (string.IsNullOrWhiteSpace(tableName))
+            throw new ArgumentException("Table name is required.", nameof(tableName));
+
+        if (
+            !await DoesPrimaryKeyConstraintExistAsync(
+                    db,
+                    schemaName,
+                    tableName,
+                    tx,
+                    cancellationToken
+                )
+                .ConfigureAwait(false)
+        )
             return false;
 
-        // to drop a primary key, you have to re-create the table in sqlite
-
-        // get the create table sql for the existing table
-        // var sql = await ExecuteScalarAsync<string>(
-        //         db,
-        //         $@"SELECT sql FROM sqlite_master WHERE type = 'table' AND name = @tableName",
-        //         new { tableName },
-        //         transaction: tx
-        //     )
-        //     .ConfigureAwait(false);
-        // if (string.IsNullOrWhiteSpace(sql))
-        //     return false;
-
-        // get the create index sql statements for the existing table
-        var createIndexStatements = await GetCreateIndexSqlStatementsForTable(
+        return await AlterTableUsingRecreateTableStrategyAsync(
                 db,
                 schemaName,
                 tableName,
+                table =>
+                {
+                    return table.PrimaryKeyConstraint is not null;
+                },
+                table =>
+                {
+                    table.PrimaryKeyConstraint = null;
+                    foreach (var column in table.Columns)
+                    {
+                        column.IsPrimaryKey = false;
+                    }
+                    return table;
+                },
                 tx,
                 cancellationToken
             )
             .ConfigureAwait(false);
-
-        // create a new table with the same name as the old table, but with a temporary suffix
-        var newTableName = $"{tableName}_temp";
-        table.TableName = newTableName;
-        table.PrimaryKeyConstraint = null;
-        foreach (var column in table.Columns)
-        {
-            if (column.IsPrimaryKey)
-                column.IsPrimaryKey = false;
-        }
-
-        // disable foreign key constraints temporarily
-        await ExecuteAsync(db, "PRAGMA foreign_keys = 0", tx).ConfigureAwait(false);
-
-        var innerTx = (DbTransaction)(
-            tx
-            ?? await (db as DbConnection)!
-                .BeginTransactionAsync(cancellationToken)
-                .ConfigureAwait(false)
-        );
-        try
-        {
-            var created = await CreateTableIfNotExistsAsync(db, table, tx, cancellationToken)
-                .ConfigureAwait(false);
-
-            if (created)
-            {
-                // populate the new table with the data from the old table
-                await ExecuteAsync(
-                        db,
-                        $@"INSERT INTO {newTableName} SELECT * FROM {tableName}",
-                        transaction: tx
-                    )
-                    .ConfigureAwait(false);
-
-                // drop the old table
-                await ExecuteAsync(db, $@"DROP TABLE {tableName}", transaction: tx)
-                    .ConfigureAwait(false);
-
-                // rename the new table to the old table name
-                await ExecuteAsync(
-                        db,
-                        $@"ALTER TABLE {newTableName} RENAME TO {tableName}",
-                        transaction: tx
-                    )
-                    .ConfigureAwait(false);
-
-                // add back the indexes to the new table
-                foreach (var createIndexStatement in createIndexStatements)
-                {
-                    await ExecuteAsync(db, createIndexStatement, null, transaction: innerTx)
-                        .ConfigureAwait(false);
-                }
-
-                //TODO: add back the triggers to the new table
-
-                //TODO: add back the views to the new table
-
-                // commit the transaction
-                if (tx == null)
-                {
-                    await innerTx.CommitAsync(cancellationToken).ConfigureAwait(false);
-                }
-            }
-        }
-        catch
-        {
-            if (tx == null)
-            {
-                await innerTx.RollbackAsync(cancellationToken).ConfigureAwait(false);
-            }
-            throw;
-        }
-        finally
-        {
-            if (tx == null)
-            {
-                await innerTx.DisposeAsync();
-            }
-            // re-enable foreign key constraints
-            await ExecuteAsync(db, "PRAGMA foreign_keys = 1", tx).ConfigureAwait(false);
-        }
-
-        return true;
     }
 }

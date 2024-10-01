@@ -7,7 +7,7 @@ namespace DapperMatic.Providers.SqlServer;
 
 public partial class SqlServerMethods
 {
-    public override Task<bool> CreateColumnIfNotExistsAsync(
+    public override async Task<bool> CreateColumnIfNotExistsAsync(
         IDbConnection db,
         string? schemaName,
         string tableName,
@@ -33,7 +33,19 @@ public partial class SqlServerMethods
         CancellationToken cancellationToken = default
     )
     {
-        throw new NotImplementedException();
+        if (string.IsNullOrWhiteSpace(tableName))
+            throw new ArgumentException("Table name cannot be null or empty", nameof(tableName));
+
+        if (string.IsNullOrWhiteSpace(columnName))
+            throw new ArgumentException("Column name cannot be null or empty", nameof(columnName));
+
+        if (
+            await DoesColumnExistAsync(db, schemaName, tableName, columnName, tx, cancellationToken)
+                .ConfigureAwait(false)
+        )
+            return false;
+
+        return false;
     }
 
     public override Task<bool> DropColumnIfExistsAsync(

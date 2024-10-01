@@ -67,7 +67,7 @@ public abstract partial class DatabaseMethodsBase : IDatabaseCheckConstraintMeth
             .ConfigureAwait(false);
     }
 
-    public abstract Task<bool> CreateCheckConstraintIfNotExistsAsync(
+    public virtual async Task<bool> CreateCheckConstraintIfNotExistsAsync(
         IDbConnection db,
         string? schemaName,
         string tableName,
@@ -76,7 +76,48 @@ public abstract partial class DatabaseMethodsBase : IDatabaseCheckConstraintMeth
         string expression,
         IDbTransaction? tx = null,
         CancellationToken cancellationToken = default
-    );
+    )
+    {
+        if (string.IsNullOrWhiteSpace(tableName))
+            throw new ArgumentException("Table name is required.", nameof(tableName));
+
+        if (string.IsNullOrWhiteSpace(constraintName))
+            throw new ArgumentException("Constraint name is required.", nameof(constraintName));
+
+        if (string.IsNullOrWhiteSpace(expression))
+            throw new ArgumentException("Expression is required.", nameof(expression));
+
+        if (
+            await DoesCheckConstraintExistAsync(
+                    db,
+                    schemaName,
+                    tableName,
+                    constraintName,
+                    tx,
+                    cancellationToken
+                )
+                .ConfigureAwait(false)
+        )
+            return false;
+
+        (schemaName, tableName, constraintName) = NormalizeNames(
+            schemaName,
+            tableName,
+            constraintName
+        );
+
+        var schemaQualifiedTableName = GetSchemaQualifiedTableName(schemaName, tableName);
+
+        var sql =
+            @$"
+            ALTER TABLE {schemaQualifiedTableName}
+                ADD CONSTRAINT {constraintName} CHECK ({expression})
+        ";
+
+        await ExecuteAsync(db, sql, transaction: tx).ConfigureAwait(false);
+
+        return true;
+    }
 
     public virtual async Task<DxCheckConstraint?> GetCheckConstraintAsync(
         IDbConnection db,
@@ -247,18 +288,22 @@ public abstract partial class DatabaseMethodsBase : IDatabaseCheckConstraintMeth
         CancellationToken cancellationToken = default
     )
     {
+        if (string.IsNullOrWhiteSpace(tableName))
+            throw new ArgumentException("Table name is required.", nameof(tableName));
+
+        if (string.IsNullOrWhiteSpace(constraintName))
+            throw new ArgumentException("Constraint name is required.", nameof(constraintName));
+
         if (
-            !(
-                await DoesCheckConstraintExistAsync(
-                        db,
-                        schemaName,
-                        tableName,
-                        constraintName,
-                        tx,
-                        cancellationToken
-                    )
-                    .ConfigureAwait(false)
-            )
+            !await DoesCheckConstraintExistAsync(
+                    db,
+                    schemaName,
+                    tableName,
+                    constraintName,
+                    tx,
+                    cancellationToken
+                )
+                .ConfigureAwait(false)
         )
             return false;
 
@@ -270,13 +315,13 @@ public abstract partial class DatabaseMethodsBase : IDatabaseCheckConstraintMeth
 
         var schemaQualifiedTableName = GetSchemaQualifiedTableName(schemaName, tableName);
 
-        await ExecuteAsync(
-                db,
-                $@"ALTER TABLE {schemaQualifiedTableName} 
-                    DROP CONSTRAINT {constraintName}",
-                transaction: tx
-            )
-            .ConfigureAwait(false);
+        var sql =
+            @$"
+            ALTER TABLE {schemaQualifiedTableName}
+                DROP CONSTRAINT {constraintName}
+        ";
+
+        await ExecuteAsync(db, sql, transaction: tx).ConfigureAwait(false);
 
         return true;
     }

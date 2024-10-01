@@ -239,7 +239,6 @@ public partial class SqlServerMethods
                 c.ORDINAL_POSITION AS column_ordinal,
                 c.COLUMN_DEFAULT AS column_default,
                 case when (ISNULL(pk.CONSTRAINT_NAME, '') = '') then 0 else 1 end AS is_primary_key,
-                --IIF(LEN(ISNULL(pk.CONSTRAINT_NAME, '')) > 0, 1, 0) AS is_primary_key,
                 pk.CONSTRAINT_NAME AS pk_constraint_name,
                 case when (c.IS_NULLABLE = 'YES') then 1 else 0 end AS is_nullable,
                 COLUMNPROPERTY(object_id(t.TABLE_SCHEMA+'.'+t.TABLE_NAME), c.COLUMN_NAME, 'IsIdentity') AS is_identity,
@@ -365,23 +364,25 @@ public partial class SqlServerMethods
 
         var checkConstraintsSql =
             @$"
-            SELECT 
-                tc.CONSTRAINT_SCHEMA AS schema_name, 
-                tc.TABLE_NAME AS table_name, 
-                tc.CONSTRAINT_NAME AS constraint_name, 
-                cc.CHECK_CLAUSE AS check_expression
-            FROM [INFORMATION_SCHEMA].[CHECK_CONSTRAINTS] cc
-                INNER JOIN INFORMATION_SCHEMA.TABLE_CONSTRAINTS tc 
-                ON  cc.CONSTRAINT_NAME = tc.CONSTRAINT_NAME 
-                AND cc.CONSTRAINT_SCHEMA = tc.TABLE_SCHEMA
-            WHERE 
-                tc.CONSTRAINT_SCHEMA = @schemaName
-                {(string.IsNullOrWhiteSpace(where) ? null : " AND tc.TABLE_NAME LIKE @where")}
-            ORDER BY tc.CONSTRAINT_SCHEMA, tc.TABLE_NAME, tc.CONSTRAINT_NAME
+            select 
+                schema_name(t.schema_id) AS schema_name,
+                t.[name] AS table_name,
+                col.[name] AS column_name,
+                con.[name] AS constraint_name,
+                con.[definition] AS check_expression
+            from sys.check_constraints con
+                left outer join sys.objects t on con.parent_object_id = t.object_id
+                left outer join sys.all_columns col on con.parent_column_id = col.column_id and con.parent_object_id = col.object_id
+            where 
+                con.[definition] IS NOT NULL
+                and schema_name(t.schema_id) = @schemaName
+                {(string.IsNullOrWhiteSpace(where) ? null : " AND t.[name] LIKE @where")}
+            order by schema_name, table_name, column_name, constraint_name            
             ";
         var checkConstraintResults = await QueryAsync<(
             string schema_name,
             string table_name,
+            string? column_name,
             string constraint_name,
             string check_expression
         )>(db, checkConstraintsSql, new { schemaName, where }, transaction: tx)
@@ -396,11 +397,8 @@ public partial class SqlServerMethods
                 con.[name] AS constraint_name,
                 con.[definition] AS default_expression
             from sys.default_constraints con
-                left outer join sys.objects t
-                    on con.parent_object_id = t.object_id
-                left outer join sys.all_columns col
-                    on con.parent_column_id = col.column_id
-                    and con.parent_object_id = col.object_id
+                left outer join sys.objects t on con.parent_object_id = t.object_id
+                left outer join sys.all_columns col on con.parent_column_id = col.column_id and con.parent_object_id = col.object_id
             where 
                 schema_name(t.schema_id) = @schemaName
                 {(string.IsNullOrWhiteSpace(where) ? null : " AND t.[name] LIKE @where")}
@@ -471,7 +469,7 @@ public partial class SqlServerMethods
                     return new DxCheckConstraint(
                         c.schema_name,
                         c.table_name,
-                        null,
+                        c.column_name,
                         c.constraint_name,
                         c.check_expression
                     );
@@ -628,8 +626,24 @@ public partial class SqlServerMethods
                     tableColumn.max_length,
                     tableColumn.numeric_precision,
                     tableColumn.numeric_scale,
-                    null,
-                    tableColumn.column_default,
+                    checkConstraints
+                        .FirstOrDefault(c =>
+                            !string.IsNullOrWhiteSpace(c.ColumnName)
+                            && c.ColumnName.Equals(
+                                tableColumn.column_name,
+                                StringComparison.OrdinalIgnoreCase
+                            )
+                        )
+                        ?.Expression,
+                    defaultConstraints
+                        .FirstOrDefault(c =>
+                            !string.IsNullOrWhiteSpace(c.ColumnName)
+                            && c.ColumnName.Equals(
+                                tableColumn.column_name,
+                                StringComparison.OrdinalIgnoreCase
+                            )
+                        )
+                        ?.Expression,
                     tableColumn.is_nullable,
                     primaryKeyConstraint == null
                         ? false
