@@ -65,7 +65,7 @@ public abstract partial class DatabaseMethodsBase : IDatabaseDefaultConstraintMe
             .ConfigureAwait(false);
     }
 
-    public abstract Task<bool> CreateDefaultConstraintIfNotExistsAsync(
+    public virtual async Task<bool> CreateDefaultConstraintIfNotExistsAsync(
         IDbConnection db,
         string? schemaName,
         string tableName,
@@ -74,7 +74,50 @@ public abstract partial class DatabaseMethodsBase : IDatabaseDefaultConstraintMe
         string expression,
         IDbTransaction? tx = null,
         CancellationToken cancellationToken = default
-    );
+    )
+    {
+        if (string.IsNullOrWhiteSpace(tableName))
+            throw new ArgumentException("Table name is required.", nameof(tableName));
+
+        if (string.IsNullOrWhiteSpace(constraintName))
+            throw new ArgumentException("Constraint name is required.", nameof(constraintName));
+
+        if (string.IsNullOrWhiteSpace(expression))
+            throw new ArgumentException("Expression is required.", nameof(expression));
+
+        if (
+            await DoesDefaultConstraintExistAsync(
+                    db,
+                    schemaName,
+                    tableName,
+                    constraintName,
+                    tx,
+                    cancellationToken
+                )
+                .ConfigureAwait(false)
+        )
+            return false;
+
+        (schemaName, tableName, constraintName) = NormalizeNames(
+            schemaName,
+            tableName,
+            constraintName
+        );
+
+        columnName = NormalizeName(columnName);
+
+        var schemaQualifiedTableName = GetSchemaQualifiedTableName(schemaName, tableName);
+
+        var sql =
+            @$"
+            ALTER TABLE {schemaQualifiedTableName}
+                ADD CONSTRAINT {constraintName} DEFAULT {expression} FOR {columnName}
+        ";
+
+        await ExecuteAsync(db, sql, transaction: tx).ConfigureAwait(false);
+
+        return true;
+    }
 
     public virtual async Task<DxDefaultConstraint?> GetDefaultConstraintAsync(
         IDbConnection db,

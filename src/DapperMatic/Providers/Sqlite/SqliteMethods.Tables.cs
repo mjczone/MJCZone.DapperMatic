@@ -153,12 +153,6 @@ public partial class SqliteMethods
         sql.AppendLine(")");
         var createTableSql = sql.ToString();
 
-        Logger.LogInformation(
-            "Generated table SQL: \n{sql}\n for table '{tableName}'",
-            createTableSql,
-            tableName
-        );
-
         await ExecuteAsync(db, createTableSql, transaction: tx).ConfigureAwait(false);
 
         var combinedIndexes = (indexes ?? []).Union(fillWithAdditionalIndexesToCreate).ToList();

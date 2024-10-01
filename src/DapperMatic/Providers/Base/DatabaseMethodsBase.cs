@@ -9,10 +9,13 @@ namespace DapperMatic.Providers;
 
 public abstract partial class DatabaseMethodsBase : IDatabaseMethods
 {
+    public abstract DbProviderType ProviderType { get; }
+
     protected abstract string DefaultSchema { get; }
     protected virtual ILogger Logger => DxLogger.CreateLogger(GetType());
 
-    protected abstract List<DataTypeMap> DataTypes { get; }
+    protected virtual List<DataTypeMap> DataTypes =>
+        DataTypeMapFactory.GetDefaultDbProviderDataTypeMap(ProviderType);
 
     protected DataTypeMap? GetDataType(Type type)
     {
@@ -194,6 +197,13 @@ public abstract partial class DatabaseMethodsBase : IDatabaseMethods
     {
         try
         {
+            Logger.LogInformation(
+                "[{provider}] Executing SQL query: {sql}, with parameters {parameters}",
+                ProviderType,
+                sql,
+                param == null ? "{}" : JsonSerializer.Serialize(param)
+            );
+
             SetLastSql(connection, sql, param);
             return (
                 await connection
@@ -225,6 +235,13 @@ public abstract partial class DatabaseMethodsBase : IDatabaseMethods
     {
         try
         {
+            Logger.LogInformation(
+                "[{provider}] Executing SQL scalar: {sql}, with parameters {parameters}",
+                ProviderType,
+                sql,
+                param == null ? "{}" : JsonSerializer.Serialize(param)
+            );
+
             SetLastSql(connection, sql, param);
             return await connection.ExecuteScalarAsync<TOutput>(
                 sql,
@@ -258,6 +275,13 @@ public abstract partial class DatabaseMethodsBase : IDatabaseMethods
     {
         try
         {
+            Logger.LogInformation(
+                "[{provider}] Executing SQL statement: {sql}, with parameters {parameters}",
+                ProviderType,
+                sql,
+                param == null ? "{}" : JsonSerializer.Serialize(param)
+            );
+
             SetLastSql(connection, sql, param);
             return await connection.ExecuteAsync(
                 sql,

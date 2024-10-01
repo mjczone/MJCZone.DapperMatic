@@ -22,7 +22,7 @@ public class DxColumn
         int? scale = null,
         string? checkExpression = null,
         string? defaultExpression = null,
-        bool isNullable = true,
+        bool? isNullable = null,
         bool isPrimaryKey = false,
         bool isAutoIncrement = false,
         bool isUnique = false,
@@ -39,12 +39,19 @@ public class DxColumn
         ColumnName = columnName;
         DotnetType = dotnetType;
         ProviderDataType = providerDataType;
-        Length = length;
+        Length =
+            (
+                dotnetType == typeof(string)
+                && string.IsNullOrWhiteSpace(providerDataType)
+                && !length.HasValue
+            )
+                ? 255 /* a sensible default */
+                : length;
         Precision = precision;
         Scale = scale;
         CheckExpression = checkExpression;
         DefaultExpression = defaultExpression;
-        IsNullable = isNullable;
+        IsNullable = isNullable.GetValueOrDefault(!isPrimaryKey);
         IsPrimaryKey = isPrimaryKey;
         IsAutoIncrement = isAutoIncrement;
         IsUnique = isUnique;

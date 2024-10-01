@@ -25,8 +25,6 @@ public partial class SqliteMethods
         if (string.IsNullOrWhiteSpace(constraintName))
             throw new ArgumentException("Constraint name is required.", nameof(constraintName));
 
-        (_, tableName, constraintName) = NormalizeNames(schemaName, tableName, constraintName);
-
         if (sourceColumns.Length == 0)
             throw new ArgumentException(
                 "At least one column must be specified.",
@@ -50,6 +48,12 @@ public partial class SqliteMethods
                 "The number of source columns must match the number of referenced columns.",
                 nameof(referencedColumns)
             );
+
+        (schemaName, tableName, constraintName) = NormalizeNames(
+            schemaName,
+            tableName,
+            constraintName
+        );
 
         return await AlterTableUsingRecreateTableStrategyAsync(
                 db,

@@ -1,5 +1,6 @@
 using System.Data;
 using System.Text;
+using System.Transactions;
 using DapperMatic.Models;
 using Microsoft.Extensions.Logging;
 
@@ -39,16 +40,72 @@ public partial class SqlServerMethods
         if (string.IsNullOrWhiteSpace(columnName))
             throw new ArgumentException("Column name cannot be null or empty", nameof(columnName));
 
+        var table = await GetTableAsync(db, schemaName, tableName, tx, cancellationToken)
+            .ConfigureAwait(false);
+        if (table == null)
+            return false;
+
         if (
-            await DoesColumnExistAsync(db, schemaName, tableName, columnName, tx, cancellationToken)
-                .ConfigureAwait(false)
+            table.Columns.Any(c =>
+                c.ColumnName.Equals(columnName, StringComparison.OrdinalIgnoreCase)
+            )
         )
             return false;
 
-        return false;
+        (schemaName, tableName, columnName) = NormalizeNames(schemaName, tableName, columnName);
+
+        var additionalIndexes = new List<DxIndex>();
+        var columnSql = BuildColumnDefinitionSql(
+            tableName,
+            columnName,
+            dotnetType,
+            providerDataType,
+            length,
+            precision,
+            scale,
+            checkExpression,
+            defaultExpression,
+            isNullable,
+            isPrimaryKey,
+            isAutoIncrement,
+            isUnique,
+            isIndexed,
+            isForeignKey,
+            referencedTableName,
+            referencedColumnName,
+            onDelete,
+            onUpdate,
+            table.PrimaryKeyConstraint,
+            table.CheckConstraints?.ToArray(),
+            table.DefaultConstraints?.ToArray(),
+            table.UniqueConstraints?.ToArray(),
+            table.ForeignKeyConstraints?.ToArray(),
+            table.Indexes?.ToArray(),
+            additionalIndexes
+        );
+
+        var sql = new StringBuilder();
+        sql.Append(
+            $"ALTER TABLE {GetSchemaQualifiedTableName(schemaName, tableName)} ADD {columnSql}"
+        );
+
+        await ExecuteAsync(db, sql.ToString(), tx).ConfigureAwait(false);
+
+        foreach (var index in additionalIndexes)
+        {
+            await CreateIndexIfNotExistsAsync(
+                    db,
+                    index,
+                    tx: tx,
+                    cancellationToken: cancellationToken
+                )
+                .ConfigureAwait(false);
+        }
+
+        return true;
     }
 
-    public override Task<bool> DropColumnIfExistsAsync(
+    public override async Task<bool> DropColumnIfExistsAsync(
         IDbConnection db,
         string? schemaName,
         string tableName,
@@ -57,14 +114,97 @@ public partial class SqlServerMethods
         CancellationToken cancellationToken = default
     )
     {
-        return base.DropColumnIfExistsAsync(
-            db,
-            schemaName,
-            tableName,
-            columnName,
-            tx,
-            cancellationToken
+        var table = await GetTableAsync(db, schemaName, tableName, tx, cancellationToken)
+            .ConfigureAwait(false);
+        if (table == null)
+            return false;
+
+        var column = table.Columns.FirstOrDefault(c =>
+            c.ColumnName.Equals(columnName, StringComparison.OrdinalIgnoreCase)
         );
+        if (column == null)
+            return false;
+
+        // drop any related constraints
+        if (column.IsPrimaryKey)
+        {
+            await DropPrimaryKeyConstraintIfExistsAsync(
+                    db,
+                    schemaName,
+                    tableName,
+                    tx,
+                    cancellationToken
+                )
+                .ConfigureAwait(false);
+        }
+
+        if (column.IsForeignKey)
+        {
+            await DropForeignKeyConstraintOnColumnIfExistsAsync(
+                    db,
+                    schemaName,
+                    tableName,
+                    column.ColumnName,
+                    tx,
+                    cancellationToken
+                )
+                .ConfigureAwait(false);
+        }
+
+        if (column.IsUnique)
+        {
+            await DropUniqueConstraintOnColumnIfExistsAsync(
+                    db,
+                    schemaName,
+                    tableName,
+                    column.ColumnName,
+                    tx,
+                    cancellationToken
+                )
+                .ConfigureAwait(false);
+        }
+
+        if (column.IsIndexed)
+        {
+            await DropIndexesOnColumnIfExistsAsync(
+                    db,
+                    schemaName,
+                    tableName,
+                    column.ColumnName,
+                    tx,
+                    cancellationToken
+                )
+                .ConfigureAwait(false);
+        }
+
+        await DropCheckConstraintOnColumnIfExistsAsync(
+                db,
+                schemaName,
+                tableName,
+                columnName,
+                tx,
+                cancellationToken
+            )
+            .ConfigureAwait(false);
+
+        await DropDefaultConstraintOnColumnIfExistsAsync(
+                db,
+                schemaName,
+                tableName,
+                columnName,
+                tx,
+                cancellationToken
+            )
+            .ConfigureAwait(false);
+
+        (schemaName, tableName, columnName) = NormalizeNames(schemaName, tableName, columnName);
+
+        var sql = new StringBuilder();
+        sql.Append(
+            $"ALTER TABLE {GetSchemaQualifiedTableName(schemaName, tableName)} DROP COLUMN {columnName}"
+        );
+        await ExecuteAsync(db, sql.ToString(), tx).ConfigureAwait(false);
+        return true;
     }
 
     private string BuildColumnDefinitionSql(
@@ -131,14 +271,14 @@ public partial class SqlServerMethods
                     $" CONSTRAINT {existingPrimaryKeyConstraint.ConstraintName} PRIMARY KEY"
                 );
                 if (isAutoIncrement)
-                    columnSql.Append(" AUTOINCREMENT");
+                    columnSql.Append(" IDENTITY(1,1)");
             }
         }
         else if (isPrimaryKey)
         {
             columnSql.Append($" CONSTRAINT pk_{tableName}_{columnName}  PRIMARY KEY");
             if (isAutoIncrement)
-                columnSql.Append(" AUTOINCREMENT");
+                columnSql.Append(" IDENTITY(1,1)");
         }
 
         // only add unique constraints here if column is not part of an existing unique constraint
@@ -244,8 +384,8 @@ public partial class SqlServerMethods
 
         var columnSqlString = columnSql.ToString();
 
-        Logger.LogInformation(
-            "Generated column SQL: \n{sql}\n for column '{columnName}' in table '{tableName}'",
+        Logger.LogDebug(
+            "Column Definition SQL: \n{sql}\n for column '{columnName}' in table '{tableName}'",
             columnSqlString,
             columnName,
             tableName

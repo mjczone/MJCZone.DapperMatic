@@ -14,6 +14,7 @@ public partial interface IDatabaseMethods
         IDatabaseSchemaMethods,
         IDatabaseViewMethods
 {
+    DbProviderType ProviderType { get; }
     string GetLastSql(IDbConnection db);
     (string sql, object? parameters) GetLastSqlWithParams(IDbConnection db);
     Task<string> GetDatabaseVersionAsync(

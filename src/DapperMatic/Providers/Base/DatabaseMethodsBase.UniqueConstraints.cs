@@ -64,7 +64,7 @@ public abstract partial class DatabaseMethodsBase : IDatabaseUniqueConstraintMet
             .ConfigureAwait(false);
     }
 
-    public abstract Task<bool> CreateUniqueConstraintIfNotExistsAsync(
+    public virtual async Task<bool> CreateUniqueConstraintIfNotExistsAsync(
         IDbConnection db,
         string? schemaName,
         string tableName,
@@ -72,7 +72,49 @@ public abstract partial class DatabaseMethodsBase : IDatabaseUniqueConstraintMet
         DxOrderedColumn[] columns,
         IDbTransaction? tx = null,
         CancellationToken cancellationToken = default
-    );
+    )
+    {
+        if (string.IsNullOrWhiteSpace(tableName))
+            throw new ArgumentException("Table name is required.", nameof(tableName));
+
+        if (string.IsNullOrWhiteSpace(constraintName))
+            throw new ArgumentException("Constraint name is required.", nameof(constraintName));
+
+        if (columns.Length == 0)
+            throw new ArgumentException("At least one column must be specified.", nameof(columns));
+
+        if (
+            await DoesUniqueConstraintExistAsync(
+                    db,
+                    schemaName,
+                    tableName,
+                    constraintName,
+                    tx,
+                    cancellationToken
+                )
+                .ConfigureAwait(false)
+        )
+            return false;
+
+        (schemaName, tableName, constraintName) = NormalizeNames(
+            schemaName,
+            tableName,
+            constraintName
+        );
+
+        var schemaQualifiedTableName = GetSchemaQualifiedTableName(schemaName, tableName);
+
+        var sql =
+            @$"
+            ALTER TABLE {schemaQualifiedTableName}
+                ADD CONSTRAINT {constraintName} 
+                    UNIQUE ({string.Join(", ", columns.Select(c => c.ToString()))})
+        ";
+
+        await ExecuteAsync(db, sql, transaction: tx).ConfigureAwait(false);
+
+        return true;
+    }
 
     public virtual async Task<DxUniqueConstraint?> GetUniqueConstraintAsync(
         IDbConnection db,

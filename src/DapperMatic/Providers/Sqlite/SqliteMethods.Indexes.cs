@@ -6,47 +6,6 @@ namespace DapperMatic.Providers.Sqlite;
 
 public partial class SqliteMethods
 {
-    public override async Task<bool> CreateIndexIfNotExistsAsync(
-        IDbConnection db,
-        string? schemaName,
-        string tableName,
-        string indexName,
-        DxOrderedColumn[] columns,
-        bool isUnique = false,
-        IDbTransaction? tx = null,
-        CancellationToken cancellationToken = default
-    )
-    {
-        if (string.IsNullOrWhiteSpace(indexName))
-        {
-            throw new ArgumentException("Index name is required.", nameof(indexName));
-        }
-
-        if (
-            await DoesIndexExistAsync(db, schemaName, tableName, indexName, tx, cancellationToken)
-                .ConfigureAwait(false)
-        )
-        {
-            return false;
-        }
-
-        (schemaName, tableName, indexName) = NormalizeNames(schemaName, tableName, indexName);
-
-        var createIndexSql =
-            $"CREATE {(isUnique ? "UNIQUE INDEX" : "INDEX")} {indexName} ON {tableName} ({string.Join(", ", columns.Select(c => c.ToString()))})";
-
-        Logger.LogInformation(
-            "Generated index SQL: \n{sql}\n for index '{indexName}' ON {tableName}",
-            createIndexSql,
-            indexName,
-            tableName
-        );
-
-        await ExecuteAsync(db, createIndexSql, transaction: tx).ConfigureAwait(false);
-
-        return true;
-    }
-
     public override async Task<List<DxIndex>> GetIndexesAsync(
         IDbConnection db,
         string? schemaName,

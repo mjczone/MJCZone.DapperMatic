@@ -5,28 +5,72 @@ namespace DapperMatic.Providers;
 
 public abstract partial class DatabaseMethodsBase : IDatabaseSchemaMethods
 {
-    public abstract Task<bool> DoesSchemaExistAsync(
+    public virtual async Task<bool> DoesSchemaExistAsync(
         IDbConnection db,
         string schemaName,
         IDbTransaction? tx = null,
         CancellationToken cancellationToken = default
-    );
-    public abstract Task<bool> CreateSchemaIfNotExistsAsync(
+    )
+    {
+        if (string.IsNullOrWhiteSpace(schemaName))
+            throw new ArgumentException("Schema name is required.", nameof(schemaName));
+
+        return (
+                await GetSchemaNamesAsync(db, schemaName, tx, cancellationToken)
+                    .ConfigureAwait(false)
+            ).Count() > 0;
+    }
+
+    public virtual async Task<bool> CreateSchemaIfNotExistsAsync(
         IDbConnection db,
         string schemaName,
         IDbTransaction? tx = null,
         CancellationToken cancellationToken = default
-    );
+    )
+    {
+        if (string.IsNullOrWhiteSpace(schemaName))
+            throw new ArgumentException("Schema name is required.", nameof(schemaName));
+
+        if (await DoesSchemaExistAsync(db, schemaName, tx, cancellationToken).ConfigureAwait(false))
+            return false;
+
+        schemaName = NormalizeSchemaName(schemaName);
+
+        var sql = $"CREATE SCHEMA {schemaName}";
+
+        await ExecuteAsync(db, sql, transaction: tx).ConfigureAwait(false);
+
+        return true;
+    }
+
     public abstract Task<IEnumerable<string>> GetSchemaNamesAsync(
         IDbConnection db,
         string? schemaNameFilter = null,
         IDbTransaction? tx = null,
         CancellationToken cancellationToken = default
     );
-    public abstract Task<bool> DropSchemaIfExistsAsync(
+
+    public virtual async Task<bool> DropSchemaIfExistsAsync(
         IDbConnection db,
         string schemaName,
         IDbTransaction? tx = null,
         CancellationToken cancellationToken = default
-    );
+    )
+    {
+        if (string.IsNullOrWhiteSpace(schemaName))
+            throw new ArgumentException("Schema name is required.", nameof(schemaName));
+
+        if (
+            !await DoesSchemaExistAsync(db, schemaName, tx, cancellationToken).ConfigureAwait(false)
+        )
+            return false;
+
+        schemaName = NormalizeSchemaName(schemaName);
+
+        var sql = $"DROP SCHEMA {schemaName}";
+
+        await ExecuteAsync(db, sql, transaction: tx).ConfigureAwait(false);
+
+        return true;
+    }
 }

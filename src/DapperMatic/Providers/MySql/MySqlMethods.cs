@@ -1,14 +1,11 @@
 using System.Data;
-using DapperMatic.Models;
 
 namespace DapperMatic.Providers.MySql;
 
 public partial class MySqlMethods : DatabaseMethodsBase, IDatabaseMethods
 {
+    public override DbProviderType ProviderType => DbProviderType.MySql;
     protected override string DefaultSchema => "";
-
-    protected override List<DataTypeMap> DataTypes =>
-        DataTypeMapFactory.GetDefaultDbProviderDataTypeMap(DbProviderType.MySql);
 
     internal MySqlMethods() { }
 

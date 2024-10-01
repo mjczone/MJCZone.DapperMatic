@@ -5,6 +5,7 @@ namespace DapperMatic.Providers.PostgreSql;
 
 public partial class PostgreSqlMethods : DatabaseMethodsBase, IDatabaseMethods
 {
+    public override DbProviderType ProviderType => DbProviderType.PostgreSql;
     private static string _defaultSchema = "public";
 
     public static void SetDefaultSchema(string schema)
@@ -13,9 +14,6 @@ public partial class PostgreSqlMethods : DatabaseMethodsBase, IDatabaseMethods
     }
 
     protected override string DefaultSchema => _defaultSchema;
-
-    protected override List<DataTypeMap> DataTypes =>
-        DataTypeMapFactory.GetDefaultDbProviderDataTypeMap(DbProviderType.PostgreSql);
 
     internal PostgreSqlMethods() { }
 

@@ -4,10 +4,8 @@ namespace DapperMatic.Providers.Sqlite;
 
 public partial class SqliteMethods : DatabaseMethodsBase, IDatabaseMethods
 {
+    public override DbProviderType ProviderType => DbProviderType.Sqlite;
     protected override string DefaultSchema => "";
-
-    protected override List<DataTypeMap> DataTypes =>
-        DataTypeMapFactory.GetDefaultDbProviderDataTypeMap(DbProviderType.Sqlite);
 
     internal SqliteMethods() { }
 

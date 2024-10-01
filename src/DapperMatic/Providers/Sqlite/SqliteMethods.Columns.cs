@@ -167,13 +167,20 @@ public partial class SqliteMethods
 
         foreach (var index in additionalIndexes)
         {
-            var indexName = NormalizeName(index.IndexName);
-            var indexColumns = index.Columns.Select(c => c.ToString());
-            var indexColumnNames = index.Columns.Select(c => c.ColumnName);
-            // create index sql
-            var createIndexSql =
-                $"CREATE {(index.IsUnique ? "UNIQUE INDEX" : "INDEX")} ix_{tableName}_{string.Join('_', indexColumnNames)} ON {tableName} ({string.Join(", ", indexColumns)})";
-            await ExecuteAsync(db, createIndexSql, transaction: tx).ConfigureAwait(false);
+            await CreateIndexIfNotExistsAsync(
+                    db,
+                    index,
+                    tx: tx,
+                    cancellationToken: cancellationToken
+                )
+                .ConfigureAwait(false);
+            // var indexName = NormalizeName(index.IndexName);
+            // var indexColumns = index.Columns.Select(c => c.ToString());
+            // var indexColumnNames = index.Columns.Select(c => c.ColumnName);
+            // // create index sql
+            // var createIndexSql =
+            //     $"CREATE {(index.IsUnique ? "UNIQUE INDEX" : "INDEX")} ix_{tableName}_{string.Join('_', indexColumnNames)} ON {tableName} ({string.Join(", ", indexColumns)})";
+            // await ExecuteAsync(db, createIndexSql, transaction: tx).ConfigureAwait(false);
         }
 
         return true;
@@ -246,15 +253,6 @@ public partial class SqliteMethods
         var columnType = string.IsNullOrWhiteSpace(providerDataType)
             ? GetSqlTypeFromDotnetType(dotnetType, length, precision, scale)
             : providerDataType;
-
-        // Logger.LogInformation(
-        //     "Converted type {dotnetType} with length: {length}, precision: {precision}, scale: {scale} to {sqlType}",
-        //     dotnetType,
-        //     length,
-        //     precision,
-        //     scale,
-        //     columnType
-        // );
 
         var columnSql = new StringBuilder();
         columnSql.Append($"{columnName} {columnType}");
@@ -397,8 +395,8 @@ public partial class SqliteMethods
 
         var columnSqlString = columnSql.ToString();
 
-        Logger.LogInformation(
-            "Generated column SQL: \n{sql}\n for column '{columnName}' in table '{tableName}'",
+        Logger.LogDebug(
+            "Column Definition SQL: \n{sql}\n for column '{columnName}' in table '{tableName}'",
             columnSqlString,
             columnName,
             tableName

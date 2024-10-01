@@ -60,7 +60,7 @@ public abstract partial class DatabaseMethodsBase : IDatabaseIndexMethods
             .ConfigureAwait(false);
     }
 
-    public abstract Task<bool> CreateIndexIfNotExistsAsync(
+    public virtual async Task<bool> CreateIndexIfNotExistsAsync(
         IDbConnection db,
         string? schemaName,
         string tableName,
@@ -69,7 +69,32 @@ public abstract partial class DatabaseMethodsBase : IDatabaseIndexMethods
         bool isUnique = false,
         IDbTransaction? tx = null,
         CancellationToken cancellationToken = default
-    );
+    )
+    {
+        if (string.IsNullOrWhiteSpace(indexName))
+        {
+            throw new ArgumentException("Index name is required.", nameof(indexName));
+        }
+
+        if (
+            await DoesIndexExistAsync(db, schemaName, tableName, indexName, tx, cancellationToken)
+                .ConfigureAwait(false)
+        )
+        {
+            return false;
+        }
+
+        (schemaName, tableName, indexName) = NormalizeNames(schemaName, tableName, indexName);
+
+        var schemaQualifiedTableName = GetSchemaQualifiedTableName(schemaName, tableName);
+
+        var createIndexSql =
+            $"CREATE {(isUnique ? "UNIQUE INDEX" : "INDEX")} {indexName} ON {schemaQualifiedTableName} ({string.Join(", ", columns.Select(c => c.ToString()))})";
+
+        await ExecuteAsync(db, createIndexSql, transaction: tx).ConfigureAwait(false);
+
+        return true;
+    }
 
     public virtual async Task<DxIndex?> GetIndexAsync(
         IDbConnection db,

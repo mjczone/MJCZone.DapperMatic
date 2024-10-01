@@ -13,7 +13,7 @@ public abstract partial class DatabaseMethodsTests
         const string tableName = "testWithFk";
         const string columnName = "testFkColumn";
         const string foreignKeyName = "testFk";
-        const string refTableName = "testPk";
+        const string refTableName = "testRefPk";
         const string refTableColumn = "id";
 
         await connection.CreateTableIfNotExistsAsync(
@@ -33,7 +33,17 @@ public abstract partial class DatabaseMethodsTests
         await connection.CreateTableIfNotExistsAsync(
             null,
             refTableName,
-            [new DxColumn(null, refTableName, refTableColumn, typeof(int), defaultExpression: "1")]
+            [
+                new DxColumn(
+                    null,
+                    refTableName,
+                    refTableColumn,
+                    typeof(int),
+                    defaultExpression: "1",
+                    isPrimaryKey: true,
+                    isNullable: false
+                )
+            ]
         );
 
         Logger.LogInformation(

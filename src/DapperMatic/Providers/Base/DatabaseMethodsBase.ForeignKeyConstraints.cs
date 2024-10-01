@@ -68,7 +68,7 @@ public abstract partial class DatabaseMethodsBase : IDatabaseForeignKeyConstrain
             .ConfigureAwait(false);
     }
 
-    public abstract Task<bool> CreateForeignKeyConstraintIfNotExistsAsync(
+    public virtual async Task<bool> CreateForeignKeyConstraintIfNotExistsAsync(
         IDbConnection db,
         string? schemaName,
         string tableName,
@@ -80,7 +80,74 @@ public abstract partial class DatabaseMethodsBase : IDatabaseForeignKeyConstrain
         DxForeignKeyAction onUpdate = DxForeignKeyAction.NoAction,
         IDbTransaction? tx = null,
         CancellationToken cancellationToken = default
-    );
+    )
+    {
+        if (string.IsNullOrWhiteSpace(tableName))
+            throw new ArgumentException("Table name is required.", nameof(tableName));
+
+        if (string.IsNullOrWhiteSpace(constraintName))
+            throw new ArgumentException("Constraint name is required.", nameof(constraintName));
+
+        if (sourceColumns.Length == 0)
+            throw new ArgumentException(
+                "At least one column must be specified.",
+                nameof(sourceColumns)
+            );
+
+        if (string.IsNullOrWhiteSpace(referencedTableName))
+            throw new ArgumentException(
+                "Referenced table name is required.",
+                nameof(referencedTableName)
+            );
+
+        if (referencedColumns.Length == 0)
+            throw new ArgumentException(
+                "At least one column must be specified.",
+                nameof(referencedColumns)
+            );
+
+        if (sourceColumns.Length != referencedColumns.Length)
+            throw new ArgumentException(
+                "The number of source columns must match the number of referenced columns.",
+                nameof(referencedColumns)
+            );
+
+        if (
+            await DoesForeignKeyConstraintExistAsync(
+                    db,
+                    schemaName,
+                    tableName,
+                    constraintName,
+                    tx,
+                    cancellationToken
+                )
+                .ConfigureAwait(false)
+        )
+            return false;
+
+        (schemaName, tableName, constraintName) = NormalizeNames(
+            schemaName,
+            tableName,
+            constraintName
+        );
+
+        var schemaQualifiedTableName = GetSchemaQualifiedTableName(schemaName, tableName);
+        referencedTableName = NormalizeName(referencedTableName);
+
+        var sql =
+            @$"
+            ALTER TABLE {schemaQualifiedTableName}
+                ADD CONSTRAINT {constraintName} 
+                    FOREIGN KEY ({string.Join(", ", sourceColumns.Select(c => c.ColumnName))})
+                        REFERENCES {referencedTableName} ({string.Join(", ", referencedColumns.Select(c => c.ColumnName))})
+                            ON DELETE {onDelete.ToSql()}
+                            ON UPDATE {onUpdate.ToSql()}
+        ";
+
+        await ExecuteAsync(db, sql, transaction: tx).ConfigureAwait(false);
+
+        return true;
+    }
 
     public virtual async Task<DxForeignKeyConstraint?> GetForeignKeyConstraintAsync(
         IDbConnection db,

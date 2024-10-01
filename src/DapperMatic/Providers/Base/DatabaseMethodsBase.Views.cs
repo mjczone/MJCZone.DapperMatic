@@ -35,14 +35,42 @@ public abstract partial class DatabaseMethodsBase : IDatabaseViewMethods
             .ConfigureAwait(false);
     }
 
-    public abstract Task<bool> CreateViewIfNotExistsAsync(
+    public virtual async Task<bool> CreateViewIfNotExistsAsync(
         IDbConnection db,
         string? schemaName,
         string viewName,
         string definition,
         IDbTransaction? tx = null,
         CancellationToken cancellationToken = default
-    );
+    )
+    {
+        if (string.IsNullOrEmpty(definition))
+        {
+            throw new ArgumentException(
+                "View definition cannot be null or empty.",
+                nameof(definition)
+            );
+        }
+
+        if (
+            await DoesViewExistAsync(db, schemaName, viewName, tx, cancellationToken)
+                .ConfigureAwait(false)
+        )
+            return false;
+
+        (schemaName, viewName, _) = NormalizeNames(schemaName, viewName);
+
+        var schemaQualifiedTableName = GetSchemaQualifiedTableName(schemaName, viewName);
+
+        await ExecuteAsync(
+                db,
+                $@"CREATE VIEW {schemaQualifiedTableName} AS {definition}",
+                transaction: tx
+            )
+            .ConfigureAwait(false);
+
+        return true;
+    }
 
     public virtual async Task<DxView?> GetViewAsync(
         IDbConnection db,
@@ -103,13 +131,9 @@ public abstract partial class DatabaseMethodsBase : IDatabaseViewMethods
 
         (schemaName, viewName, _) = NormalizeNames(schemaName, viewName);
 
-        var compoundViewName = await SupportsSchemasAsync(db, tx, cancellationToken)
-            .ConfigureAwait(false)
-            ? $"{schemaName}.{viewName}"
-            : viewName;
+        var schemaQualifiedTableName = GetSchemaQualifiedTableName(schemaName, viewName);
 
-        // drop table
-        await ExecuteAsync(db, $@"DROP VIEW {compoundViewName}", transaction: tx)
+        await ExecuteAsync(db, $@"DROP VIEW {schemaQualifiedTableName}", transaction: tx)
             .ConfigureAwait(false);
 
         return true;
