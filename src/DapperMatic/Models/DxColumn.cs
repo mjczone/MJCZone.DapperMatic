@@ -69,8 +69,20 @@ public class DxColumn
     public bool IsNullable { get; set; }
     public bool IsPrimaryKey { get; set; }
     public bool IsAutoIncrement { get; set; }
+
+    /// <summary>
+    /// Is either part of a single column unique constraint or a single column unique index.
+    /// </summary>
     public bool IsUnique { get; set; }
+
+    /// <summary>
+    /// Is part of an index
+    /// </summary>
     public bool IsIndexed { get; set; }
+
+    /// <summary>
+    /// /// Is a foreign key to a another referenced table. This is the MANY side of a ONE-TO-MANY relationship.
+    /// </summary>
     public bool IsForeignKey { get; set; }
     public string? ReferencedTableName { get; set; }
     public string? ReferencedColumnName { get; set; }
