@@ -141,7 +141,7 @@ public abstract partial class DatabaseMethodsTests
             Assert.NotNull(idxMulti1);
             Assert.NotNull(idxMulti2);
             Assert.True(idxMulti1.IsUnique);
-            Assert.True(idxMulti1.Columns.Length == 2);
+            Assert.Equal(2, idxMulti1.Columns.Length);
             if (supportsDescendingColumnSorts)
             {
                 Assert.Equal(DxColumnOrder.Descending, idxMulti1.Columns[0].Order);

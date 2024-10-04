@@ -324,16 +324,52 @@ public partial class PostgreSqlMethods
             string table_name,
             string constraint_name,
             string supporting_index_name,
-            string constraint_type /* CHECK, UNIQUE, FOREIGN KEY, PRIMARY KEY */
-            ,
+            /* CHECK, UNIQUE, FOREIGN KEY, PRIMARY KEY */
+            string constraint_type,
             string constraint_definition,
             string referenced_table_name,
             string column_ordinals_csv,
             string referenced_column_ordinals_csv,
             string delete_rule,
             string update_rule
-        )>(db, constraintsSql, new { schemaName, where }, transaction: tx)
-            .ConfigureAwait(false);
+        )>(db, constraintsSql, new { schemaName, where }, transaction: tx).ConfigureAwait(false);
+
+        var referencedTableNames = constraintResults
+            .Where(c => c.constraint_type == "FOREIGN KEY")
+            .Select(c => c.referenced_table_name.ToLowerInvariant())
+            .Distinct()
+            .ToArray();
+        var referencedColumnsSql =
+            @$"
+            SELECT 
+                schemas.nspname as schema_name,
+                tables.relname as table_name,
+                columns.attname as column_name,
+                columns.attnum as column_ordinal
+            FROM pg_catalog.pg_attribute AS columns
+                JOIN pg_catalog.pg_class AS tables ON columns.attrelid = tables.oid and tables.relkind = 'r' and tables.relpersistence = 'p'
+                JOIN pg_catalog.pg_namespace AS schemas ON tables.relnamespace = schemas.oid
+            where
+                schemas.nspname not like 'pg_%' and schemas.nspname != 'information_schema' and columns.attnum > 0 and not columns.attisdropped
+                AND lower(schemas.nspname) = @schemaName
+                AND lower(tables.relname) = ANY (@referencedTableNames)
+            order by schema_name, table_name, column_ordinal;
+        ";
+        var referencedColumnsResults =
+            referencedTableNames.Length == 0
+                ? []
+                : await QueryAsync<(
+                    string schema_name,
+                    string table_name,
+                    string column_name,
+                    int column_ordinal
+                )>(
+                        db,
+                        referencedColumnsSql,
+                        new { schemaName, referencedTableNames },
+                        transaction: tx
+                    )
+                    .ConfigureAwait(false);
 
         var tables = new List<DxTable>();
 
@@ -376,8 +412,14 @@ public partial class PostgreSqlMethods
                         .Select(r =>
                         {
                             return new DxOrderedColumn(
-                                tableColumnResults
-                                    .First(c => c.column_ordinal == int.Parse(r))
+                                referencedColumnsResults
+                                    .First(c =>
+                                        c.table_name.Equals(
+                                            row.referenced_table_name,
+                                            StringComparison.OrdinalIgnoreCase
+                                        )
+                                        && c.column_ordinal == int.Parse(r)
+                                    )
                                     .column_name
                             );
                         })
@@ -687,52 +729,56 @@ public partial class PostgreSqlMethods
             ? null
             : ToLikeString(indexNameFilter);
 
-        var sql =
-            @$"select
-                    s.nspname as schema_name,
-                    t.relname as table_name,
-                    i.relname as index_name,
-                    a.attname as column_name,
-                    ix.indisunique as is_unique,
-                    -- idx.indexdef as index_sql,
-                    1 + array_position(ix.indkey, a.attnum) AS key_ordinal,
-                    case o.option & 1 when 1 then 1 else 0 end as is_descending_key
-                from pg_class t
-                    join pg_index ix on t.oid = ix.indrelid 
-                    join pg_namespace s on s.oid = t.relnamespace
-                    join pg_class i on i.oid = ix.indexrelid
-                    join pg_attribute a on a.attrelid = t.oid and a.attnum = ANY(ix.indkey)
-                    join pg_indexes idx on idx.schemaname = s.nspname and idx.tablename = t.relname and idx.indexname = i.relname
-                    -- get the key ordinal and direction
-                    cross join lateral unnest (ix.indkey) WITH ordinality    AS c (colnum, ordinality) 
-                    left join  lateral unnest (ix.indoption) WITH ordinality AS o (option, ordinality) ON c.ordinality = o.ordinality 
+        var indexesSql =
+            @$"
+                select
+                    schemas.nspname AS schema_name,
+                    tables.relname AS table_name,
+                    indexes.relname AS index_name,
+                    case when i.indisunique then 1 else 0 end as is_unique,
+                    array_to_string(array_agg (
+                        a.attname 
+                        || ' ' || CASE o.option & 1 WHEN 1 THEN 'DESC' ELSE 'ASC' END
+                        || ' ' || CASE o.option & 2 WHEN 2 THEN 'NULLS FIRST' ELSE 'NULLS LAST' END
+                        ORDER BY c.ordinality
+                    ),',') AS columns_csv
+                from 
+                    pg_index AS i
+                    JOIN pg_class AS tables ON tables.oid = i.indrelid
+                    JOIN pg_namespace AS schemas ON tables.relnamespace = schemas.oid
+                    JOIN pg_class AS indexes ON indexes.oid = i.indexrelid
+                    CROSS JOIN LATERAL unnest (i.indkey) WITH ORDINALITY AS c (colnum, ordinality)
+                    LEFT JOIN LATERAL unnest (i.indoption) WITH ORDINALITY AS o (option, ordinality)
+                    ON c.ordinality = o.ordinality
+                    JOIN pg_attribute AS a ON tables.oid = a.attrelid AND a.attnum = c.colnum
                 where
-                    s.nspname not like 'pg_%' and s.nspname != 'information_schema' 
-                    and t.relkind = 'r'
-                    and not ix.indisprimary 
-                    and ix.indislive
-                    {(string.IsNullOrWhiteSpace(whereSchemaLike) ? "" : " AND lower(s.nspname) LIKE @whereSchemaLike")}
-                    {(string.IsNullOrWhiteSpace(whereTableLike) ? "" : " AND lower(t.relname) LIKE @whereTableLike")}
-                    {(string.IsNullOrWhiteSpace(whereIndexLike) ? "" : " AND lower(i.relname) LIKE @whereIndexLike")}
+                    schemas.nspname not like 'pg_%' 
+                    and schemas.nspname != 'information_schema'
+                    and i.indislive
+                    and not i.indisprimary
                     
+                    {(string.IsNullOrWhiteSpace(whereSchemaLike) ? "" : " AND lower(schemas.nspname) LIKE @whereSchemaLike")}
+                    {(string.IsNullOrWhiteSpace(whereTableLike) ? "" : " AND lower(tables.relname) LIKE @whereTableLike")}
+                    {(string.IsNullOrWhiteSpace(whereIndexLike) ? "" : " AND lower(indexes.relname) LIKE @whereIndexLike")}
+
                     -- postgresql creates an index for primary key and unique constraints, so we don't need to include them in the results
-                    and i.relname not in (select x.conname from pg_catalog.pg_constraint x 
+                    and indexes.relname not in (select x.conname from pg_catalog.pg_constraint x 
                                 join pg_catalog.pg_namespace AS x2 ON x.connamespace = x2.oid
                                 join pg_class as x3 on x.conrelid = x3.oid
-                                where x2.nspname = s.nspname and x3.relname = t.relname)
-                order by schema_name, table_name, index_name, key_ordinal";
+                                where x2.nspname = schemas.nspname and x3.relname = tables.relname)
+                group by schemas.nspname, tables.relname, indexes.relname, i.indisunique
+                order by schema_name, table_name, index_name
+            ";
 
-        var results = await QueryAsync<(
+        var indexResults = await QueryAsync<(
             string schema_name,
             string table_name,
             string index_name,
-            string column_name,
-            int is_unique,
-            string key_ordinal,
-            int is_descending_key
+            bool is_unique,
+            string columns_csv
         )>(
                 db,
-                sql,
+                indexesSql,
                 new
                 {
                     whereSchemaLike,
@@ -743,36 +789,37 @@ public partial class PostgreSqlMethods
             )
             .ConfigureAwait(false);
 
-        var grouped = results.GroupBy(
-            r => (r.schema_name, r.table_name, r.index_name),
-            r => (r.is_unique, r.column_name, r.key_ordinal, r.is_descending_key)
-        );
-
         var indexes = new List<DxIndex>();
-        foreach (var group in grouped)
+        foreach (var ir in indexResults)
         {
-            var (schema_name, table_name, index_name) = group.Key;
-            var (is_unique, column_name, key_ordinal, is_descending_key) = group.First();
+            var columns = ir
+                .columns_csv.Split(',')
+                .Select(c =>
+                {
+                    var columnName = c.Trim()
+                        .Split(
+                            ' ',
+                            StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries
+                        )
+                        .First();
+                    var isDescending = c.Contains("desc", StringComparison.OrdinalIgnoreCase);
+                    return new DxOrderedColumn(
+                        columnName,
+                        isDescending ? DxColumnOrder.Descending : DxColumnOrder.Ascending
+                    );
+                })
+                .ToArray();
+
             var index = new DxIndex(
-                schema_name,
-                table_name,
-                index_name,
-                group
-                    .Select(g =>
-                    {
-                        return new DxOrderedColumn(
-                            g.column_name,
-                            g.is_descending_key == 1
-                                ? DxColumnOrder.Descending
-                                : DxColumnOrder.Ascending
-                        );
-                    })
-                    .ToArray(),
-                is_unique == 1
+                ir.schema_name,
+                ir.table_name,
+                ir.index_name,
+                columns,
+                ir.is_unique
             );
             indexes.Add(index);
         }
 
-        return indexes;
+        return [.. indexes];
     }
 }
