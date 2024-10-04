@@ -258,7 +258,6 @@ public partial class SqlServerMethods
         // only add the primary key here if the primary key is a single column key
         if (existingPrimaryKeyConstraint != null)
         {
-            var pkColumns = existingPrimaryKeyConstraint.Columns.Select(c => c.ToString());
             var pkColumnNames = existingPrimaryKeyConstraint
                 .Columns.Select(c => c.ColumnName)
                 .ToArray();

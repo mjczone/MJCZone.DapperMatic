@@ -10,11 +10,11 @@ public abstract partial class DatabaseMethodsTests
     {
         using var connection = await OpenConnectionAsync();
 
-        const string tableName = "testWithUc";
-        const string columnName = "testColumn";
-        const string columnName2 = "testColumn2";
-        const string uniqueConstraintName = "testUc";
-        const string uniqueConstraintName2 = "testUc2";
+        var tableName = "testWithUc";
+        var columnName = "testColumn";
+        var columnName2 = "testColumn2";
+        var uniqueConstraintName = "testUc";
+        var uniqueConstraintName2 = "testUc2";
 
         await connection.CreateTableIfNotExistsAsync(
             null,
@@ -170,5 +170,68 @@ public abstract partial class DatabaseMethodsTests
             uniqueConstraintName
         );
         Assert.False(exists);
+
+        // test key ordering
+        tableName = "testWithUc2";
+        uniqueConstraintName = "uc_testWithUc2";
+        await connection.CreateTableIfNotExistsAsync(
+            null,
+            tableName,
+            [
+                new DxColumn(
+                    null,
+                    tableName,
+                    columnName,
+                    typeof(int),
+                    defaultExpression: "1",
+                    isNullable: false
+                ),
+                new DxColumn(
+                    null,
+                    tableName,
+                    columnName2,
+                    typeof(int),
+                    defaultExpression: "1",
+                    isNullable: false
+                )
+            ],
+            uniqueConstraints:
+            [
+                new DxUniqueConstraint(
+                    null,
+                    tableName,
+                    uniqueConstraintName,
+                    [
+                        new DxOrderedColumn(columnName2, DxColumnOrder.Ascending),
+                        new DxOrderedColumn(columnName, DxColumnOrder.Descending)
+                    ]
+                )
+            ]
+        );
+
+        var uniqueConstraint = await connection.GetUniqueConstraintAsync(
+            null,
+            tableName,
+            uniqueConstraintName
+        );
+        Assert.NotNull(uniqueConstraint);
+        Assert.NotNull(uniqueConstraint.Columns);
+        Assert.Equal(2, uniqueConstraint.Columns.Length);
+        Assert.Equal(
+            columnName2,
+            uniqueConstraint.Columns[0].ColumnName,
+            StringComparer.OrdinalIgnoreCase
+        );
+        Assert.Equal(DxColumnOrder.Ascending, uniqueConstraint.Columns[0].Order);
+        Assert.Equal(
+            columnName,
+            uniqueConstraint.Columns[1].ColumnName,
+            StringComparer.OrdinalIgnoreCase
+        );
+        if (connection.SupportsOrderedKeysInConstraints())
+        {
+            Assert.Equal(DxColumnOrder.Descending, uniqueConstraint.Columns[1].Order);
+        }
+        await connection.DropTableIfExistsAsync(null, tableName);
     }
 }

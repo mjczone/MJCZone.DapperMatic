@@ -15,6 +15,7 @@ public partial interface IDatabaseMethods
         IDatabaseViewMethods
 {
     DbProviderType ProviderType { get; }
+    bool SupportsOrderedKeysInConstraints { get; }
     string GetLastSql(IDbConnection db);
     (string sql, object? parameters) GetLastSqlWithParams(IDbConnection db);
     Task<string> GetDatabaseVersionAsync(

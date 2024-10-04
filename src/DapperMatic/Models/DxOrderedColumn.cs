@@ -20,6 +20,8 @@ public class DxOrderedColumn
     public required string ColumnName { get; set; }
     public required DxColumnOrder Order { get; set; }
 
-    public override string ToString() =>
-        $"{ColumnName}{(Order == DxColumnOrder.Descending ? " DESC" : "")}";
+    public override string ToString() => ToString(true);
+
+    public string ToString(bool includeOrder) =>
+        $"{ColumnName}{(includeOrder ? (Order == DxColumnOrder.Descending ? " DESC" : "") : "")}";
 }

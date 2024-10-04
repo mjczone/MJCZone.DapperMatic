@@ -108,7 +108,7 @@ public abstract partial class DatabaseMethodsBase : IDatabaseUniqueConstraintMet
             @$"
             ALTER TABLE {schemaQualifiedTableName}
                 ADD CONSTRAINT {constraintName} 
-                    UNIQUE ({string.Join(", ", columns.Select(c => c.ToString()))})
+                    UNIQUE ({string.Join(", ", columns.Select(c => c.ToString(SupportsOrderedKeysInConstraints)))})
         ";
 
         await ExecuteAsync(db, sql, transaction: tx).ConfigureAwait(false);

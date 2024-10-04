@@ -10,6 +10,7 @@ namespace DapperMatic.Providers;
 public abstract partial class DatabaseMethodsBase : IDatabaseMethods
 {
     public abstract DbProviderType ProviderType { get; }
+    public virtual bool SupportsOrderedKeysInConstraints => true;
     protected virtual ILogger Logger => DxLogger.CreateLogger(GetType());
 
     protected virtual List<DataTypeMap> DataTypes =>

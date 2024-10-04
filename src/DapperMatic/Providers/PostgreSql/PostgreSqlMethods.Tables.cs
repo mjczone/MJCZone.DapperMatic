@@ -108,7 +108,7 @@ public partial class PostgreSqlMethods
         // add multi column primary key constraints here
         if (primaryKey != null && primaryKey.Columns.Length > 1)
         {
-            var pkColumns = primaryKey.Columns.Select(c => c.ToString());
+            var pkColumns = primaryKey.Columns.Select(c => c.ToString(SupportsOrderedKeysInConstraints));
             var pkColumnNames = primaryKey.Columns.Select(c => c.ColumnName);
             sql.AppendLine(
                 $", CONSTRAINT {ProviderUtils.GetPrimaryKeyConstraintName(tableName, [.. pkColumnNames])} PRIMARY KEY ({string.Join(", ", pkColumns)})"
@@ -136,8 +136,8 @@ public partial class PostgreSqlMethods
         {
             foreach (var constraint in foreignKeyConstraints)
             {
-                var fkColumns = constraint.SourceColumns.Select(c => c.ToString());
-                var fkReferencedColumns = constraint.ReferencedColumns.Select(c => c.ToString());
+                var fkColumns = constraint.SourceColumns.Select(c => c.ToString(SupportsOrderedKeysInConstraints));
+                var fkReferencedColumns = constraint.ReferencedColumns.Select(c => c.ToString(SupportsOrderedKeysInConstraints));
                 sql.AppendLine(
                     $", CONSTRAINT {NormalizeName(constraint.ConstraintName)} FOREIGN KEY ({string.Join(", ", fkColumns)}) REFERENCES {NormalizeName(constraint.ReferencedTableName)} ({string.Join(", ", fkReferencedColumns)})"
                 );
@@ -151,7 +151,9 @@ public partial class PostgreSqlMethods
         {
             foreach (var constraint in uniqueConstraints)
             {
-                var uniqueColumns = constraint.Columns.Select(c => c.ToString());
+                var uniqueColumns = constraint.Columns.Select(c =>
+                    c.ToString(SupportsOrderedKeysInConstraints)
+                );
                 sql.AppendLine(
                     $", CONSTRAINT {NormalizeName(constraint.ConstraintName)} UNIQUE ({string.Join(", ", uniqueColumns)})"
                 );

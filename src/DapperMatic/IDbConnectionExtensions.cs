@@ -51,6 +51,11 @@ public static partial class IDbConnectionExtensions
         return Database(db).SupportsSchemas;
     }
 
+    public static bool SupportsOrderedKeysInConstraints(this IDbConnection db)
+    {
+        return Database(db).SupportsOrderedKeysInConstraints;
+    }
+
     public static async Task<bool> CreateSchemaIfNotExistsAsync(
         this IDbConnection db,
         string schemaName,

@@ -6,6 +6,7 @@ namespace DapperMatic.Providers.PostgreSql;
 public partial class PostgreSqlMethods : DatabaseMethodsBase, IDatabaseMethods
 {
     public override DbProviderType ProviderType => DbProviderType.PostgreSql;
+    public override bool SupportsOrderedKeysInConstraints => false;
 
     internal PostgreSqlMethods() { }
 
