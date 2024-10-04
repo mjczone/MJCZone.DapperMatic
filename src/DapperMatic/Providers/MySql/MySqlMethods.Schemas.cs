@@ -5,14 +5,7 @@ namespace DapperMatic.Providers.MySql;
 
 public partial class MySqlMethods
 {
-    public override Task<bool> SupportsSchemasAsync(
-        IDbConnection connection,
-        IDbTransaction? tx = null,
-        CancellationToken cancellationToken = default
-    )
-    {
-        return base.SupportsSchemasAsync(connection, tx, cancellationToken);
-    }
+    protected override string DefaultSchema => "";
 
     public override Task<bool> DoesSchemaExistAsync(
         IDbConnection db,

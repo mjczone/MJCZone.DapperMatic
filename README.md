@@ -16,7 +16,7 @@ The following table outlines the various extension methods available for `IDbCon
 | `GetDotnetTypeFromSqlType`               | Converts a provider sql type into a .NET type (e.g.: nvarchar -> typeof(string))                  |
 | `GetDatabaseVersionAsync`                | Retrieves the version of the database.                                                            |
 | **Schema Methods**                       |                                                                                                   |
-| `SupportsSchemasAsync`                   | Checks if the database supports schemas.                                                          |
+| `SupportsSchemas`                   | Checks if the database supports schemas.                                                          |
 | `DoesSchemaExistAsync`                   | Checks if a schema exists in the database.                                                        |
 | `CreateSchemaIfNotExistsAsync`           | Creates a schema if it does not already exist in the database.                                    |
 | `GetSchemaNamesAsync`                    | Retrieves the names of schemas in the database.                                                   |

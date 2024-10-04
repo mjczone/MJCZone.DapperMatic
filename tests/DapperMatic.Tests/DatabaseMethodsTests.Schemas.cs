@@ -9,7 +9,7 @@ public abstract partial class DatabaseMethodsTests
     {
         using var connection = await OpenConnectionAsync();
 
-        var supportsSchemas = await connection.SupportsSchemasAsync();
+        var supportsSchemas = connection.SupportsSchemas();
         if (!supportsSchemas)
         {
             Logger.LogInformation("This test requires a database that supports schemas.");

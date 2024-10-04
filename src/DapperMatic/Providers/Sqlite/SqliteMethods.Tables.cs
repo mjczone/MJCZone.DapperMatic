@@ -101,7 +101,7 @@ public partial class SqliteMethods
             var pkColumns = primaryKey.Columns.Select(c => c.ToString());
             var pkColumnNames = primaryKey.Columns.Select(c => c.ColumnName);
             sql.AppendLine(
-                $", CONSTRAINT pk_{tableName}_{string.Join('_', pkColumnNames)} PRIMARY KEY ({string.Join(", ", pkColumns)})"
+                $", CONSTRAINT {ProviderUtils.GetPrimaryKeyConstraintName(tableName, [.. pkColumnNames])} PRIMARY KEY ({string.Join(", ", pkColumns)})"
             );
         }
 
@@ -114,9 +114,8 @@ public partial class SqliteMethods
                 )
             )
             {
-                var checkConstraintName = ToAlphaNumericString(constraint.ConstraintName);
                 sql.AppendLine(
-                    $", CONSTRAINT {checkConstraintName} CHECK ({constraint.Expression})"
+                    $", CONSTRAINT {NormalizeName(constraint.ConstraintName)} CHECK ({constraint.Expression})"
                 );
             }
         }
@@ -126,11 +125,10 @@ public partial class SqliteMethods
         {
             foreach (var constraint in foreignKeyConstraints)
             {
-                var fkName = ToAlphaNumericString(constraint.ConstraintName);
                 var fkColumns = constraint.SourceColumns.Select(c => c.ToString());
                 var fkReferencedColumns = constraint.ReferencedColumns.Select(c => c.ToString());
                 sql.AppendLine(
-                    $", CONSTRAINT {fkName} FOREIGN KEY ({string.Join(", ", fkColumns)}) REFERENCES {ToAlphaNumericString(constraint.ReferencedTableName)} ({string.Join(", ", fkReferencedColumns)})"
+                    $", CONSTRAINT {NormalizeName(constraint.ConstraintName)} FOREIGN KEY ({string.Join(", ", fkColumns)}) REFERENCES {NormalizeName(constraint.ReferencedTableName)} ({string.Join(", ", fkReferencedColumns)})"
                 );
                 sql.AppendLine($" ON DELETE {constraint.OnDelete.ToSql()}");
                 sql.AppendLine($" ON UPDATE {constraint.OnUpdate.ToSql()}");
@@ -142,10 +140,9 @@ public partial class SqliteMethods
         {
             foreach (var constraint in uniqueConstraints)
             {
-                var uniqueConstraintName = ToAlphaNumericString(constraint.ConstraintName);
                 var uniqueColumns = constraint.Columns.Select(c => c.ToString());
                 sql.AppendLine(
-                    $", CONSTRAINT {uniqueConstraintName} UNIQUE ({string.Join(", ", uniqueColumns)})"
+                    $", CONSTRAINT {NormalizeName(constraint.ConstraintName)} UNIQUE ({string.Join(", ", uniqueColumns)})"
                 );
             }
         }
@@ -161,13 +158,6 @@ public partial class SqliteMethods
         {
             await CreateIndexIfNotExistsAsync(db, index, tx, cancellationToken)
                 .ConfigureAwait(false);
-            // var indexName = NormalizeName(index.IndexName);
-            // var indexColumns = index.Columns.Select(c => c.ToString());
-            // var indexColumnNames = index.Columns.Select(c => c.ColumnName);
-            // // create index sql
-            // var createIndexSql =
-            //     $"CREATE {(index.IsUnique ? "UNIQUE INDEX" : "INDEX")} ix_{tableName}_{string.Join('_', indexColumnNames)} ON {tableName} ({string.Join(", ", indexColumns)})";
-            // await ExecuteAsync(db, createIndexSql, transaction: tx).ConfigureAwait(false);
         }
 
         return true;
@@ -183,7 +173,7 @@ public partial class SqliteMethods
     {
         var where = string.IsNullOrWhiteSpace(tableNameFilter)
             ? null
-            : $"{ToAlphaNumericString(tableNameFilter)}".Replace("*", "%");
+            : ToLikeString(tableNameFilter);
 
         var sql = new StringBuilder();
         sql.AppendLine(
@@ -207,7 +197,7 @@ public partial class SqliteMethods
     {
         var where = string.IsNullOrWhiteSpace(tableNameFilter)
             ? null
-            : $"{ToAlphaNumericString(tableNameFilter)}".Replace("*", "%");
+            : ToLikeString(tableNameFilter);
 
         var sql = new StringBuilder();
         sql.AppendLine(

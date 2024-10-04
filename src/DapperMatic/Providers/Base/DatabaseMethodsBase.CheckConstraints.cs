@@ -5,8 +5,6 @@ namespace DapperMatic.Providers;
 
 public abstract partial class DatabaseMethodsBase : IDatabaseCheckConstraintMethods
 {
-    protected abstract string GetSchemaQualifiedTableName(string schemaName, string tableName);
-
     public virtual async Task<bool> DoesCheckConstraintExistAsync(
         IDbConnection db,
         string? schemaName,
@@ -240,7 +238,7 @@ public abstract partial class DatabaseMethodsBase : IDatabaseCheckConstraintMeth
 
         var filter = string.IsNullOrWhiteSpace(constraintNameFilter)
             ? null
-            : ToAlphaNumericString(constraintNameFilter);
+            : ToSafeString(constraintNameFilter);
 
         return string.IsNullOrWhiteSpace(filter)
             ? table.CheckConstraints

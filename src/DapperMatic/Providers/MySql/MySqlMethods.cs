@@ -5,7 +5,6 @@ namespace DapperMatic.Providers.MySql;
 public partial class MySqlMethods : DatabaseMethodsBase, IDatabaseMethods
 {
     public override DbProviderType ProviderType => DbProviderType.MySql;
-    protected override string DefaultSchema => "";
 
     internal MySqlMethods() { }
 
@@ -24,8 +23,5 @@ public partial class MySqlMethods : DatabaseMethodsBase, IDatabaseMethods
         return MySqlSqlParser.GetDotnetTypeFromSqlType(sqlType);
     }
 
-    protected override string GetSchemaQualifiedTableName(string schemaName, string tableName)
-    {
-        return tableName;
-    }
+    public override char[] QuoteChars => ['`'];
 }

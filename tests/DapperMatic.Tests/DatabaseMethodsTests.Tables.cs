@@ -11,7 +11,7 @@ public abstract partial class DatabaseMethodsTests
     {
         using var connection = await OpenConnectionAsync();
 
-        var supportsSchemas = await connection.SupportsSchemasAsync();
+        var supportsSchemas = connection.SupportsSchemas();
 
         var tableName = "testTable";
 

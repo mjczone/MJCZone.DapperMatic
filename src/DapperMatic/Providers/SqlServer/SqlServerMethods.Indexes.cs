@@ -18,7 +18,7 @@ public partial class SqlServerMethods
 
         var where = string.IsNullOrWhiteSpace(indexNameFilter)
             ? null
-            : $"{ToAlphaNumericString(indexNameFilter)}".Replace("*", "%");
+            : ToLikeString(indexNameFilter);
 
         var sql =
             @$"SELECT 

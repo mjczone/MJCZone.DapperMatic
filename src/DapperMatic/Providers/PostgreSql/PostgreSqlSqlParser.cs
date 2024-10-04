@@ -16,6 +16,72 @@ public static class PostgreSqlSqlParser
         if (match != null)
             return match;
 
+        /*
+|data_type                  |
+|---------------------------|
+|"char"                     |
+|ARRAY                      |
+|USER-DEFINED               |
+|anyarray                   |
+|bigint                     |
+|bit                        |
+|bit varying                |
+|boolean                    |
+|box                        |
+|bytea                      |
+|character                  |
+|character varying          |
+|cid                        |
+|cidr                       |
+|circle                     |
+|date                       |
+|daterange                  |
+|double precision           |
+|inet                       |
+|int4range                  |
+|int8range                  |
+|integer                    |
+|interval                   |
+|json                       |
+|line                       |
+|lseg                       |
+|macaddr                    |
+|money                      |
+|name                       |
+|numeric                    |
+|numrange                   |
+|oid                        |
+|path                       |
+|pg_dependencies            |
+|pg_lsn                     |
+|pg_mcv_list                |
+|pg_ndistinct               |
+|pg_node_tree               |
+|point                      |
+|polygon                    |
+|real                       |
+|regclass                   |
+|regoper                    |
+|regoperator                |
+|regproc                    |
+|regprocedure               |
+|regtype                    |
+|smallint                   |
+|text                       |
+|time with time zone        |
+|time without time zone     |
+|timestamp with time zone   |
+|timestamp without time zone|
+|tsquery                    |
+|tsrange                    |
+|tstzrange                  |
+|tsvector                   |
+|txid_snapshot              |
+|uuid                       |
+|xid                        |
+|xml                        |        
+        */
+
         // SQLServer specific types, see https://learn.microsoft.com/en-us/sql/t-sql/data-types/data-types-transact-sql?view=sql-server-ver16
         switch (simpleSqlType)
         {

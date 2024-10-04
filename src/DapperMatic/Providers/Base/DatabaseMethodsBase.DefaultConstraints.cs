@@ -131,7 +131,7 @@ public abstract partial class DatabaseMethodsBase : IDatabaseDefaultConstraintMe
         if (string.IsNullOrWhiteSpace(constraintName))
             throw new ArgumentException("Constraint name is required.", nameof(constraintName));
 
-        var checkConstraints = await GetDefaultConstraintsAsync(
+        var defaultConstraints = await GetDefaultConstraintsAsync(
                 db,
                 schemaName,
                 tableName,
@@ -140,7 +140,8 @@ public abstract partial class DatabaseMethodsBase : IDatabaseDefaultConstraintMe
                 cancellationToken
             )
             .ConfigureAwait(false);
-        return checkConstraints.SingleOrDefault();
+
+        return defaultConstraints.SingleOrDefault();
     }
 
     public virtual async Task<string?> GetDefaultConstraintNameOnColumnAsync(
@@ -164,6 +165,7 @@ public abstract partial class DatabaseMethodsBase : IDatabaseDefaultConstraintMe
                 cancellationToken
             )
             .ConfigureAwait(false);
+
         return defaultConstraints
             .FirstOrDefault(c =>
                 !string.IsNullOrWhiteSpace(c.ColumnName)
@@ -205,7 +207,7 @@ public abstract partial class DatabaseMethodsBase : IDatabaseDefaultConstraintMe
         if (string.IsNullOrWhiteSpace(columnName))
             throw new ArgumentException("Column name is required.", nameof(columnName));
 
-        var checkConstraints = await GetDefaultConstraintsAsync(
+        var defaultConstraints = await GetDefaultConstraintsAsync(
                 db,
                 schemaName,
                 tableName,
@@ -214,7 +216,8 @@ public abstract partial class DatabaseMethodsBase : IDatabaseDefaultConstraintMe
                 cancellationToken
             )
             .ConfigureAwait(false);
-        return checkConstraints.FirstOrDefault(c =>
+
+        return defaultConstraints.FirstOrDefault(c =>
             !string.IsNullOrWhiteSpace(c.ColumnName)
             && c.ColumnName.Equals(columnName, StringComparison.OrdinalIgnoreCase)
         );
@@ -240,7 +243,7 @@ public abstract partial class DatabaseMethodsBase : IDatabaseDefaultConstraintMe
 
         var filter = string.IsNullOrWhiteSpace(constraintNameFilter)
             ? null
-            : ToAlphaNumericString(constraintNameFilter);
+            : ToSafeString(constraintNameFilter);
 
         return string.IsNullOrWhiteSpace(filter)
             ? table.DefaultConstraints

@@ -229,7 +229,7 @@ public abstract partial class DatabaseMethodsBase : IDatabaseUniqueConstraintMet
 
         var filter = string.IsNullOrWhiteSpace(constraintNameFilter)
             ? null
-            : ToAlphaNumericString(constraintNameFilter);
+            : ToSafeString(constraintNameFilter);
 
         return string.IsNullOrWhiteSpace(filter)
             ? table.UniqueConstraints

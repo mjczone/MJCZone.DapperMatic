@@ -15,9 +15,7 @@ public partial class SqlServerMethods
     {
         schemaName = NormalizeSchemaName(schemaName);
 
-        var where = string.IsNullOrWhiteSpace(viewNameFilter)
-            ? ""
-            : ToAlphaNumericString(viewNameFilter).Replace("*", "%");
+        var where = string.IsNullOrWhiteSpace(viewNameFilter) ? "" : ToLikeString(viewNameFilter);
 
         var sql =
             @$"

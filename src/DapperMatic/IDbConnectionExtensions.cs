@@ -30,6 +30,11 @@ public static partial class IDbConnectionExtensions
     {
         return Database(db).GetDotnetTypeFromSqlType(sqlType);
     }
+
+    public static string NormalizeName(this IDbConnection db, string name)
+    {
+        return Database(db).NormalizeName(name);
+    }
     #endregion // IDatabaseMethods
 
     #region Private static methods
@@ -41,15 +46,9 @@ public static partial class IDbConnectionExtensions
 
     #region IDatabaseSchemaMethods
 
-    public static async Task<bool> SupportsSchemasAsync(
-        this IDbConnection db,
-        IDbTransaction? tx = null,
-        CancellationToken cancellationToken = default
-    )
+    public static bool SupportsSchemas(this IDbConnection db)
     {
-        return await Database(db)
-            .SupportsSchemasAsync(db, tx, cancellationToken)
-            .ConfigureAwait(false);
+        return Database(db).SupportsSchemas;
     }
 
     public static async Task<bool> CreateSchemaIfNotExistsAsync(

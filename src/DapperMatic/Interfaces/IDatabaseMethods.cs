@@ -24,4 +24,5 @@ public partial interface IDatabaseMethods
     );
     Type GetDotnetTypeFromSqlType(string sqlType);
     string GetSqlTypeFromDotnetType(Type type, int? length, int? precision, int? scale);
+    string NormalizeName(string name);
 }

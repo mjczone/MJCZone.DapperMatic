@@ -280,7 +280,9 @@ public abstract partial class DatabaseMethodsTests
 
         foreach (var column in table.Columns)
         {
-            var originalColumn = addColumns.SingleOrDefault(c => c.ColumnName == column.ColumnName);
+            var originalColumn = addColumns.SingleOrDefault(c =>
+                c.ColumnName.Equals(column.ColumnName, StringComparison.OrdinalIgnoreCase)
+            );
             Assert.NotNull(originalColumn);
         }
 
@@ -293,10 +295,9 @@ public abstract partial class DatabaseMethodsTests
             addColumns.Count(c => c.IsIndexed && !c.IsUnique),
             table.Indexes.Count(c => !c.IsUnique)
         );
-        Assert.Equal(
-            addColumns.Count(c => c.IsIndexed && c.IsUnique),
-            table.Indexes.Count(c => c.IsUnique)
-        );
+        var expectedUniqueIndexes = addColumns.Where(c => c.IsIndexed && c.IsUnique).ToArray();
+        var actualUniqueIndexes = table.Indexes.Where(c => c.IsUnique).ToArray();
+        Assert.Equal(expectedUniqueIndexes.Length, actualUniqueIndexes.Length);
         Assert.Equal(addColumns.Count(c => c.IsForeignKey), table.ForeignKeyConstraints.Count());
         Assert.Equal(
             addColumns.Count(c => c.DefaultExpression != null),

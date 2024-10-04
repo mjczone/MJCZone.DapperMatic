@@ -63,7 +63,7 @@ public partial class SqliteMethods
     {
         var where = string.IsNullOrWhiteSpace(viewNameFilter)
             ? null
-            : $"{ToAlphaNumericString(viewNameFilter)}".Replace("*", "%");
+            : ToLikeString(viewNameFilter);
 
         var sql = new StringBuilder();
         sql.AppendLine(
@@ -89,7 +89,7 @@ public partial class SqliteMethods
     {
         var where = string.IsNullOrWhiteSpace(viewNameFilter)
             ? null
-            : $"{ToAlphaNumericString(viewNameFilter)}".Replace("*", "%");
+            : ToLikeString(viewNameFilter);
 
         var sql = new StringBuilder();
         sql.AppendLine(

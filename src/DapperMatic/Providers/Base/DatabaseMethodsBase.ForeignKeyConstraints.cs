@@ -264,7 +264,7 @@ public abstract partial class DatabaseMethodsBase : IDatabaseForeignKeyConstrain
 
         var filter = string.IsNullOrWhiteSpace(constraintNameFilter)
             ? null
-            : ToAlphaNumericString(constraintNameFilter);
+            : ToSafeString(constraintNameFilter);
 
         return string.IsNullOrWhiteSpace(filter)
             ? table.ForeignKeyConstraints

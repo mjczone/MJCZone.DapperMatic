@@ -1,19 +1,11 @@
 using System.Data;
-using DapperMatic.Models;
 
 namespace DapperMatic.Providers.PostgreSql;
 
+// TODO: see https://github.com/linq2db/linq2db/blob/0c99d98c912ae812657c89ae90a5ccf0e6436e07/Source/LinqToDB/DataProvider/PostgreSQL/PostgreSQLSchemaProvider.cs#L22
 public partial class PostgreSqlMethods : DatabaseMethodsBase, IDatabaseMethods
 {
     public override DbProviderType ProviderType => DbProviderType.PostgreSql;
-    private static string _defaultSchema = "public";
-
-    public static void SetDefaultSchema(string schema)
-    {
-        _defaultSchema = schema;
-    }
-
-    protected override string DefaultSchema => _defaultSchema;
 
     internal PostgreSqlMethods() { }
 
@@ -32,8 +24,18 @@ public partial class PostgreSqlMethods : DatabaseMethodsBase, IDatabaseMethods
         return PostgreSqlSqlParser.GetDotnetTypeFromSqlType(sqlType);
     }
 
-    protected override string GetSchemaQualifiedTableName(string schemaName, string tableName)
+    public override char[] QuoteChars => ['"'];
+
+    /// <summary>
+    /// Postgresql is case sensitive, so we need to normalize names to lowercase.
+    /// </summary>
+    public override string NormalizeName(string name)
     {
-        return string.IsNullOrWhiteSpace(schemaName) ? $"{tableName}" : $"{schemaName}.{tableName}";
+        return base.NormalizeName(name).ToLowerInvariant();
+    }
+
+    protected override string ToLikeString(string text, string allowedSpecialChars = "-_.*")
+    {
+        return base.ToLikeString(text, allowedSpecialChars).ToLowerInvariant();
     }
 }

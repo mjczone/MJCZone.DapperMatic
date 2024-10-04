@@ -6,6 +6,15 @@ namespace DapperMatic.Providers.SqlServer;
 
 public partial class SqlServerMethods
 {
+    private static string _defaultSchema = "dbo";
+
+    public static void SetDefaultSchema(string schema)
+    {
+        _defaultSchema = schema;
+    }
+
+    protected override string DefaultSchema => _defaultSchema;
+
     // public override async Task<bool> DoesSchemaExistAsync(
     //     IDbConnection db,
     //     string schemaName,
@@ -32,7 +41,7 @@ public partial class SqlServerMethods
     {
         var where = string.IsNullOrWhiteSpace(schemaNameFilter)
             ? ""
-            : ToAlphaNumericString(schemaNameFilter).Replace("*", "%");
+            : ToLikeString(schemaNameFilter);
 
         var sql =
             $@"

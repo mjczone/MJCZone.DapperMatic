@@ -236,7 +236,11 @@ public static partial class SqliteSqlParser
                                     {
                                         // add the default constraint to the table
                                         var defaultConstraintName =
-                                            inlineConstraintName ?? $"df_{tableName}_{columnName}";
+                                            inlineConstraintName
+                                            ?? ProviderUtils.GetDefaultConstraintName(
+                                                tableName,
+                                                columnName
+                                            );
                                         table.DefaultConstraints.Add(
                                             new DxDefaultConstraint(
                                                 null,
@@ -254,7 +258,11 @@ public static partial class SqliteSqlParser
                                     column.IsUnique = true;
                                     // add the default constraint to the table
                                     var uniqueConstraintName =
-                                        inlineConstraintName ?? $"uc_{tableName}_{columnName}";
+                                        inlineConstraintName
+                                        ?? ProviderUtils.GetUniqueConstraintName(
+                                            tableName,
+                                            columnName
+                                        );
                                     table.UniqueConstraints.Add(
                                         new DxUniqueConstraint(
                                             null,
@@ -279,7 +287,11 @@ public static partial class SqliteSqlParser
                                     {
                                         // add the default constraint to the table
                                         var checkConstraintName =
-                                            inlineConstraintName ?? $"ck_{tableName}_{columnName}";
+                                            inlineConstraintName
+                                            ?? ProviderUtils.GetCheckConstraintName(
+                                                tableName,
+                                                columnName
+                                            );
                                         table.CheckConstraints.Add(
                                             new DxCheckConstraint(
                                                 null,
@@ -297,7 +309,11 @@ public static partial class SqliteSqlParser
                                     column.IsPrimaryKey = true;
                                     // add the default constraint to the table
                                     var pkConstraintName =
-                                        inlineConstraintName ?? $"pk_{tableName}_{columnName}";
+                                        inlineConstraintName
+                                        ?? ProviderUtils.GetPrimaryKeyConstraintName(
+                                            tableName,
+                                            columnName
+                                        );
                                     var columnOrder = DxColumnOrder.Ascending;
                                     if (
                                         columnDefinition
@@ -349,7 +365,12 @@ public static partial class SqliteSqlParser
 
                                     var constraintName =
                                         inlineConstraintName
-                                        ?? $"fk_{tableName}_{columnName}_{referencedTableName}_{referenceColumnName}";
+                                        ?? ProviderUtils.GetForeignKeyConstraintName(
+                                            tableName,
+                                            columnName,
+                                            referencedTableName,
+                                            referenceColumnName
+                                        );
 
                                     var foreignKey = new DxForeignKeyConstraint(
                                         null,
@@ -455,7 +476,10 @@ public static partial class SqliteSqlParser
                                     null,
                                     tableName,
                                     inlineConstraintName
-                                        ?? $"pk_{tableName}_{string.Join('_', pkColumnNames)}",
+                                        ?? ProviderUtils.GetPrimaryKeyConstraintName(
+                                            tableName,
+                                            pkColumnNames
+                                        ),
                                     pkOrderedColumns
                                 );
                                 foreach (var column in table.Columns)
@@ -491,7 +515,10 @@ public static partial class SqliteSqlParser
                                     null,
                                     tableName,
                                     inlineConstraintName
-                                        ?? $"uc_{tableName}_{string.Join('_', ucColumnNames)}",
+                                        ?? ProviderUtils.GetUniqueConstraintName(
+                                            tableName,
+                                            ucColumnNames
+                                        ),
                                     ucOrderedColumns
                                 );
                                 table.UniqueConstraints.Add(ucConstraint);
@@ -518,7 +545,12 @@ public static partial class SqliteSqlParser
                                     // add the default constraint to the table
                                     var checkConstraintName =
                                         inlineConstraintName
-                                        ?? $"ck_{tableName}{(table.CheckConstraints.Count > 0 ? $"_{table.CheckConstraints.Count}" : "")}";
+                                        ?? ProviderUtils.GetCheckConstraintName(
+                                            tableName,
+                                            table.CheckConstraints.Count > 0
+                                                ? $"{table.CheckConstraints.Count}"
+                                                : ""
+                                        );
                                     table.CheckConstraints.Add(
                                         new DxCheckConstraint(
                                             null,
@@ -575,7 +607,12 @@ public static partial class SqliteSqlParser
 
                                 var constraintName =
                                     inlineConstraintName
-                                    ?? $"fk_{tableName}_{string.Join('_', fkSourceColumnNames)}_{referencedTableName}_{string.Join('_', fkReferencedColumnNames)}";
+                                    ?? ProviderUtils.GetForeignKeyConstraintName(
+                                        tableName,
+                                        fkSourceColumnNames,
+                                        referencedTableName,
+                                        fkReferencedColumnNames
+                                    );
 
                                 var foreignKey = new DxForeignKeyConstraint(
                                     null,

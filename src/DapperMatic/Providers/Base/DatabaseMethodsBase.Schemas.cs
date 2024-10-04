@@ -5,6 +5,16 @@ namespace DapperMatic.Providers;
 
 public abstract partial class DatabaseMethodsBase : IDatabaseSchemaMethods
 {
+    protected abstract string DefaultSchema { get; }
+    public virtual bool SupportsSchemas => !string.IsNullOrWhiteSpace(DefaultSchema);
+
+    protected virtual string GetSchemaQualifiedTableName(string schemaName, string tableName)
+    {
+        return SupportsSchemas && string.IsNullOrWhiteSpace(schemaName)
+            ? $"{schemaName.ToQuotedIdentifier(QuoteChars)}.{tableName.ToQuotedIdentifier(QuoteChars)}"
+            : tableName.ToQuotedIdentifier(QuoteChars);
+    }
+
     public virtual async Task<bool> DoesSchemaExistAsync(
         IDbConnection db,
         string schemaName,

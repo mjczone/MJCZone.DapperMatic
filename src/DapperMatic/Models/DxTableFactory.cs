@@ -2,6 +2,7 @@ using System.Collections.Concurrent;
 using System.ComponentModel.DataAnnotations;
 using System.Reflection;
 using DapperMatic.DataAnnotations;
+using DapperMatic.Providers;
 
 namespace DapperMatic.Models;
 
@@ -186,7 +187,7 @@ public static class DxTableFactory
                     columnName,
                     !string.IsNullOrWhiteSpace(columnCheckConstraintAttribute.ConstraintName)
                         ? columnCheckConstraintAttribute.ConstraintName
-                        : $"ck_{tableName}_{columnName}",
+                        : ProviderUtils.GetCheckConstraintName(tableName, columnName),
                     columnCheckConstraintAttribute.Expression
                 );
                 checkConstraints.Add(checkConstraint);
@@ -205,7 +206,7 @@ public static class DxTableFactory
                     columnName,
                     !string.IsNullOrWhiteSpace(columnDefaultConstraintAttribute.ConstraintName)
                         ? columnDefaultConstraintAttribute.ConstraintName
-                        : $"df_{tableName}_{columnName}",
+                        : ProviderUtils.GetDefaultConstraintName(tableName, columnName),
                     columnDefaultConstraintAttribute.Expression
                 );
                 defaultConstraints.Add(defaultConstraint);
@@ -223,7 +224,7 @@ public static class DxTableFactory
                     tableName,
                     !string.IsNullOrWhiteSpace(columnUniqueConstraintAttribute.ConstraintName)
                         ? columnUniqueConstraintAttribute.ConstraintName
-                        : $"uc_{tableName}_{columnName}",
+                        : ProviderUtils.GetUniqueConstraintName(tableName, columnName),
                     [new(columnName)]
                 );
                 uniqueConstraints.Add(uniqueConstraint);
@@ -240,7 +241,7 @@ public static class DxTableFactory
                     tableName,
                     !string.IsNullOrWhiteSpace(columnIndexAttribute.IndexName)
                         ? columnIndexAttribute.IndexName
-                        : $"ix_{tableName}_{columnName}",
+                        : ProviderUtils.GetIndexName(tableName, columnName),
                     [new(columnName)],
                     isUnique: columnIndexAttribute.IsUnique
                 );
@@ -268,14 +269,20 @@ public static class DxTableFactory
                     && !string.IsNullOrWhiteSpace(referencedColumnNames[0])
                 )
                 {
+                    var constraintName = !string.IsNullOrWhiteSpace(
+                        columnForeignKeyConstraintAttribute.ConstraintName
+                    )
+                        ? columnForeignKeyConstraintAttribute.ConstraintName
+                        : ProviderUtils.GetForeignKeyConstraintName(
+                            tableName,
+                            columnName,
+                            referencedTableName,
+                            referencedColumnNames[0]
+                        );
                     var foreignKeyConstraint = new DxForeignKeyConstraint(
                         schemaName,
                         tableName,
-                        !string.IsNullOrWhiteSpace(
-                            columnForeignKeyConstraintAttribute.ConstraintName
-                        )
-                            ? columnForeignKeyConstraintAttribute.ConstraintName
-                            : $"fk_{tableName}_{columnName}_{referencedTableName}_{referencedColumnNames[0]}",
+                        constraintName,
                         [new(columnName)],
                         referencedTableName,
                         [new(referencedColumnNames[0])],
@@ -306,7 +313,10 @@ public static class DxTableFactory
         {
             var constraintName = !string.IsNullOrWhiteSpace(cpa.ConstraintName)
                 ? cpa.ConstraintName
-                : $"pk_{tableName}_{string.Join('_', cpa.Columns.Select(c => c.ColumnName))}";
+                : ProviderUtils.GetPrimaryKeyConstraintName(
+                    tableName,
+                    cpa.Columns.Select(c => c.ColumnName).ToArray()
+                );
 
             primaryKey = new DxPrimaryKeyConstraint(
                 schemaName,
@@ -334,7 +344,7 @@ public static class DxTableFactory
             {
                 var constraintName = !string.IsNullOrWhiteSpace(cca.ConstraintName)
                     ? cca.ConstraintName
-                    : $"ck_{tableName}_{ccaId++}";
+                    : ProviderUtils.GetCheckConstraintName(tableName, $"{ccaId++}");
 
                 checkConstraints.Add(
                     new DxCheckConstraint(
@@ -356,7 +366,10 @@ public static class DxTableFactory
 
             var constraintName = !string.IsNullOrWhiteSpace(uca.ConstraintName)
                 ? uca.ConstraintName
-                : $"uc_{tableName}_{string.Join('_', uca.Columns.Select(c => c.ColumnName))}";
+                : ProviderUtils.GetUniqueConstraintName(
+                    tableName,
+                    uca.Columns.Select(c => c.ColumnName).ToArray()
+                );
 
             uniqueConstraints.Add(
                 new DxUniqueConstraint(schemaName, tableName, constraintName, uca.Columns)
@@ -383,7 +396,10 @@ public static class DxTableFactory
 
             var indexName = !string.IsNullOrWhiteSpace(cia.IndexName)
                 ? cia.IndexName
-                : $"ix_{tableName}_{string.Join('_', cia.Columns.Select(c => c.ColumnName))}";
+                : ProviderUtils.GetIndexName(
+                    tableName,
+                    cia.Columns.Select(c => c.ColumnName).ToArray()
+                );
 
             indexes.Add(
                 new DxIndex(schemaName, tableName, indexName, cia.Columns, isUnique: cia.IsUnique)
@@ -421,7 +437,12 @@ public static class DxTableFactory
 
             var constraintName = !string.IsNullOrWhiteSpace(cfk.ConstraintName)
                 ? cfk.ConstraintName
-                : $"fk_{tableName}_{string.Join('_', cfk.SourceColumnNames)}_{cfk.ReferencedTableName}_{string.Join('_', cfk.ReferencedColumnNames)}";
+                : ProviderUtils.GetForeignKeyConstraintName(
+                    tableName,
+                    cfk.SourceColumnNames,
+                    cfk.ReferencedTableName,
+                    cfk.ReferencedColumnNames
+                );
 
             var foreignKeyConstraint = new DxForeignKeyConstraint(
                 schemaName,

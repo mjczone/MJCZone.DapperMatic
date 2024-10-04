@@ -5,52 +5,53 @@ namespace DapperMatic.Providers.PostgreSql;
 
 public partial class PostgreSqlMethods
 {
-    public override Task<bool> SupportsSchemasAsync(
-        IDbConnection connection,
-        IDbTransaction? tx = null,
-        CancellationToken cancellationToken = default
-    )
+    private static string _defaultSchema = "public";
+
+    public static void SetDefaultSchema(string schema)
     {
-        return base.SupportsSchemasAsync(connection, tx, cancellationToken);
+        _defaultSchema = schema;
     }
 
-    public override Task<bool> DoesSchemaExistAsync(
-        IDbConnection db,
-        string schemaName,
-        IDbTransaction? tx = null,
-        CancellationToken cancellationToken = default
-    )
-    {
-        throw new NotImplementedException();
-    }
+    protected override string DefaultSchema => _defaultSchema;
 
-    public override Task<bool> CreateSchemaIfNotExistsAsync(
-        IDbConnection db,
-        string schemaName,
-        IDbTransaction? tx = null,
-        CancellationToken cancellationToken = default
-    )
-    {
-        throw new NotImplementedException();
-    }
-
-    public override Task<IEnumerable<string>> GetSchemaNamesAsync(
+    public override async Task<IEnumerable<string>> GetSchemaNamesAsync(
         IDbConnection db,
         string? schemaNameFilter = null,
         IDbTransaction? tx = null,
         CancellationToken cancellationToken = default
     )
     {
-        throw new NotImplementedException();
+        var where = string.IsNullOrWhiteSpace(schemaNameFilter)
+            ? ""
+            : ToLikeString(schemaNameFilter);
+
+        var sql =
+            $@"
+            SELECT DISTINCT nspname
+            FROM pg_catalog.pg_namespace
+            {(string.IsNullOrWhiteSpace(where) ? "" : $"WHERE lower(nspname) LIKE @where")}
+            ORDER BY nspname";
+
+        return await QueryAsync<string>(db, sql, new { where }, transaction: tx)
+            .ConfigureAwait(false);
     }
 
-    public override Task<bool> DropSchemaIfExistsAsync(
+    public override async Task<bool> DropSchemaIfExistsAsync(
         IDbConnection db,
         string schemaName,
         IDbTransaction? tx = null,
         CancellationToken cancellationToken = default
     )
     {
-        throw new NotImplementedException();
+        if (
+            !await DoesSchemaExistAsync(db, schemaName, tx, cancellationToken).ConfigureAwait(false)
+        )
+            return false;
+
+        schemaName = NormalizeSchemaName(schemaName);
+
+        await ExecuteAsync(db, $"DROP SCHEMA IF EXISTS {schemaName} CASCADE").ConfigureAwait(false);
+
+        return true;
     }
 }

@@ -1,7 +1,6 @@
 using System.Data;
 using System.Text;
 using DapperMatic.Models;
-using Microsoft.Extensions.Logging;
 
 namespace DapperMatic.Providers.SqlServer;
 
@@ -109,7 +108,7 @@ public partial class SqlServerMethods
             var pkColumns = primaryKey.Columns.Select(c => c.ToString());
             var pkColumnNames = primaryKey.Columns.Select(c => c.ColumnName);
             sql.AppendLine(
-                $", CONSTRAINT pk_{tableName}_{string.Join('_', pkColumnNames)} PRIMARY KEY ({string.Join(", ", pkColumns)})"
+                $", CONSTRAINT {ProviderUtils.GetPrimaryKeyConstraintName(tableName, [.. pkColumnNames])} PRIMARY KEY ({string.Join(", ", pkColumns)})"
             );
         }
 
@@ -122,9 +121,8 @@ public partial class SqlServerMethods
                 )
             )
             {
-                var checkConstraintName = ToAlphaNumericString(constraint.ConstraintName);
                 sql.AppendLine(
-                    $", CONSTRAINT {checkConstraintName} CHECK ({constraint.Expression})"
+                    $", CONSTRAINT {NormalizeName(constraint.ConstraintName)} CHECK ({constraint.Expression})"
                 );
             }
         }
@@ -134,11 +132,10 @@ public partial class SqlServerMethods
         {
             foreach (var constraint in foreignKeyConstraints)
             {
-                var fkName = ToAlphaNumericString(constraint.ConstraintName);
                 var fkColumns = constraint.SourceColumns.Select(c => c.ToString());
                 var fkReferencedColumns = constraint.ReferencedColumns.Select(c => c.ToString());
                 sql.AppendLine(
-                    $", CONSTRAINT {fkName} FOREIGN KEY ({string.Join(", ", fkColumns)}) REFERENCES {ToAlphaNumericString(constraint.ReferencedTableName)} ({string.Join(", ", fkReferencedColumns)})"
+                    $", CONSTRAINT {NormalizeName(constraint.ConstraintName)} FOREIGN KEY ({string.Join(", ", fkColumns)}) REFERENCES {NormalizeName(constraint.ReferencedTableName)} ({string.Join(", ", fkReferencedColumns)})"
                 );
                 sql.AppendLine($" ON DELETE {constraint.OnDelete.ToSql()}");
                 sql.AppendLine($" ON UPDATE {constraint.OnUpdate.ToSql()}");
@@ -150,10 +147,9 @@ public partial class SqlServerMethods
         {
             foreach (var constraint in uniqueConstraints)
             {
-                var uniqueConstraintName = ToAlphaNumericString(constraint.ConstraintName);
                 var uniqueColumns = constraint.Columns.Select(c => c.ToString());
                 sql.AppendLine(
-                    $", CONSTRAINT {uniqueConstraintName} UNIQUE ({string.Join(", ", uniqueColumns)})"
+                    $", CONSTRAINT {NormalizeName(constraint.ConstraintName)} UNIQUE ({string.Join(", ", uniqueColumns)})"
                 );
             }
         }
@@ -169,13 +165,6 @@ public partial class SqlServerMethods
         {
             await CreateIndexIfNotExistsAsync(db, index, tx, cancellationToken)
                 .ConfigureAwait(false);
-            // var indexName = NormalizeName(index.IndexName);
-            // var indexColumns = index.Columns.Select(c => c.ToString());
-            // var indexColumnNames = index.Columns.Select(c => c.ColumnName);
-            // // create index sql
-            // var createIndexSql =
-            //     $"CREATE {(index.IsUnique ? "UNIQUE INDEX" : "INDEX")} ix_{tableName}_{string.Join('_', indexColumnNames)} ON {tableName} ({string.Join(", ", indexColumns)})";
-            // await ExecuteAsync(db, createIndexSql, transaction: tx).ConfigureAwait(false);
         }
 
         return true;
@@ -193,7 +182,7 @@ public partial class SqlServerMethods
 
         var where = string.IsNullOrWhiteSpace(tableNameFilter)
             ? null
-            : ToAlphaNumericString(tableNameFilter).Replace('*', '%');
+            : ToLikeString(tableNameFilter);
 
         return await QueryAsync<string>(
                 db,
@@ -221,7 +210,7 @@ public partial class SqlServerMethods
 
         var where = string.IsNullOrWhiteSpace(tableNameFilter)
             ? null
-            : ToAlphaNumericString(tableNameFilter).Replace('*', '%');
+            : ToLikeString(tableNameFilter);
 
         // columns
         var columnsSql =
@@ -238,12 +227,8 @@ public partial class SqlServerMethods
                 COLUMNPROPERTY(object_id(t.TABLE_SCHEMA+'.'+t.TABLE_NAME), c.COLUMN_NAME, 'IsIdentity') AS is_identity,
                 c.DATA_TYPE AS data_type,
                 c.CHARACTER_MAXIMUM_LENGTH AS max_length,
-                c.CHARACTER_OCTET_LENGTH AS octet_length,
                 c.NUMERIC_PRECISION AS numeric_precision,
-                c.NUMERIC_SCALE AS numeric_scale,
-                c.DATETIME_PRECISION AS datetime_precision,
-                c.CHARACTER_SET_NAME AS character_set_name,
-                c.COLLATION_NAME AS collation_name
+                c.NUMERIC_SCALE AS numeric_scale
 
             FROM INFORMATION_SCHEMA.TABLES t
                 LEFT OUTER JOIN INFORMATION_SCHEMA.COLUMNS c ON t.TABLE_SCHEMA = c.TABLE_SCHEMA and t.TABLE_NAME = c.TABLE_NAME
@@ -272,15 +257,12 @@ public partial class SqlServerMethods
             bool is_identity,
             string data_type,
             int? max_length,
-            int? octet_length,
             int? numeric_precision,
-            int? numeric_scale,
-            int? datetime_precision,
-            string character_set_name,
-            string collation_name
+            int? numeric_scale
         )>(db, columnsSql, new { schemaName, where }, transaction: tx)
             .ConfigureAwait(false);
 
+        // get primary key, unique key, and indexes in a single query
         var constraintsSql =
             @$"
             SELECT sh.name AS schema_name,

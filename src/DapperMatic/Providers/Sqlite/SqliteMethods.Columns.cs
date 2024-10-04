@@ -174,13 +174,6 @@ public partial class SqliteMethods
                     cancellationToken: cancellationToken
                 )
                 .ConfigureAwait(false);
-            // var indexName = NormalizeName(index.IndexName);
-            // var indexColumns = index.Columns.Select(c => c.ToString());
-            // var indexColumnNames = index.Columns.Select(c => c.ColumnName);
-            // // create index sql
-            // var createIndexSql =
-            //     $"CREATE {(index.IsUnique ? "UNIQUE INDEX" : "INDEX")} ix_{tableName}_{string.Join('_', indexColumnNames)} ON {tableName} ({string.Join(", ", indexColumns)})";
-            // await ExecuteAsync(db, createIndexSql, transaction: tx).ConfigureAwait(false);
         }
 
         return true;
@@ -287,7 +280,9 @@ public partial class SqliteMethods
         }
         else if (isPrimaryKey)
         {
-            columnSql.Append($" CONSTRAINT pk_{tableName}_{columnName}  PRIMARY KEY");
+            columnSql.Append(
+                $" CONSTRAINT {ProviderUtils.GetPrimaryKeyConstraintName(tableName, columnName)}  PRIMARY KEY"
+            );
             if (isAutoIncrement)
                 columnSql.Append(" AUTOINCREMENT");
         }
@@ -303,7 +298,9 @@ public partial class SqliteMethods
             )
         )
         {
-            columnSql.Append($" CONSTRAINT uc_{tableName}_{columnName} UNIQUE");
+            columnSql.Append(
+                $" CONSTRAINT {ProviderUtils.GetUniqueConstraintName(tableName, columnName)} UNIQUE"
+            );
         }
 
         // only add indexes here if column is not part of an existing existing index
@@ -321,7 +318,7 @@ public partial class SqliteMethods
                 new DxIndex(
                     null,
                     tableName,
-                    $"ix_{tableName}_{columnName}",
+                    ProviderUtils.GetIndexName(tableName, columnName),
                     [new DxOrderedColumn(columnName)],
                     isUnique
                 )
@@ -338,7 +335,7 @@ public partial class SqliteMethods
             )
             {
                 columnSql.Append(
-                    $" CONSTRAINT df_{tableName}_{columnName} DEFAULT {(defaultExpression.Contains(' ') ? $"({defaultExpression})" : defaultExpression)}"
+                    $" CONSTRAINT {ProviderUtils.GetDefaultConstraintName(tableName, columnName)} DEFAULT {(defaultExpression.Contains(' ') ? $"({defaultExpression})" : defaultExpression)}"
                 );
             }
         }
@@ -364,7 +361,9 @@ public partial class SqliteMethods
             )
         )
         {
-            columnSql.Append($" CONSTRAINT ck_{tableName}_{columnName} CHECK ({checkExpression})");
+            columnSql.Append(
+                $" CONSTRAINT {ProviderUtils.GetCheckConstraintName(tableName, columnName)} CHECK ({checkExpression})"
+            );
         }
 
         // only add foreign key constraints here if separate foreign key constraints are not defined
@@ -384,8 +383,14 @@ public partial class SqliteMethods
             referencedTableName = NormalizeName(referencedTableName);
             referencedColumnName = NormalizeName(referencedColumnName);
 
+            var foreignKeyConstraintName = ProviderUtils.GetForeignKeyConstraintName(
+                tableName,
+                columnName,
+                referencedTableName,
+                referencedColumnName
+            );
             columnSql.Append(
-                $" CONSTRAINT fk_{tableName}_{columnName}_{referencedTableName}_{referencedColumnName} REFERENCES {referencedTableName} ({referencedColumnName})"
+                $" CONSTRAINT {foreignKeyConstraintName} REFERENCES {referencedTableName} ({referencedColumnName})"
             );
             if (onDelete.HasValue)
                 columnSql.Append($" ON DELETE {onDelete.Value.ToSql()}");

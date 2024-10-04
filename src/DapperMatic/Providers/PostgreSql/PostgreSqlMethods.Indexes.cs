@@ -5,21 +5,7 @@ namespace DapperMatic.Providers.PostgreSql;
 
 public partial class PostgreSqlMethods
 {
-    public override Task<bool> CreateIndexIfNotExistsAsync(
-        IDbConnection db,
-        string? schemaName,
-        string tableName,
-        string indexName,
-        DxOrderedColumn[] columns,
-        bool isUnique = false,
-        IDbTransaction? tx = null,
-        CancellationToken cancellationToken = default
-    )
-    {
-        throw new NotImplementedException();
-    }
-
-    public override Task<List<DxIndex>> GetIndexesAsync(
+    public override async Task<List<DxIndex>> GetIndexesAsync(
         IDbConnection db,
         string? schemaName,
         string tableName,
@@ -28,25 +14,16 @@ public partial class PostgreSqlMethods
         CancellationToken cancellationToken = default
     )
     {
-        throw new NotImplementedException();
-    }
+        (schemaName, tableName, _) = NormalizeNames(schemaName, tableName);
 
-    public override Task<bool> DropIndexIfExistsAsync(
-        IDbConnection db,
-        string? schemaName,
-        string tableName,
-        string indexName,
-        IDbTransaction? tx = null,
-        CancellationToken cancellationToken = default
-    )
-    {
-        return base.DropIndexIfExistsAsync(
-            db,
-            schemaName,
-            tableName,
-            indexName,
-            tx,
-            cancellationToken
-        );
+        return await GetIndexesInternalAsync(
+                db,
+                schemaName,
+                tableName,
+                indexNameFilter,
+                tx,
+                cancellationToken
+            )
+            .ConfigureAwait(false);
     }
 }

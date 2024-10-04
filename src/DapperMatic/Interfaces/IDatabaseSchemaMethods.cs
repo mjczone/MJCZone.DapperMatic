@@ -4,11 +4,7 @@ namespace DapperMatic;
 
 public partial interface IDatabaseSchemaMethods
 {
-    Task<bool> SupportsSchemasAsync(
-        IDbConnection db,
-        IDbTransaction? tx = null,
-        CancellationToken cancellationToken = default
-    );
+    bool SupportsSchemas { get; }
 
     Task<bool> CreateSchemaIfNotExistsAsync(
         IDbConnection db,

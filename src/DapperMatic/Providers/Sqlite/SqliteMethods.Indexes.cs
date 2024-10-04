@@ -20,7 +20,7 @@ public partial class SqliteMethods
 
         var where = string.IsNullOrWhiteSpace(indexNameFilter)
             ? null
-            : ToAlphaNumericString(indexNameFilter).Replace('*', '%');
+            : ToLikeString(indexNameFilter);
 
         var whereStatement =
             (string.IsNullOrWhiteSpace(tableName) ? "" : " AND m.name = @tableName")

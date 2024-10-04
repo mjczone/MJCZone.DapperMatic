@@ -10,8 +10,6 @@ namespace DapperMatic.Providers;
 public abstract partial class DatabaseMethodsBase : IDatabaseMethods
 {
     public abstract DbProviderType ProviderType { get; }
-
-    protected abstract string DefaultSchema { get; }
     protected virtual ILogger Logger => DxLogger.CreateLogger(GetType());
 
     protected virtual List<DataTypeMap> DataTypes =>
@@ -78,82 +76,6 @@ public abstract partial class DatabaseMethodsBase : IDatabaseMethods
         }
 
         return sqlType ?? dataType.SqlType;
-    }
-
-    /// <summary>
-    /// The default implementation simply removes all non-alphanumeric characters from the provided name identifier, replacing them with underscores.
-    /// </summary>
-    protected virtual string NormalizeName(string name)
-    {
-        return ToAlphaNumericString(name, "_");
-    }
-
-    /// <summary>
-    /// The schema name is normalized to the default schema if it is null or empty.
-    /// If the default schema is null or empty,
-    /// the implementation simply removes all non-alphanumeric characters from the provided name, replacing them with underscores.
-    /// </summary>
-    /// <param name="schemaName"></param>
-    /// <returns></returns>
-    protected virtual string NormalizeSchemaName(string? schemaName)
-    {
-        if (string.IsNullOrWhiteSpace(schemaName))
-            schemaName = DefaultSchema;
-        else
-            schemaName = NormalizeName(schemaName);
-
-        return schemaName;
-    }
-
-    /// <summary>
-    /// The default implementation simply removes all non-alphanumeric characters from the schema, table, and identifier names, replacing them with underscores.
-    /// The schema name is normalized to the default schema if it is null or empty.
-    /// If the default schema is null or empty, the schema name is normalized as the other names.
-    /// </summary>
-    /// <param name="schemaName"></param>
-    /// <param name="tableName"></param>
-    /// <param name="identifierName"></param>
-    /// <returns></returns>
-    protected virtual (string schemaName, string tableName, string identifierName) NormalizeNames(
-        string? schemaName = null,
-        string? tableName = null,
-        string? identifierName = null
-    )
-    {
-        schemaName = NormalizeSchemaName(schemaName);
-
-        if (!string.IsNullOrWhiteSpace(tableName))
-            tableName = NormalizeName(tableName);
-
-        if (!string.IsNullOrWhiteSpace(identifierName))
-            identifierName = NormalizeName(identifierName);
-
-        return (schemaName ?? "", tableName ?? "", identifierName ?? "");
-    }
-
-    protected virtual string ToAlphaNumericString(
-        string text,
-        string additionalAllowedCharacters = "-_.*"
-    )
-    {
-        // var rgx = new Regex("[^a-zA-Z0-9_.]");
-        // return rgx.Replace(text, "");
-        char[] allowed = additionalAllowedCharacters.ToCharArray();
-        char[] arr = text.Where(c =>
-                char.IsLetterOrDigit(c) || char.IsWhiteSpace(c) || allowed.Contains(c)
-            )
-            .ToArray();
-
-        return new string(arr);
-    }
-
-    public virtual Task<bool> SupportsSchemasAsync(
-        IDbConnection connection,
-        IDbTransaction? tx = null,
-        CancellationToken cancellationToken = default
-    )
-    {
-        return Task.FromResult(true);
     }
 
     internal static readonly ConcurrentDictionary<
@@ -316,10 +238,20 @@ public abstract partial class DatabaseMethodsBase : IDatabaseMethods
     /// <param name="input">A string</param>
     /// <param name="wildcardPattern">Wildcard pattern string</param>
     /// <returns>bool</returns>
-    protected virtual bool IsWildcardPatternMatch(string input, string wildcardPattern)
+    protected virtual bool IsWildcardPatternMatch(
+        string input,
+        string wildcardPattern,
+        bool ignoreCase = true
+    )
     {
         if (string.IsNullOrWhiteSpace(input) || string.IsNullOrWhiteSpace(wildcardPattern))
             return false;
+
+        if (ignoreCase)
+        {
+            input = input.ToLowerInvariant();
+            wildcardPattern = wildcardPattern.ToLowerInvariant();
+        }
 
         var inputIndex = 0;
         var patternIndex = 0;
@@ -365,5 +297,135 @@ public abstract partial class DatabaseMethodsBase : IDatabaseMethods
         }
 
         return patternIndex == patternLength;
+    }
+
+    protected virtual void ExtractColumnTypeInfoFromFullSqlType(
+        string data_type,
+        string data_type_ext,
+        out Type dotnetType,
+        out int? length,
+        out int? precision,
+        out int? scale
+    )
+    {
+        dotnetType = GetDotnetTypeFromSqlType(data_type);
+        if (!data_type_ext.Contains('('))
+        {
+            length = null;
+            precision = null;
+            scale = null;
+            return;
+        }
+
+        // extract length, precision, and scale from data_type_ext
+        // example: data_type_ext = 'character varying(255)' or 'numeric(18,2)' or 'time(6) with time zone'
+        var typeInfo = data_type_ext.Split('(')[1].Split(')')[0].Trim().Split(',');
+
+        if (typeInfo.Length == 2)
+        {
+            length = null;
+            precision = int.TryParse(typeInfo[0], out var p) ? p : null;
+            scale = int.TryParse(typeInfo[1], out var s) ? s : null;
+            return;
+        }
+
+        if (typeInfo.Length == 1)
+        {
+            // detect it it's a length using the data_type, otherwise it's a precision
+            if (
+                data_type.Contains("char", StringComparison.OrdinalIgnoreCase)
+                || data_type.Contains("bit", StringComparison.OrdinalIgnoreCase)
+                || data_type.Contains("text", StringComparison.OrdinalIgnoreCase)
+            )
+            {
+                length = int.TryParse(typeInfo[0], out var l) ? l : null;
+                precision = null;
+                scale = null;
+            }
+            else
+            {
+                length = null;
+                precision = int.TryParse(typeInfo[0], out var p) ? p : null;
+                scale = null;
+            }
+            return;
+        }
+
+        length = null;
+        precision = null;
+        scale = null;
+    }
+
+    public abstract char[] QuoteChars { get; }
+
+    protected virtual string GetQuotedIdentifier(string identifier)
+    {
+        return "".ToQuotedIdentifier(QuoteChars, identifier);
+    }
+
+    protected virtual string GetQuotedCompoundIdentifier(string[] identifiers, string union = ".")
+    {
+        return string.Join(union, identifiers.Select(x => "".ToQuotedIdentifier(QuoteChars, x)));
+    }
+
+    protected virtual string ToSafeString(string text, string allowedSpecialChars = "-_.*")
+    {
+        return text.ToAlphaNumeric(allowedSpecialChars);
+    }
+
+    protected virtual string ToLikeString(string text, string allowedSpecialChars = "-_.*")
+    {
+        return text.ToAlphaNumeric(allowedSpecialChars).Replace("*", "%"); //.Replace("?", "_");
+    }
+
+    /// <summary>
+    /// The default implementation simply removes all non-alphanumeric characters from the provided name identifier, replacing them with underscores.
+    /// </summary>
+    public virtual string NormalizeName(string name)
+    {
+        return name.ToAlphaNumeric("_");
+    }
+
+    /// <summary>
+    /// The schema name is normalized to the default schema if it is null or empty.
+    /// If the default schema is null or empty,
+    /// the implementation simply removes all non-alphanumeric characters from the provided name, replacing them with underscores.
+    /// </summary>
+    /// <param name="schemaName"></param>
+    /// <returns></returns>
+    protected virtual string NormalizeSchemaName(string? schemaName)
+    {
+        if (string.IsNullOrWhiteSpace(schemaName))
+            schemaName = DefaultSchema;
+        else
+            schemaName = NormalizeName(schemaName);
+
+        return schemaName;
+    }
+
+    /// <summary>
+    /// The default implementation simply removes all non-alphanumeric characters from the schema, table, and identifier names, replacing them with underscores.
+    /// The schema name is normalized to the default schema if it is null or empty.
+    /// If the default schema is null or empty, the schema name is normalized as the other names.
+    /// </summary>
+    /// <param name="schemaName"></param>
+    /// <param name="tableName"></param>
+    /// <param name="identifierName"></param>
+    /// <returns></returns>
+    protected virtual (string schemaName, string tableName, string identifierName) NormalizeNames(
+        string? schemaName = null,
+        string? tableName = null,
+        string? identifierName = null
+    )
+    {
+        schemaName = NormalizeSchemaName(schemaName);
+
+        if (!string.IsNullOrWhiteSpace(tableName))
+            tableName = NormalizeName(tableName);
+
+        if (!string.IsNullOrWhiteSpace(identifierName))
+            identifierName = NormalizeName(identifierName);
+
+        return (schemaName ?? "", tableName ?? "", identifierName ?? "");
     }
 }

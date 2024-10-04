@@ -6,15 +6,6 @@ public partial class SqlServerMethods : DatabaseMethodsBase, IDatabaseMethods
 {
     public override DbProviderType ProviderType => DbProviderType.SqlServer;
 
-    private static string _defaultSchema = "dbo";
-
-    public static void SetDefaultSchema(string schema)
-    {
-        _defaultSchema = schema;
-    }
-
-    protected override string DefaultSchema => _defaultSchema;
-
     internal SqlServerMethods() { }
 
     public override async Task<string> GetDatabaseVersionAsync(
@@ -42,10 +33,5 @@ public partial class SqlServerMethods : DatabaseMethodsBase, IDatabaseMethods
         return SqlServerSqlParser.GetDotnetTypeFromSqlType(sqlType);
     }
 
-    protected override string GetSchemaQualifiedTableName(string schemaName, string tableName)
-    {
-        return string.IsNullOrWhiteSpace(schemaName)
-            ? $"[{tableName}]"
-            : $"[{schemaName}].[{tableName}]";
-    }
+    public override char[] QuoteChars => ['[', ']'];
 }

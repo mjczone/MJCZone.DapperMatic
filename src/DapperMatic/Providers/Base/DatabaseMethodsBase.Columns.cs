@@ -137,7 +137,7 @@ public abstract partial class DatabaseMethodsBase : IDatabaseColumnMethods
 
         var filter = string.IsNullOrWhiteSpace(columnNameFilter)
             ? null
-            : ToAlphaNumericString(columnNameFilter);
+            : ToSafeString(columnNameFilter);
 
         return string.IsNullOrWhiteSpace(filter)
             ? table.Columns

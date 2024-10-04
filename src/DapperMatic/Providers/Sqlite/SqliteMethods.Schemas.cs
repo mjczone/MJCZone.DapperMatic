@@ -5,14 +5,7 @@ namespace DapperMatic.Providers.Sqlite;
 
 public partial class SqliteMethods
 {
-    public override Task<bool> SupportsSchemasAsync(
-        IDbConnection connection,
-        IDbTransaction? tx = null,
-        CancellationToken cancellationToken = default
-    )
-    {
-        return Task.FromResult(false);
-    }
+    protected override string DefaultSchema => "";
 
     public override Task<bool> DoesSchemaExistAsync(
         IDbConnection db,
