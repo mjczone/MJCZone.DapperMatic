@@ -5,30 +5,7 @@ namespace DapperMatic.Providers.MySql;
 
 public partial class MySqlMethods
 {
-    public override Task<bool> DoesViewExistAsync(
-        IDbConnection db,
-        string? schemaName,
-        string viewName,
-        IDbTransaction? tx = null,
-        CancellationToken cancellationToken = default
-    )
-    {
-        return base.DoesViewExistAsync(db, schemaName, viewName, tx, cancellationToken);
-    }
-
-    public override Task<bool> CreateViewIfNotExistsAsync(
-        IDbConnection db,
-        string? schemaName,
-        string viewName,
-        string definition,
-        IDbTransaction? tx = null,
-        CancellationToken cancellationToken = default
-    )
-    {
-        throw new NotImplementedException();
-    }
-
-    public override Task<List<string>> GetViewNamesAsync(
+    public override async Task<List<DxView>> GetViewsAsync(
         IDbConnection db,
         string? schemaName,
         string? viewNameFilter = null,
@@ -36,17 +13,33 @@ public partial class MySqlMethods
         CancellationToken cancellationToken = default
     )
     {
-        return base.GetViewNamesAsync(db, schemaName, viewNameFilter, tx, cancellationToken);
-    }
+        var where = string.IsNullOrWhiteSpace(viewNameFilter) ? "" : ToLikeString(viewNameFilter);
 
-    public override Task<List<DxView>> GetViewsAsync(
-        IDbConnection db,
-        string? schemaName,
-        string? viewNameFilter = null,
-        IDbTransaction? tx = null,
-        CancellationToken cancellationToken = default
-    )
-    {
-        throw new NotImplementedException();
+        var sql =
+            @$"SELECT 
+                    TABLE_NAME AS view_name,
+                    VIEW_DEFINITION AS view_definition
+                FROM 
+                    INFORMATION_SCHEMA.VIEWS
+                WHERE 
+                    TABLE_SCHEMA = DATABASE()
+                    {(string.IsNullOrWhiteSpace(where) ? "" : " AND TABLE_NAME LIKE @where")}
+                ORDER BY
+                    TABLE_NAME";
+
+        var results = await QueryAsync<(string view_name, string view_definition)>(
+                db,
+                sql,
+                new { schemaName, where },
+                tx
+            )
+            .ConfigureAwait(false);
+
+        return results
+            .Select(r =>
+            {
+                return new DxView(DefaultSchema, r.view_name, r.view_definition);
+            })
+            .ToList();
     }
 }

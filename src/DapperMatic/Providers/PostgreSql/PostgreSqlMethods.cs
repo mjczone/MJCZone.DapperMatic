@@ -2,7 +2,6 @@ using System.Data;
 
 namespace DapperMatic.Providers.PostgreSql;
 
-// TODO: see https://github.com/linq2db/linq2db/blob/0c99d98c912ae812657c89ae90a5ccf0e6436e07/Source/LinqToDB/DataProvider/PostgreSQL/PostgreSQLSchemaProvider.cs#L22
 public partial class PostgreSqlMethods : DatabaseMethodsBase, IDatabaseMethods
 {
     public override DbProviderType ProviderType => DbProviderType.PostgreSql;

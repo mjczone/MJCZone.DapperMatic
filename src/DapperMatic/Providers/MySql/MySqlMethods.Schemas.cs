@@ -14,7 +14,7 @@ public partial class MySqlMethods
         CancellationToken cancellationToken = default
     )
     {
-        throw new NotImplementedException();
+        return Task.FromResult(false);
     }
 
     public override Task<bool> CreateSchemaIfNotExistsAsync(
@@ -24,7 +24,7 @@ public partial class MySqlMethods
         CancellationToken cancellationToken = default
     )
     {
-        throw new NotImplementedException();
+        return Task.FromResult(false);
     }
 
     public override Task<IEnumerable<string>> GetSchemaNamesAsync(
@@ -34,7 +34,8 @@ public partial class MySqlMethods
         CancellationToken cancellationToken = default
     )
     {
-        throw new NotImplementedException();
+        // does not support schemas, so we return an empty list
+        return Task.FromResult(Enumerable.Empty<string>());
     }
 
     public override Task<bool> DropSchemaIfExistsAsync(
@@ -44,6 +45,6 @@ public partial class MySqlMethods
         CancellationToken cancellationToken = default
     )
     {
-        throw new NotImplementedException();
+        return Task.FromResult(false);
     }
 }

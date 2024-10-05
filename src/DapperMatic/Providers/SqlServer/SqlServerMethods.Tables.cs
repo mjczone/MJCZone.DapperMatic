@@ -21,15 +21,16 @@ public partial class SqlServerMethods
             SELECT COUNT(*)
             FROM INFORMATION_SCHEMA.TABLES
             WHERE TABLE_SCHEMA = @schemaName
-            AND TABLE_NAME = @tableName
+            AND TABLE_NAME = @tableName            
             ";
 
         var result = await ExecuteScalarAsync<int>(
-            db,
-            sql,
-            new { schemaName, tableName },
-            transaction: tx
-        );
+                db,
+                sql,
+                new { schemaName, tableName },
+                transaction: tx
+            )
+            .ConfigureAwait(false);
 
         return result > 0;
     }

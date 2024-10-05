@@ -15,23 +15,6 @@ public partial class SqlServerMethods
 
     protected override string DefaultSchema => _defaultSchema;
 
-    // public override async Task<bool> DoesSchemaExistAsync(
-    //     IDbConnection db,
-    //     string schemaName,
-    //     IDbTransaction? tx = null,
-    //     CancellationToken cancellationToken = default
-    // )
-    // {
-    //     return 0
-    //         < await ExecuteScalarAsync<int>(
-    //                 db,
-    //                 "SELECT count(*) FROM INFORMATION_SCHEMA.SCHEMATA WHERE SCHEMA_NAME = @schemaName",
-    //                 new { schemaName },
-    //                 transaction: tx
-    //             )
-    //             .ConfigureAwait(false);
-    // }
-
     public override async Task<IEnumerable<string>> GetSchemaNamesAsync(
         IDbConnection db,
         string? schemaNameFilter = null,

@@ -461,30 +461,7 @@ public partial class SqliteMethods
                 // drop the temp table
                 await ExecuteAsync(db, $@"DROP TABLE {tempTableName}", transaction: innerTx)
                     .ConfigureAwait(false);
-
-                // // drop the old table
-                // await ExecuteAsync(db, $@"DROP TABLE {tableName}", transaction: innerTx)
-                //     .ConfigureAwait(false);
-
-                // rename the new table to the old table name
-                // await ExecuteAsync(
-                //         db,
-                //         $@"ALTER TABLE {updatedTable.TableName} RENAME TO {tableName}",
-                //         transaction: innerTx
-                //     )
-                //     .ConfigureAwait(false);
-
-                // add back the indexes to the new table
-                // foreach (var createIndexStatement in createIndexStatements)
-                // {
-                //     await ExecuteAsync(db, createIndexStatement, null, transaction: innerTx)
-                //         .ConfigureAwait(false);
-                // }
-
-                //TODO: add back the triggers to the new table
-
-                //TODO: add back the views to the new table
-
+                    
                 // commit the transaction
                 if (tx == null)
                 {

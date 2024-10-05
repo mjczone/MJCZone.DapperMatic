@@ -88,7 +88,7 @@ public class DxColumn
     public bool IsIndexed { get; set; }
 
     /// <summary>
-    /// /// Is a foreign key to a another referenced table. This is the MANY side of a ONE-TO-MANY relationship.
+    /// Is a foreign key to a another referenced table. This is the MANY side of a ONE-TO-MANY relationship.
     /// </summary>
     public bool IsForeignKey { get; set; }
     public string? ReferencedTableName { get; set; }
