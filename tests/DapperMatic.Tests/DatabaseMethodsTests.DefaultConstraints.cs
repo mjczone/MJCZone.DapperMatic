@@ -1,46 +1,57 @@
 using DapperMatic.Models;
+using DapperMatic.Providers;
 
 namespace DapperMatic.Tests;
 
 public abstract partial class DatabaseMethodsTests
 {
-    [Fact]
-    protected virtual async Task Can_perform_simple_CRUD_on_DefaultConstraints_Async()
+    [Theory]
+    [InlineData(null)]
+    [InlineData("blah")]
+    protected virtual async Task Can_perform_simple_CRUD_on_DefaultConstraints_Async(
+        string? schemaName
+    )
     {
         using var connection = await OpenConnectionAsync();
 
+        if (!string.IsNullOrWhiteSpace(schemaName))
+            await connection.CreateSchemaIfNotExistsAsync(schemaName);
+
+        var testTableName = "testTableDefaultConstraints";
+        var testColumnName = "testColumn";
         await connection.CreateTableIfNotExistsAsync(
-            null,
-            "testTable",
-            [new DxColumn(null, "testTable", "testColumn", typeof(int))]
+            schemaName,
+            testTableName,
+            [new DxColumn(schemaName, testTableName, testColumnName, typeof(int))]
         );
-        var constraintName = $"df_testTable_testColumn";
+
+        // in MySQL, default constraints are not named, so this MUST use the ProviderUtils method which is what DapperMatic uses internally
+        var constraintName = ProviderUtils.GenerateDefaultConstraintName(
+            testTableName,
+            testColumnName
+        );
         var exists = await connection.DoesDefaultConstraintExistAsync(
-            null,
-            "testTable",
+            schemaName,
+            testTableName,
             constraintName
         );
         if (exists)
-            await connection.DropDefaultConstraintIfExistsAsync(null, "testTable", constraintName);
+            await connection.DropDefaultConstraintIfExistsAsync(
+                schemaName,
+                testTableName,
+                constraintName
+            );
 
         await connection.CreateDefaultConstraintIfNotExistsAsync(
-            null,
-            "testTable",
-            "testColumn",
+            schemaName,
+            testTableName,
+            testColumnName,
             constraintName,
             "0"
         );
-
-        exists = await connection.DoesDefaultConstraintExistAsync(
-            null,
-            "testTable",
-            constraintName
-        );
-        Assert.True(exists);
-
         var existingConstraint = await connection.GetDefaultConstraintAsync(
-            null,
-            "testTable",
+            schemaName,
+            testTableName,
             constraintName
         );
         Assert.Equal(
@@ -48,34 +59,52 @@ public abstract partial class DatabaseMethodsTests
             existingConstraint?.ConstraintName,
             StringComparer.OrdinalIgnoreCase
         );
+
         var defaultConstraintNames = await connection.GetDefaultConstraintNamesAsync(
-            null,
-            "testTable"
+            schemaName,
+            testTableName
         );
         Assert.Contains(constraintName, defaultConstraintNames, StringComparer.OrdinalIgnoreCase);
-        await connection.DropDefaultConstraintIfExistsAsync(null, "testTable", constraintName);
+
+        await connection.DropDefaultConstraintIfExistsAsync(
+            schemaName,
+            testTableName,
+            constraintName
+        );
         exists = await connection.DoesDefaultConstraintExistAsync(
-            null,
-            "testTable",
+            schemaName,
+            testTableName,
             constraintName
         );
         Assert.False(exists);
 
-        await connection.DropTableIfExistsAsync(null, "testTable");
+        await connection.DropTableIfExistsAsync(schemaName, testTableName);
 
         await connection.CreateTableIfNotExistsAsync(
-            null,
-            "testTable",
+            schemaName,
+            testTableName,
             [
-                new DxColumn(null, "testTable", "testColumn", typeof(int)),
-                new DxColumn(null, "testTable", "testColumn2", typeof(int), defaultExpression: "0")
+                new DxColumn(schemaName, testTableName, testColumnName, typeof(int)),
+                new DxColumn(
+                    schemaName,
+                    testTableName,
+                    "testColumn2",
+                    typeof(int),
+                    defaultExpression: "0"
+                )
             ]
         );
         var defaultConstraint = await connection.GetDefaultConstraintOnColumnAsync(
-            null,
-            "testTable",
+            schemaName,
+            testTableName,
             "testColumn2"
         );
         Assert.NotNull(defaultConstraint);
+
+        var tableDeleted = await connection.DropTableIfExistsAsync(schemaName, testTableName);
+        Assert.True(tableDeleted);
+
+        if (!string.IsNullOrWhiteSpace(schemaName))
+            await connection.DropSchemaIfExistsAsync(schemaName);
     }
 }

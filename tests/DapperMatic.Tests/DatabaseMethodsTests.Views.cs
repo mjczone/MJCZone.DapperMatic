@@ -85,7 +85,7 @@ public abstract partial class DatabaseMethodsTests
 
         var updatedView = await connection.GetViewAsync(null, updatedName);
         Assert.NotNull(updatedView);
-        Assert.Contains("id = 1", updatedView.Definition, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("= 1", updatedView.Definition, StringComparison.OrdinalIgnoreCase);
 
         // databases often rewrite the definition, so we just check that it contains the updated definition
         Assert.StartsWith(

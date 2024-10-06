@@ -1,4 +1,6 @@
 using System.Data;
+using System.Reflection;
+using System.Runtime.InteropServices.Marshalling;
 using System.Text;
 using DapperMatic.Models;
 using Microsoft.Extensions.Logging;
@@ -53,9 +55,11 @@ public partial class MySqlMethods
 
         (schemaName, tableName, columnName) = NormalizeNames(schemaName, tableName, columnName);
 
-        var additionalIndexes = new List<DxIndex>();
+        var tableWithChanges = new DxTable(table.SchemaName, table.TableName);
+
         var columnSql = BuildColumnDefinitionSql(
-            tableName,
+            table,
+            tableWithChanges,
             columnName,
             dotnetType,
             providerDataType,
@@ -73,14 +77,7 @@ public partial class MySqlMethods
             referencedTableName,
             referencedColumnName,
             onDelete,
-            onUpdate,
-            table.PrimaryKeyConstraint,
-            table.CheckConstraints?.ToArray(),
-            table.DefaultConstraints?.ToArray(),
-            table.UniqueConstraints?.ToArray(),
-            table.ForeignKeyConstraints?.ToArray(),
-            table.Indexes?.ToArray(),
-            additionalIndexes
+            onUpdate
         );
 
         var sql = new StringBuilder();
@@ -90,7 +87,62 @@ public partial class MySqlMethods
 
         await ExecuteAsync(db, sql.ToString(), tx).ConfigureAwait(false);
 
-        foreach (var index in additionalIndexes)
+        if (tableWithChanges.PrimaryKeyConstraint != null)
+        {
+            await CreatePrimaryKeyConstraintIfNotExistsAsync(
+                    db,
+                    tableWithChanges.PrimaryKeyConstraint,
+                    tx: tx,
+                    cancellationToken: cancellationToken
+                )
+                .ConfigureAwait(false);
+        }
+
+        foreach (var checkConstraint in tableWithChanges.CheckConstraints)
+        {
+            await CreateCheckConstraintIfNotExistsAsync(
+                    db,
+                    checkConstraint,
+                    tx: tx,
+                    cancellationToken: cancellationToken
+                )
+                .ConfigureAwait(false);
+        }
+
+        foreach (var defaultConstraint in tableWithChanges.DefaultConstraints)
+        {
+            await CreateDefaultConstraintIfNotExistsAsync(
+                    db,
+                    defaultConstraint,
+                    tx: tx,
+                    cancellationToken: cancellationToken
+                )
+                .ConfigureAwait(false);
+        }
+
+        foreach (var uniqueConstraint in tableWithChanges.UniqueConstraints)
+        {
+            await CreateUniqueConstraintIfNotExistsAsync(
+                    db,
+                    uniqueConstraint,
+                    tx: tx,
+                    cancellationToken: cancellationToken
+                )
+                .ConfigureAwait(false);
+        }
+
+        foreach (var foreignKeyConstraint in tableWithChanges.ForeignKeyConstraints)
+        {
+            await CreateForeignKeyConstraintIfNotExistsAsync(
+                    db,
+                    foreignKeyConstraint,
+                    tx: tx,
+                    cancellationToken: cancellationToken
+                )
+                .ConfigureAwait(false);
+        }
+
+        foreach (var index in tableWithChanges.Indexes)
         {
             await CreateIndexIfNotExistsAsync(
                     db,
@@ -207,7 +259,8 @@ public partial class MySqlMethods
     }
 
     private string BuildColumnDefinitionSql(
-        string tableName,
+        DxTable parentTable,
+        DxTable tableWithChanges,
         string columnName,
         Type dotnetType,
         string? providerDataType = null,
@@ -225,16 +278,7 @@ public partial class MySqlMethods
         string? referencedTableName = null,
         string? referencedColumnName = null,
         DxForeignKeyAction? onDelete = null,
-        DxForeignKeyAction? onUpdate = null,
-        // existing constraints and indexes to minimize collisions
-        // ignore anything that already exists
-        DxPrimaryKeyConstraint? existingPrimaryKeyConstraint = null,
-        DxCheckConstraint[]? existingCheckConstraints = null,
-        DxDefaultConstraint[]? existingDefaultConstraints = null,
-        DxUniqueConstraint[]? existingUniqueConstraints = null,
-        DxForeignKeyConstraint[]? existingForeignKeyConstraints = null,
-        DxIndex[]? existingIndexes = null,
-        List<DxIndex>? populateNewIndexes = null
+        DxForeignKeyAction? onUpdate = null
     )
     {
         columnName = NormalizeName(columnName);
@@ -254,109 +298,128 @@ public partial class MySqlMethods
             columnSql.Append(" NOT NULL");
         }
 
-        // only add the primary key here if the primary key is a single column key
-        if (existingPrimaryKeyConstraint != null)
+        if (isAutoIncrement)
         {
-            var pkColumnNames = existingPrimaryKeyConstraint
-                .Columns.Select(c => c.ColumnName)
-                .ToArray();
-            if (
-                pkColumnNames.Length == 1
-                && pkColumnNames.First().Equals(columnName, StringComparison.OrdinalIgnoreCase)
-            )
-            {
-                columnSql.Append(
-                    $" CONSTRAINT {existingPrimaryKeyConstraint.ConstraintName} PRIMARY KEY"
-                );
-                if (isAutoIncrement)
-                    columnSql.Append(" IDENTITY(1,1)");
-            }
+            columnSql.Append(" AUTO_INCREMENT");
         }
-        else if (isPrimaryKey)
+
+        // add the primary key constraint to the table definition, instead of trying to add it as part of the column definition
+        if (isPrimaryKey && parentTable.PrimaryKeyConstraint == null)
         {
-            columnSql.Append(
-                $" CONSTRAINT {ProviderUtils.GetPrimaryKeyConstraintName(tableName, columnName)}  PRIMARY KEY"
+            // if multiple primary key columns are added in a row, this will reset the primary key constraint
+            // to include all previous primary columns, which is what we want
+            DxOrderedColumn[] pkColumns =
+            [
+                .. tableWithChanges
+                    .Columns.Where(c => c.IsPrimaryKey)
+                    .Select(c => new DxOrderedColumn(c.ColumnName))
+                    .ToArray(),
+                new DxOrderedColumn(columnName)
+            ];
+            tableWithChanges.PrimaryKeyConstraint = new DxPrimaryKeyConstraint(
+                DefaultSchema,
+                tableWithChanges.TableName,
+                ProviderUtils.GeneratePrimaryKeyConstraintName(tableWithChanges.TableName),
+                pkColumns
             );
-            if (isAutoIncrement)
-                columnSql.Append(" IDENTITY(1,1)");
         }
 
         // only add unique constraints here if column is not part of an existing unique constraint
         if (
             isUnique
             && !isIndexed
-            && (existingUniqueConstraints ?? []).All(uc =>
+            && parentTable.UniqueConstraints.All(uc =>
                 !uc.Columns.Any(c =>
                     c.ColumnName.Equals(columnName, StringComparison.OrdinalIgnoreCase)
                 )
             )
         )
         {
-            columnSql.Append(
-                $" CONSTRAINT {ProviderUtils.GetUniqueConstraintName(tableName, columnName)} UNIQUE"
+            tableWithChanges.UniqueConstraints.Add(
+                new DxUniqueConstraint(
+                    DefaultSchema,
+                    tableWithChanges.TableName,
+                    ProviderUtils.GenerateUniqueConstraintName(
+                        tableWithChanges.TableName,
+                        columnName
+                    ),
+                    [new DxOrderedColumn(columnName)]
+                )
             );
         }
 
         // only add indexes here if column is not part of an existing existing index
-        if (
-            isIndexed
-            && (existingIndexes ?? []).All(uc =>
-                uc.Columns.Length > 1
-                || !uc.Columns.Any(c =>
-                    c.ColumnName.Equals(columnName, StringComparison.OrdinalIgnoreCase)
+        if (isIndexed)
+        {
+            if (
+                parentTable.Indexes.All(ix =>
+                    ix.Columns.Length > 1
+                    || !ix.Columns.Any(c =>
+                        c.ColumnName.Equals(columnName, StringComparison.OrdinalIgnoreCase)
+                    )
                 )
             )
-        )
-        {
-            populateNewIndexes?.Add(
-                new DxIndex(
-                    null,
-                    tableName,
-                    ProviderUtils.GetIndexName(tableName, columnName),
-                    [new DxOrderedColumn(columnName)],
-                    isUnique
-                )
-            );
+            {
+                tableWithChanges.Indexes.Add(
+                    new DxIndex(
+                        DefaultSchema,
+                        tableWithChanges.TableName,
+                        ProviderUtils.GenerateIndexName(tableWithChanges.TableName, columnName),
+                        [new DxOrderedColumn(columnName)],
+                        isUnique
+                    )
+                );
+            }
         }
 
         // only add default constraint here if column doesn't already have a default constraint
         if (!string.IsNullOrWhiteSpace(defaultExpression))
         {
             if (
-                (existingDefaultConstraints ?? []).All(dc =>
+                parentTable.DefaultConstraints.All(dc =>
                     !dc.ColumnName.Equals(columnName, StringComparison.OrdinalIgnoreCase)
                 )
             )
             {
+                // MySQL doesn't allow default constraints to be named, so we just set the default instead
+                // var defaultConstraintName = ProviderUtils.GetDefaultConstraintName(
+                //     tableWithChanges.TableName,
+                //     columnName
+                // );
+
+                defaultExpression = defaultExpression.Trim();
+                var addParentheses =
+                    defaultExpression.Contains(' ')
+                    && !(defaultExpression.StartsWith("(") && defaultExpression.EndsWith(")"))
+                    && !(defaultExpression.StartsWith("\"") && defaultExpression.EndsWith("\""))
+                    && !(defaultExpression.StartsWith("'") && defaultExpression.EndsWith("'"));
+
                 columnSql.Append(
-                    $" CONSTRAINT {ProviderUtils.GetDefaultConstraintName(tableName, columnName)} DEFAULT {(defaultExpression.Contains(' ') ? $"({defaultExpression})" : defaultExpression)}"
+                    $" DEFAULT {(addParentheses ? $"({defaultExpression})" : defaultExpression)}"
                 );
             }
-        }
-
-        // when using CREATE method, we need to merge default constraints into column definition sql
-        // since this is the only place sqlite allows them to be added
-        var defaultConstraint = (existingDefaultConstraints ?? []).FirstOrDefault(dc =>
-            dc.ColumnName.Equals(columnName, StringComparison.OrdinalIgnoreCase)
-        );
-        if (defaultConstraint != null)
-        {
-            columnSql.Append(
-                $" CONSTRAINT {defaultConstraint.ConstraintName} DEFAULT {(defaultConstraint.Expression.Contains(' ') ? $"({defaultConstraint.Expression})" : defaultConstraint.Expression)}"
-            );
         }
 
         // only add check constraints here if column doesn't already have a check constraint
         if (
             !string.IsNullOrWhiteSpace(checkExpression)
-            && (existingCheckConstraints ?? []).All(ck =>
+            && (parentTable.CheckConstraints ?? []).All(ck =>
                 string.IsNullOrWhiteSpace(ck.ColumnName)
                 || !ck.ColumnName.Equals(columnName, StringComparison.OrdinalIgnoreCase)
             )
         )
         {
-            columnSql.Append(
-                $" CONSTRAINT {ProviderUtils.GetCheckConstraintName(tableName, columnName)} CHECK ({checkExpression})"
+            tableWithChanges.CheckConstraints.Add(
+                new DxCheckConstraint(
+                    DefaultSchema,
+                    tableWithChanges.TableName,
+                    columnName,
+                    ProviderUtils.GenerateCheckConstraintName(
+                        tableWithChanges.TableName,
+                        columnName
+                    ),
+                    checkExpression
+                )
             );
         }
 
@@ -366,7 +429,7 @@ public partial class MySqlMethods
             && !string.IsNullOrWhiteSpace(referencedTableName)
             && !string.IsNullOrWhiteSpace(referencedColumnName)
             && (
-                (existingForeignKeyConstraints ?? []).All(fk =>
+                (parentTable.ForeignKeyConstraints ?? []).All(fk =>
                     fk.SourceColumns.All(sc =>
                         !sc.ColumnName.Equals(columnName, StringComparison.OrdinalIgnoreCase)
                     )
@@ -377,13 +440,25 @@ public partial class MySqlMethods
             referencedTableName = NormalizeName(referencedTableName);
             referencedColumnName = NormalizeName(referencedColumnName);
 
-            columnSql.Append(
-                $" CONSTRAINT {ProviderUtils.GetForeignKeyConstraintName(tableName, columnName, referencedTableName, referencedColumnName)} REFERENCES {referencedTableName} ({referencedColumnName})"
+            var fkConstraintName = ProviderUtils.GenerateForeignKeyConstraintName(
+                tableWithChanges.TableName,
+                columnName,
+                referencedTableName,
+                referencedColumnName
             );
-            if (onDelete.HasValue)
-                columnSql.Append($" ON DELETE {onDelete.Value.ToSql()}");
-            if (onUpdate.HasValue)
-                columnSql.Append($" ON UPDATE {onUpdate.Value.ToSql()}");
+
+            tableWithChanges.ForeignKeyConstraints.Add(
+                new DxForeignKeyConstraint(
+                    DefaultSchema,
+                    tableWithChanges.TableName,
+                    fkConstraintName,
+                    [new DxOrderedColumn(columnName)],
+                    referencedTableName,
+                    [new DxOrderedColumn(referencedColumnName)],
+                    onDelete ?? DxForeignKeyAction.NoAction,
+                    onUpdate ?? DxForeignKeyAction.NoAction
+                )
+            );
         }
 
         var columnSqlString = columnSql.ToString();
@@ -392,7 +467,7 @@ public partial class MySqlMethods
             "Column Definition SQL: \n{sql}\n for column '{columnName}' in table '{tableName}'",
             columnSqlString,
             columnName,
-            tableName
+            tableWithChanges.TableName
         );
 
         return columnSqlString;

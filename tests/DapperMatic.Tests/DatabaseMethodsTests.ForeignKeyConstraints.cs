@@ -132,5 +132,8 @@ public abstract partial class DatabaseMethodsTests
             columnName
         );
         Assert.False(exists);
+
+        await connection.DropTableIfExistsAsync(null, tableName);
+        await connection.DropTableIfExistsAsync(null, refTableName);
     }
 }

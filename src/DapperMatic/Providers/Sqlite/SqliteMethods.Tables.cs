@@ -103,7 +103,7 @@ public partial class SqliteMethods
             );
             var pkColumnNames = primaryKey.Columns.Select(c => c.ColumnName);
             sql.AppendLine(
-                $", CONSTRAINT {ProviderUtils.GetPrimaryKeyConstraintName(tableName, [.. pkColumnNames])} PRIMARY KEY ({string.Join(", ", pkColumns)})"
+                $", CONSTRAINT {ProviderUtils.GeneratePrimaryKeyConstraintName(tableName, [.. pkColumnNames])} PRIMARY KEY ({string.Join(", ", pkColumns)})"
             );
         }
 
@@ -461,7 +461,7 @@ public partial class SqliteMethods
                 // drop the temp table
                 await ExecuteAsync(db, $@"DROP TABLE {tempTableName}", transaction: innerTx)
                     .ConfigureAwait(false);
-                    
+
                 // commit the transaction
                 if (tx == null)
                 {

@@ -276,7 +276,7 @@ public partial class SqlServerMethods
         else if (isPrimaryKey)
         {
             columnSql.Append(
-                $" CONSTRAINT {ProviderUtils.GetPrimaryKeyConstraintName(tableName, columnName)}  PRIMARY KEY"
+                $" CONSTRAINT {ProviderUtils.GeneratePrimaryKeyConstraintName(tableName, columnName)}  PRIMARY KEY"
             );
             if (isAutoIncrement)
                 columnSql.Append(" IDENTITY(1,1)");
@@ -294,7 +294,7 @@ public partial class SqlServerMethods
         )
         {
             columnSql.Append(
-                $" CONSTRAINT {ProviderUtils.GetUniqueConstraintName(tableName, columnName)} UNIQUE"
+                $" CONSTRAINT {ProviderUtils.GenerateUniqueConstraintName(tableName, columnName)} UNIQUE"
             );
         }
 
@@ -313,7 +313,7 @@ public partial class SqlServerMethods
                 new DxIndex(
                     null,
                     tableName,
-                    ProviderUtils.GetIndexName(tableName, columnName),
+                    ProviderUtils.GenerateIndexName(tableName, columnName),
                     [new DxOrderedColumn(columnName)],
                     isUnique
                 )
@@ -330,7 +330,7 @@ public partial class SqlServerMethods
             )
             {
                 columnSql.Append(
-                    $" CONSTRAINT {ProviderUtils.GetDefaultConstraintName(tableName, columnName)} DEFAULT {(defaultExpression.Contains(' ') ? $"({defaultExpression})" : defaultExpression)}"
+                    $" CONSTRAINT {ProviderUtils.GenerateDefaultConstraintName(tableName, columnName)} DEFAULT {(defaultExpression.Contains(' ') ? $"({defaultExpression})" : defaultExpression)}"
                 );
             }
         }
@@ -357,7 +357,7 @@ public partial class SqlServerMethods
         )
         {
             columnSql.Append(
-                $" CONSTRAINT {ProviderUtils.GetCheckConstraintName(tableName, columnName)} CHECK ({checkExpression})"
+                $" CONSTRAINT {ProviderUtils.GenerateCheckConstraintName(tableName, columnName)} CHECK ({checkExpression})"
             );
         }
 
@@ -379,7 +379,7 @@ public partial class SqlServerMethods
             referencedColumnName = NormalizeName(referencedColumnName);
 
             columnSql.Append(
-                $" CONSTRAINT {ProviderUtils.GetForeignKeyConstraintName(tableName, columnName, referencedTableName, referencedColumnName)} REFERENCES {referencedTableName} ({referencedColumnName})"
+                $" CONSTRAINT {ProviderUtils.GenerateForeignKeyConstraintName(tableName, columnName, referencedTableName, referencedColumnName)} REFERENCES {referencedTableName} ({referencedColumnName})"
             );
             if (onDelete.HasValue)
                 columnSql.Append($" ON DELETE {onDelete.Value.ToSql()}");

@@ -396,7 +396,7 @@ public abstract partial class DatabaseMethodsBase : IDatabaseMethods
     /// <returns></returns>
     protected virtual string NormalizeSchemaName(string? schemaName)
     {
-        if (string.IsNullOrWhiteSpace(schemaName))
+        if (!SupportsSchemas || string.IsNullOrWhiteSpace(schemaName))
             schemaName = DefaultSchema;
         else
             schemaName = NormalizeName(schemaName);

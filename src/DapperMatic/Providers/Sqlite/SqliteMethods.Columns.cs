@@ -283,7 +283,7 @@ public partial class SqliteMethods
         else if (isPrimaryKey)
         {
             columnSql.Append(
-                $" CONSTRAINT {ProviderUtils.GetPrimaryKeyConstraintName(tableName, columnName)}  PRIMARY KEY"
+                $" CONSTRAINT {ProviderUtils.GeneratePrimaryKeyConstraintName(tableName, columnName)}  PRIMARY KEY"
             );
             if (isAutoIncrement)
                 columnSql.Append(" AUTOINCREMENT");
@@ -301,7 +301,7 @@ public partial class SqliteMethods
         )
         {
             columnSql.Append(
-                $" CONSTRAINT {ProviderUtils.GetUniqueConstraintName(tableName, columnName)} UNIQUE"
+                $" CONSTRAINT {ProviderUtils.GenerateUniqueConstraintName(tableName, columnName)} UNIQUE"
             );
         }
 
@@ -320,7 +320,7 @@ public partial class SqliteMethods
                 new DxIndex(
                     null,
                     tableName,
-                    ProviderUtils.GetIndexName(tableName, columnName),
+                    ProviderUtils.GenerateIndexName(tableName, columnName),
                     [new DxOrderedColumn(columnName)],
                     isUnique
                 )
@@ -337,7 +337,7 @@ public partial class SqliteMethods
             )
             {
                 columnSql.Append(
-                    $" CONSTRAINT {ProviderUtils.GetDefaultConstraintName(tableName, columnName)} DEFAULT {(defaultExpression.Contains(' ') ? $"({defaultExpression})" : defaultExpression)}"
+                    $" CONSTRAINT {ProviderUtils.GenerateDefaultConstraintName(tableName, columnName)} DEFAULT {(defaultExpression.Contains(' ') ? $"({defaultExpression})" : defaultExpression)}"
                 );
             }
         }
@@ -364,7 +364,7 @@ public partial class SqliteMethods
         )
         {
             columnSql.Append(
-                $" CONSTRAINT {ProviderUtils.GetCheckConstraintName(tableName, columnName)} CHECK ({checkExpression})"
+                $" CONSTRAINT {ProviderUtils.GenerateCheckConstraintName(tableName, columnName)} CHECK ({checkExpression})"
             );
         }
 
@@ -385,7 +385,7 @@ public partial class SqliteMethods
             referencedTableName = NormalizeName(referencedTableName);
             referencedColumnName = NormalizeName(referencedColumnName);
 
-            var foreignKeyConstraintName = ProviderUtils.GetForeignKeyConstraintName(
+            var foreignKeyConstraintName = ProviderUtils.GenerateForeignKeyConstraintName(
                 tableName,
                 columnName,
                 referencedTableName,

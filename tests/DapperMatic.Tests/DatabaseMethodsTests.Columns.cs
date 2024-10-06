@@ -11,11 +11,14 @@ public abstract partial class DatabaseMethodsTests
         using var connection = await OpenConnectionAsync();
 
         const string tableName = "testWithColumn";
+        var tableName2 = "testWithAllColumns";
         const string columnName = "testColumn";
 
         string? defaultDateTimeSql = null;
         string? defaultGuidSql = null;
         var dbType = connection.GetDbProviderType();
+
+        var supportsMultipleIdentityColumns = true;
         switch (dbType)
         {
             case DbProviderType.SqlServer:
@@ -34,6 +37,7 @@ public abstract partial class DatabaseMethodsTests
                 break;
             case DbProviderType.MySql:
                 defaultDateTimeSql = "CURRENT_TIMESTAMP";
+                supportsMultipleIdentityColumns = false;
                 // only supported after 8.0.13
                 // defaultGuidSql = "UUID()";
                 break;
@@ -88,28 +92,28 @@ public abstract partial class DatabaseMethodsTests
         var columnCount = 1;
         var addColumns = new List<DxColumn>
         {
-            new(null, "testWithAllColumns", "abc", typeof(int)),
+            new(null, tableName2, "abc", typeof(int)),
             new(
                 null,
-                "testWithAllColumns",
+                tableName2,
                 "id" + columnCount++,
                 typeof(int),
                 isPrimaryKey: true,
-                isAutoIncrement: true
+                isAutoIncrement: supportsMultipleIdentityColumns ? true : false
             ),
-            new(null, "testWithAllColumns", "id" + columnCount++, typeof(int), isUnique: true),
+            new(null, tableName2, "id" + columnCount++, typeof(int), isUnique: true),
             new(
                 null,
-                "testWithAllColumns",
+                tableName2,
                 "id" + columnCount++,
                 typeof(int),
                 isUnique: true,
                 isIndexed: true
             ),
-            new(null, "testWithAllColumns", "id" + columnCount++, typeof(int), isIndexed: true),
+            new(null, tableName2, "id" + columnCount++, typeof(int), isIndexed: true),
             new(
                 null,
-                "testWithAllColumns",
+                tableName2,
                 "colWithFk" + columnCount++,
                 typeof(int),
                 isForeignKey: true,
@@ -120,108 +124,82 @@ public abstract partial class DatabaseMethodsTests
             ),
             new(
                 null,
-                "testWithAllColumns",
+                tableName2,
                 "createdDateColumn" + columnCount++,
                 typeof(DateTime),
                 defaultExpression: defaultDateTimeSql
             ),
             new(
                 null,
-                "testWithAllColumns",
+                tableName2,
                 "newidColumn" + columnCount++,
                 typeof(Guid),
                 defaultExpression: defaultGuidSql
             ),
-            new(null, "testWithAllColumns", "bigintColumn" + columnCount++, typeof(long)),
-            new(null, "testWithAllColumns", "binaryColumn" + columnCount++, typeof(byte[])),
-            new(null, "testWithAllColumns", "bitColumn" + columnCount++, typeof(bool)),
+            new(null, tableName2, "bigintColumn" + columnCount++, typeof(long)),
+            new(null, tableName2, "binaryColumn" + columnCount++, typeof(byte[])),
+            new(null, tableName2, "bitColumn" + columnCount++, typeof(bool)),
+            new(null, tableName2, "charColumn" + columnCount++, typeof(string), length: 10),
+            new(null, tableName2, "dateColumn" + columnCount++, typeof(DateTime)),
+            new(null, tableName2, "datetimeColumn" + columnCount++, typeof(DateTime)),
+            new(null, tableName2, "datetime2Column" + columnCount++, typeof(DateTime)),
+            new(null, tableName2, "datetimeoffsetColumn" + columnCount++, typeof(DateTimeOffset)),
+            new(null, tableName2, "decimalColumn" + columnCount++, typeof(decimal)),
             new(
                 null,
-                "testWithAllColumns",
-                "charColumn" + columnCount++,
-                typeof(string),
-                length: 10
-            ),
-            new(null, "testWithAllColumns", "dateColumn" + columnCount++, typeof(DateTime)),
-            new(null, "testWithAllColumns", "datetimeColumn" + columnCount++, typeof(DateTime)),
-            new(null, "testWithAllColumns", "datetime2Column" + columnCount++, typeof(DateTime)),
-            new(
-                null,
-                "testWithAllColumns",
-                "datetimeoffsetColumn" + columnCount++,
-                typeof(DateTimeOffset)
-            ),
-            new(null, "testWithAllColumns", "decimalColumn" + columnCount++, typeof(decimal)),
-            new(
-                null,
-                "testWithAllColumns",
+                tableName2,
                 "decimalColumnWithPrecision" + columnCount++,
                 typeof(decimal),
                 precision: 10
             ),
             new(
                 null,
-                "testWithAllColumns",
+                tableName2,
                 "decimalColumnWithPrecisionAndScale" + columnCount++,
                 typeof(decimal),
                 precision: 10,
                 scale: 5
             ),
-            new(null, "testWithAllColumns", "floatColumn" + columnCount++, typeof(double)),
-            new(null, "testWithAllColumns", "imageColumn" + columnCount++, typeof(byte[])),
-            new(null, "testWithAllColumns", "intColumn" + columnCount++, typeof(int)),
-            new(null, "testWithAllColumns", "moneyColumn" + columnCount++, typeof(decimal)),
+            new(null, tableName2, "floatColumn" + columnCount++, typeof(double)),
+            new(null, tableName2, "imageColumn" + columnCount++, typeof(byte[])),
+            new(null, tableName2, "intColumn" + columnCount++, typeof(int)),
+            new(null, tableName2, "moneyColumn" + columnCount++, typeof(decimal)),
+            new(null, tableName2, "ncharColumn" + columnCount++, typeof(string), length: 10),
             new(
                 null,
-                "testWithAllColumns",
-                "ncharColumn" + columnCount++,
-                typeof(string),
-                length: 10
-            ),
-            new(
-                null,
-                "testWithAllColumns",
+                tableName2,
                 "ntextColumn" + columnCount++,
                 typeof(string),
                 length: int.MaxValue
             ),
-            new(null, "testWithAllColumns", "floatColumn2" + columnCount++, typeof(float)),
-            new(null, "testWithAllColumns", "doubleColumn2" + columnCount++, typeof(double)),
-            new(null, "testWithAllColumns", "guidArrayColumn" + columnCount++, typeof(Guid[])),
-            new(null, "testWithAllColumns", "intArrayColumn" + columnCount++, typeof(int[])),
-            new(null, "testWithAllColumns", "longArrayColumn" + columnCount++, typeof(long[])),
-            new(null, "testWithAllColumns", "doubleArrayColumn" + columnCount++, typeof(double[])),
+            new(null, tableName2, "floatColumn2" + columnCount++, typeof(float)),
+            new(null, tableName2, "doubleColumn2" + columnCount++, typeof(double)),
+            new(null, tableName2, "guidArrayColumn" + columnCount++, typeof(Guid[])),
+            new(null, tableName2, "intArrayColumn" + columnCount++, typeof(int[])),
+            new(null, tableName2, "longArrayColumn" + columnCount++, typeof(long[])),
+            new(null, tableName2, "doubleArrayColumn" + columnCount++, typeof(double[])),
+            new(null, tableName2, "decimalArrayColumn" + columnCount++, typeof(decimal[])),
+            new(null, tableName2, "stringArrayColumn" + columnCount++, typeof(string[])),
             new(
                 null,
-                "testWithAllColumns",
-                "decimalArrayColumn" + columnCount++,
-                typeof(decimal[])
-            ),
-            new(null, "testWithAllColumns", "stringArrayColumn" + columnCount++, typeof(string[])),
-            new(
-                null,
-                "testWithAllColumns",
+                tableName2,
                 "stringDectionaryArrayColumn" + columnCount++,
                 typeof(Dictionary<string, string>)
             ),
             new(
                 null,
-                "testWithAllColumns",
+                tableName2,
                 "objectDectionaryArrayColumn" + columnCount++,
                 typeof(Dictionary<string, object>)
             )
         };
-        await connection.CreateTableIfNotExistsAsync(null, "testWithAllColumns", [addColumns[0]]);
+        await connection.CreateTableIfNotExistsAsync(null, tableName2, [addColumns[0]]);
         foreach (var col in addColumns.Skip(1))
         {
             await connection.CreateColumnIfNotExistsAsync(col);
-            var columns = await connection.GetColumnsAsync(null, "testWithAllColumns");
+            var columns = await connection.GetColumnsAsync(null, tableName2);
             // immediately do a check to make sure column was created as expected
-            var column = await connection.GetColumnAsync(
-                null,
-                "testWithAllColumns",
-                col.ColumnName
-            );
+            var column = await connection.GetColumnAsync(null, tableName2, col.ColumnName);
             try
             {
                 Assert.NotNull(column);
@@ -252,15 +230,11 @@ public abstract partial class DatabaseMethodsTests
                     col.ColumnName,
                     ex.Message
                 );
-                column = await connection.GetColumnAsync(
-                    null,
-                    "testWithAllColumns",
-                    col.ColumnName
-                );
+                column = await connection.GetColumnAsync(null, tableName2, col.ColumnName);
             }
         }
 
-        var columnNames = await connection.GetColumnNamesAsync(null, "testWithAllColumns");
+        var columnNames = await connection.GetColumnNamesAsync(null, tableName2);
         Assert.Equal(columnCount, columnNames.Count());
 
         // validate that:
@@ -275,7 +249,7 @@ public abstract partial class DatabaseMethodsTests
         // - all columns are unique or not unique as specified
         // - all columns are indexed or not indexed as specified
         // - all columns are foreign key or not foreign key as specified
-        var table = await connection.GetTableAsync(null, "testWithAllColumns");
+        var table = await connection.GetTableAsync(null, tableName2);
         Assert.NotNull(table);
 
         foreach (var column in table.Columns)
@@ -287,9 +261,12 @@ public abstract partial class DatabaseMethodsTests
         }
 
         // general count tests
+        // some providers like MySQL create unique constraints for unique indexes, and vice-versa, so we can't just count the unique indexes
         Assert.Equal(
             addColumns.Count(c => !c.IsIndexed && c.IsUnique),
-            table.UniqueConstraints.Count()
+            dbType == DbProviderType.MySql
+                ? table.UniqueConstraints.Count / 2
+                : table.UniqueConstraints.Count
         );
         Assert.Equal(
             addColumns.Count(c => c.IsIndexed && !c.IsUnique),
@@ -297,7 +274,12 @@ public abstract partial class DatabaseMethodsTests
         );
         var expectedUniqueIndexes = addColumns.Where(c => c.IsIndexed && c.IsUnique).ToArray();
         var actualUniqueIndexes = table.Indexes.Where(c => c.IsUnique).ToArray();
-        Assert.Equal(expectedUniqueIndexes.Length, actualUniqueIndexes.Length);
+        Assert.Equal(
+            expectedUniqueIndexes.Length,
+            dbType == DbProviderType.MySql
+                ? actualUniqueIndexes.Length / 2
+                : actualUniqueIndexes.Length
+        );
         Assert.Equal(addColumns.Count(c => c.IsForeignKey), table.ForeignKeyConstraints.Count());
         Assert.Equal(
             addColumns.Count(c => c.DefaultExpression != null),
@@ -313,6 +295,17 @@ public abstract partial class DatabaseMethodsTests
             table.Columns.Count(c => c.IsPrimaryKey && c.IsAutoIncrement)
         );
         Assert.Equal(addColumns.Count(c => c.IsUnique), table.Columns.Count(c => c.IsUnique));
-        Assert.Equal(addColumns.Count(c => c.IsIndexed), table.Columns.Count(c => c.IsIndexed));
+
+        var indexedColumnsExpected = addColumns.Where(c => c.IsIndexed).ToArray();
+        var uniqueColumnsNonIndexed = addColumns.Where(c => c.IsUnique && !c.IsIndexed).ToArray();
+
+        var indexedColumnsActual = table.Columns.Where(c => c.IsIndexed).ToArray();
+
+        Assert.Equal(
+            dbType == DbProviderType.MySql
+                ? (indexedColumnsExpected.Length + uniqueColumnsNonIndexed.Length)
+                : indexedColumnsExpected.Length,
+            indexedColumnsActual.Length
+        );
     }
 }

@@ -187,7 +187,7 @@ public static class DxTableFactory
                     columnName,
                     !string.IsNullOrWhiteSpace(columnCheckConstraintAttribute.ConstraintName)
                         ? columnCheckConstraintAttribute.ConstraintName
-                        : ProviderUtils.GetCheckConstraintName(tableName, columnName),
+                        : ProviderUtils.GenerateCheckConstraintName(tableName, columnName),
                     columnCheckConstraintAttribute.Expression
                 );
                 checkConstraints.Add(checkConstraint);
@@ -206,7 +206,7 @@ public static class DxTableFactory
                     columnName,
                     !string.IsNullOrWhiteSpace(columnDefaultConstraintAttribute.ConstraintName)
                         ? columnDefaultConstraintAttribute.ConstraintName
-                        : ProviderUtils.GetDefaultConstraintName(tableName, columnName),
+                        : ProviderUtils.GenerateDefaultConstraintName(tableName, columnName),
                     columnDefaultConstraintAttribute.Expression
                 );
                 defaultConstraints.Add(defaultConstraint);
@@ -224,7 +224,7 @@ public static class DxTableFactory
                     tableName,
                     !string.IsNullOrWhiteSpace(columnUniqueConstraintAttribute.ConstraintName)
                         ? columnUniqueConstraintAttribute.ConstraintName
-                        : ProviderUtils.GetUniqueConstraintName(tableName, columnName),
+                        : ProviderUtils.GenerateUniqueConstraintName(tableName, columnName),
                     [new(columnName)]
                 );
                 uniqueConstraints.Add(uniqueConstraint);
@@ -241,7 +241,7 @@ public static class DxTableFactory
                     tableName,
                     !string.IsNullOrWhiteSpace(columnIndexAttribute.IndexName)
                         ? columnIndexAttribute.IndexName
-                        : ProviderUtils.GetIndexName(tableName, columnName),
+                        : ProviderUtils.GenerateIndexName(tableName, columnName),
                     [new(columnName)],
                     isUnique: columnIndexAttribute.IsUnique
                 );
@@ -273,7 +273,7 @@ public static class DxTableFactory
                         columnForeignKeyConstraintAttribute.ConstraintName
                     )
                         ? columnForeignKeyConstraintAttribute.ConstraintName
-                        : ProviderUtils.GetForeignKeyConstraintName(
+                        : ProviderUtils.GenerateForeignKeyConstraintName(
                             tableName,
                             columnName,
                             referencedTableName,
@@ -313,7 +313,7 @@ public static class DxTableFactory
         {
             var constraintName = !string.IsNullOrWhiteSpace(cpa.ConstraintName)
                 ? cpa.ConstraintName
-                : ProviderUtils.GetPrimaryKeyConstraintName(
+                : ProviderUtils.GeneratePrimaryKeyConstraintName(
                     tableName,
                     cpa.Columns.Select(c => c.ColumnName).ToArray()
                 );
@@ -344,7 +344,7 @@ public static class DxTableFactory
             {
                 var constraintName = !string.IsNullOrWhiteSpace(cca.ConstraintName)
                     ? cca.ConstraintName
-                    : ProviderUtils.GetCheckConstraintName(tableName, $"{ccaId++}");
+                    : ProviderUtils.GenerateCheckConstraintName(tableName, $"{ccaId++}");
 
                 checkConstraints.Add(
                     new DxCheckConstraint(
@@ -366,7 +366,7 @@ public static class DxTableFactory
 
             var constraintName = !string.IsNullOrWhiteSpace(uca.ConstraintName)
                 ? uca.ConstraintName
-                : ProviderUtils.GetUniqueConstraintName(
+                : ProviderUtils.GenerateUniqueConstraintName(
                     tableName,
                     uca.Columns.Select(c => c.ColumnName).ToArray()
                 );
@@ -396,7 +396,7 @@ public static class DxTableFactory
 
             var indexName = !string.IsNullOrWhiteSpace(cia.IndexName)
                 ? cia.IndexName
-                : ProviderUtils.GetIndexName(
+                : ProviderUtils.GenerateIndexName(
                     tableName,
                     cia.Columns.Select(c => c.ColumnName).ToArray()
                 );
@@ -437,7 +437,7 @@ public static class DxTableFactory
 
             var constraintName = !string.IsNullOrWhiteSpace(cfk.ConstraintName)
                 ? cfk.ConstraintName
-                : ProviderUtils.GetForeignKeyConstraintName(
+                : ProviderUtils.GenerateForeignKeyConstraintName(
                     tableName,
                     cfk.SourceColumnNames,
                     cfk.ReferencedTableName,

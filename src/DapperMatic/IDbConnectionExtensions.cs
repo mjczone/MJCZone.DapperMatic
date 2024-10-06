@@ -766,6 +766,11 @@ public static partial class IDbConnectionExtensions
 
     #region IDatabaseDefaultConstraintMethods
 
+    public static bool SupportsNamedDefaultConstraints(this IDbConnection db)
+    {
+        return Database(db).SupportsNamedDefaultConstraints;
+    }
+
     public static async Task<DxDefaultConstraint?> GetDefaultConstraintAsync(
         this IDbConnection db,
         string? schemaName,

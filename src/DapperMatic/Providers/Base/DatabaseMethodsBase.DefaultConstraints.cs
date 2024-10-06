@@ -5,6 +5,8 @@ namespace DapperMatic.Providers;
 
 public abstract partial class DatabaseMethodsBase : IDatabaseDefaultConstraintMethods
 {
+    public virtual bool SupportsNamedDefaultConstraints => true;
+
     public virtual async Task<bool> DoesDefaultConstraintExistAsync(
         IDbConnection db,
         string? schemaName,

@@ -1,5 +1,6 @@
 using System.Data;
 using System.Text;
+using System.Text.RegularExpressions;
 using DapperMatic.Models;
 
 namespace DapperMatic.Providers.MySql;
@@ -16,13 +17,13 @@ public partial class MySqlMethods
     {
         (schemaName, tableName, _) = NormalizeNames(schemaName, tableName);
 
-        var sql =
-            $@"
+        var sql = $@"
             SELECT COUNT(*)
             FROM INFORMATION_SCHEMA.TABLES
-            WHERE TABLE_SCHEMA = @schemaName
-            AND TABLE_NAME = @tableName            
-            ";
+            WHERE TABLE_TYPE = 'BASE TABLE' 
+                and TABLE_SCHEMA = DATABASE()
+                and TABLE_NAME = @tableName
+            ".Trim();
 
         var result = await ExecuteScalarAsync<int>(
                 db,
@@ -37,40 +38,35 @@ public partial class MySqlMethods
 
     public override async Task<bool> CreateTableIfNotExistsAsync(
         IDbConnection db,
-        string? schemaName,
-        string tableName,
-        DxColumn[]? columns = null,
-        DxPrimaryKeyConstraint? primaryKey = null,
-        DxCheckConstraint[]? checkConstraints = null,
-        DxDefaultConstraint[]? defaultConstraints = null,
-        DxUniqueConstraint[]? uniqueConstraints = null,
-        DxForeignKeyConstraint[]? foreignKeyConstraints = null,
-        DxIndex[]? indexes = null,
+        DxTable table,
         IDbTransaction? tx = null,
         CancellationToken cancellationToken = default
     )
     {
-        if (string.IsNullOrWhiteSpace(tableName))
+        if (string.IsNullOrWhiteSpace(table.TableName))
         {
-            throw new ArgumentException("Table name is required.", nameof(tableName));
+            throw new ArgumentException("Table name is required.", nameof(table));
         }
 
-        if (await DoesTableExistAsync(db, schemaName, tableName, tx, cancellationToken))
+        if (await DoesTableExistAsync(db, table.SchemaName, table.TableName, tx, cancellationToken))
             return false;
 
-        (schemaName, tableName, _) = NormalizeNames(schemaName, tableName);
+        var (schemaName, tableName, _) = NormalizeNames(table.SchemaName, table.TableName);
 
         var fillWithAdditionalIndexesToCreate = new List<DxIndex>();
+
+        var tableWithChanges = new DxTable(schemaName, tableName);
 
         var sql = new StringBuilder();
         sql.Append($"CREATE TABLE {GetSchemaQualifiedTableName(schemaName, tableName)} (");
         var columnDefinitionClauses = new List<string>();
-        for (var i = 0; i < columns?.Length; i++)
+        for (var i = 0; i < table.Columns.Count; i++)
         {
-            var column = columns[i];
+            var column = table.Columns[i];
 
             var colSql = BuildColumnDefinitionSql(
-                tableName,
+                table,
+                tableWithChanges,
                 column.ColumnName,
                 column.DotnetType,
                 column.ProviderDataType,
@@ -88,14 +84,7 @@ public partial class MySqlMethods
                 column.ReferencedTableName,
                 column.ReferencedColumnName,
                 column.OnDelete,
-                column.OnUpdate,
-                primaryKey,
-                checkConstraints,
-                defaultConstraints,
-                uniqueConstraints,
-                foreignKeyConstraints,
-                indexes,
-                fillWithAdditionalIndexesToCreate
+                column.OnUpdate
             );
 
             columnDefinitionClauses.Add(colSql.ToString());
@@ -104,63 +93,61 @@ public partial class MySqlMethods
 
         // add single column primary key constraints as column definitions; and,
         // add multi column primary key constraints here
-        if (primaryKey != null && primaryKey.Columns.Length > 1)
+        var primaryKey = table.PrimaryKeyConstraint ?? tableWithChanges.PrimaryKeyConstraint;
+        if (primaryKey != null && primaryKey.Columns.Length > 0)
         {
             var pkColumns = primaryKey.Columns.Select(c =>
                 c.ToString(SupportsOrderedKeysInConstraints)
             );
             var pkColumnNames = primaryKey.Columns.Select(c => c.ColumnName);
+            var primaryKeyConstraintName = !string.IsNullOrWhiteSpace(primaryKey.ConstraintName)
+                ? primaryKey.ConstraintName
+                : ProviderUtils.GeneratePrimaryKeyConstraintName(tableName, [.. pkColumnNames]);
             sql.AppendLine(
-                $", CONSTRAINT {ProviderUtils.GetPrimaryKeyConstraintName(tableName, [.. pkColumnNames])} PRIMARY KEY ({string.Join(", ", pkColumns)})"
+                $", CONSTRAINT {primaryKeyConstraintName} PRIMARY KEY ({string.Join(", ", pkColumns)})"
             );
         }
 
         // add check constraints
-        if (checkConstraints != null && checkConstraints.Length > 0)
+        var checkConstraints = table.CheckConstraints.Union(tableWithChanges.CheckConstraints);
+        foreach (
+            var constraint in checkConstraints.Where(c => !string.IsNullOrWhiteSpace(c.Expression))
+        )
         {
-            foreach (
-                var constraint in checkConstraints.Where(c =>
-                    !string.IsNullOrWhiteSpace(c.Expression)
-                )
-            )
-            {
-                sql.AppendLine(
-                    $", CONSTRAINT {NormalizeName(constraint.ConstraintName)} CHECK ({constraint.Expression})"
-                );
-            }
+            sql.AppendLine(
+                $", CONSTRAINT {NormalizeName(constraint.ConstraintName)} CHECK ({constraint.Expression})"
+            );
         }
 
         // add foreign key constraints
-        if (foreignKeyConstraints != null && foreignKeyConstraints.Length > 0)
+        var foreignKeyConstraints = table.ForeignKeyConstraints.Union(
+            tableWithChanges.ForeignKeyConstraints
+        );
+        foreach (var constraint in foreignKeyConstraints)
         {
-            foreach (var constraint in foreignKeyConstraints)
-            {
-                var fkColumns = constraint.SourceColumns.Select(c =>
-                    c.ToString(SupportsOrderedKeysInConstraints)
-                );
-                var fkReferencedColumns = constraint.ReferencedColumns.Select(c =>
-                    c.ToString(SupportsOrderedKeysInConstraints)
-                );
-                sql.AppendLine(
-                    $", CONSTRAINT {NormalizeName(constraint.ConstraintName)} FOREIGN KEY ({string.Join(", ", fkColumns)}) REFERENCES {NormalizeName(constraint.ReferencedTableName)} ({string.Join(", ", fkReferencedColumns)})"
-                );
-                sql.AppendLine($" ON DELETE {constraint.OnDelete.ToSql()}");
-                sql.AppendLine($" ON UPDATE {constraint.OnUpdate.ToSql()}");
-            }
+            var fkColumns = constraint.SourceColumns.Select(c =>
+                c.ToString(SupportsOrderedKeysInConstraints)
+            );
+            var fkReferencedColumns = constraint.ReferencedColumns.Select(c =>
+                c.ToString(SupportsOrderedKeysInConstraints)
+            );
+            sql.AppendLine(
+                $", CONSTRAINT {NormalizeName(constraint.ConstraintName)} FOREIGN KEY ({string.Join(", ", fkColumns)}) REFERENCES {NormalizeName(constraint.ReferencedTableName)} ({string.Join(", ", fkReferencedColumns)})"
+            );
+            sql.AppendLine($" ON DELETE {constraint.OnDelete.ToSql()}");
+            sql.AppendLine($" ON UPDATE {constraint.OnUpdate.ToSql()}");
         }
 
         // add unique constraints
-        if (uniqueConstraints != null && uniqueConstraints.Length > 0)
+        var uniqueConstraints = table.UniqueConstraints.Union(tableWithChanges.UniqueConstraints);
+        foreach (var constraint in uniqueConstraints)
         {
-            foreach (var constraint in uniqueConstraints)
-            {
-                var uniqueColumns = constraint.Columns.Select(c =>
-                    c.ToString(SupportsOrderedKeysInConstraints)
-                );
-                sql.AppendLine(
-                    $", CONSTRAINT {NormalizeName(constraint.ConstraintName)} UNIQUE ({string.Join(", ", uniqueColumns)})"
-                );
-            }
+            var uniqueColumns = constraint.Columns.Select(c =>
+                c.ToString(SupportsOrderedKeysInConstraints)
+            );
+            sql.AppendLine(
+                $", CONSTRAINT {NormalizeName(constraint.ConstraintName)} UNIQUE ({string.Join(", ", uniqueColumns)})"
+            );
         }
 
         sql.AppendLine(")");
@@ -168,15 +155,47 @@ public partial class MySqlMethods
 
         await ExecuteAsync(db, createTableSql, transaction: tx).ConfigureAwait(false);
 
-        var combinedIndexes = (indexes ?? []).Union(fillWithAdditionalIndexesToCreate).ToList();
-
-        foreach (var index in combinedIndexes)
+        var indexes = table.Indexes.Union(tableWithChanges.Indexes).ToArray();
+        foreach (var index in indexes)
         {
             await CreateIndexIfNotExistsAsync(db, index, tx, cancellationToken)
                 .ConfigureAwait(false);
         }
 
         return true;
+    }
+
+    public override async Task<bool> CreateTableIfNotExistsAsync(
+        IDbConnection db,
+        string? schemaName,
+        string tableName,
+        DxColumn[]? columns = null,
+        DxPrimaryKeyConstraint? primaryKey = null,
+        DxCheckConstraint[]? checkConstraints = null,
+        DxDefaultConstraint[]? defaultConstraints = null,
+        DxUniqueConstraint[]? uniqueConstraints = null,
+        DxForeignKeyConstraint[]? foreignKeyConstraints = null,
+        DxIndex[]? indexes = null,
+        IDbTransaction? tx = null,
+        CancellationToken cancellationToken = default
+    )
+    {
+        return await CreateTableIfNotExistsAsync(
+            db,
+            new DxTable(
+                schemaName,
+                tableName,
+                columns,
+                primaryKey,
+                checkConstraints,
+                defaultConstraints,
+                uniqueConstraints,
+                foreignKeyConstraints,
+                indexes
+            ),
+            tx: tx,
+            cancellationToken: cancellationToken
+        );
     }
 
     public override async Task<List<string>> GetTableNamesAsync(
@@ -196,11 +215,12 @@ public partial class MySqlMethods
         return await QueryAsync<string>(
                 db,
                 $@"
-                SELECT TABLE_NAME
-                FROM INFORMATION_SCHEMA.TABLES
-                WHERE TABLE_SCHEMA = @schemaName
-                {(string.IsNullOrWhiteSpace(where) ? null : " AND TABLE_NAME LIKE @where")}
-                ORDER BY TABLE_NAME",
+                SELECT t.TABLE_NAME as table_name
+                FROM INFORMATION_SCHEMA.TABLES as t
+                WHERE t.TABLE_TYPE = 'BASE TABLE'
+                    AND t.TABLE_SCHEMA = DATABASE()
+                    {(string.IsNullOrWhiteSpace(where) ? null : " AND t.TABLE_NAME LIKE @where")}
+                ORDER BY t.TABLE_SCHEMA, t.TABLE_NAME",
                 new { schemaName, where },
                 transaction: tx
             )
@@ -311,15 +331,7 @@ public partial class MySqlMethods
                 ORDER BY
                     tc.table_name,
                     tc.constraint_type,
-                    tc.constraint_name;
-                            GROUP BY
-                                tc.table_name,
-                                tc.constraint_type,
-                                tc.constraint_name
-                            ORDER BY
-                                tc.table_name,
-                                tc.constraint_type,
-                                tc.constraint_name
+                    tc.constraint_name
         ";
         var constraintResults = await QueryAsync<(
             string schema_name,
@@ -332,14 +344,19 @@ public partial class MySqlMethods
             .ConfigureAwait(false);
 
         var allDefaultConstraints = columnResults
-            .Where(t => !string.IsNullOrWhiteSpace(t.column_default))
+            .Where(t =>
+                !string.IsNullOrWhiteSpace(t.column_default)
+                &&
+                // MariaDB adds NULL as a default constraint, let's ignore it
+                !t.column_default.Equals("NULL", StringComparison.OrdinalIgnoreCase)
+            )
             .Select(c =>
             {
                 return new DxDefaultConstraint(
                     DefaultSchema,
                     c.table_name,
                     c.column_name,
-                    ProviderUtils.GetDefaultConstraintName(c.table_name, c.column_name),
+                    ProviderUtils.GenerateDefaultConstraintName(c.table_name, c.column_name),
                     c.column_default.Trim(['(', ')'])
                 );
             })
@@ -354,7 +371,7 @@ public partial class MySqlMethods
                 return new DxPrimaryKeyConstraint(
                     DefaultSchema,
                     t.table_name,
-                    ProviderUtils.GetPrimaryKeyConstraintName(t.table_name, columnNames),
+                    ProviderUtils.GeneratePrimaryKeyConstraintName(t.table_name, columnNames),
                     columnNames
                         .Select(
                             (c, i) =>
@@ -398,34 +415,37 @@ public partial class MySqlMethods
 
         var foreignKeysSql =
             @$"
-            SELECT
-                kfk.TABLE_SCHEMA schema_name,
-                kfk.TABLE_NAME table_name,
-                kfk.COLUMN_NAME AS column_name,
-                rc.CONSTRAINT_NAME AS constraint_name,
-                kpk.TABLE_SCHEMA AS referenced_schema_name,
-                kpk.TABLE_NAME AS referenced_table_name,
-                kpk.COLUMN_NAME AS referenced_column_name,
-                rc.UPDATE_RULE update_rule,
-                rc.DELETE_RULE delete_rule
-            FROM INFORMATION_SCHEMA.REFERENTIAL_CONSTRAINTS rc
-                JOIN INFORMATION_SCHEMA.KEY_COLUMN_USAGE kfk ON rc.CONSTRAINT_NAME = kfk.CONSTRAINT_NAME
-                JOIN INFORMATION_SCHEMA.KEY_COLUMN_USAGE kpk ON rc.UNIQUE_CONSTRAINT_NAME = kpk.CONSTRAINT_NAME
-            WHERE 
-                kfk.TABLE_SCHEMA = DATABASE()
-                {(string.IsNullOrWhiteSpace(where) ? null : " AND kfk.TABLE_NAME LIKE @where")}
-            ORDER BY kfk.TABLE_SCHEMA, kfk.TABLE_NAME, rc.CONSTRAINT_NAME
+            select distinct
+                kcu.TABLE_SCHEMA as schema_name, 
+                kcu.TABLE_NAME as table_name, 
+                kcu.CONSTRAINT_NAME as constraint_name,
+                kcu.REFERENCED_TABLE_SCHEMA as referenced_schema_name,
+                kcu.REFERENCED_TABLE_NAME as referenced_table_name,
+                rc.DELETE_RULE as delete_rule,
+                rc.UPDATE_RULE as update_rule,
+                kcu.ORDINAL_POSITION as key_ordinal,
+                kcu.COLUMN_NAME as column_name,
+                kcu.REFERENCED_COLUMN_NAME as referenced_column_name
+            from INFORMATION_SCHEMA.KEY_COLUMN_USAGE kcu 
+                INNER JOIN INFORMATION_SCHEMA.TABLE_CONSTRAINTS tc on kcu.CONSTRAINT_NAME = tc.CONSTRAINT_NAME
+                INNER JOIN INFORMATION_SCHEMA.REFERENTIAL_CONSTRAINTS rc on kcu.CONSTRAINT_NAME = rc.CONSTRAINT_NAME
+            where kcu.CONSTRAINT_SCHEMA = DATABASE()
+                and tc.CONSTRAINT_SCHEMA = DATABASE()
+                and tc.CONSTRAINT_TYPE = 'FOREIGN KEY'
+                {(string.IsNullOrWhiteSpace(where) ? null : " AND kcu.TABLE_NAME LIKE @where")}
+            order by schema_name, table_name, key_ordinal
         ";
         var foreignKeyResults = await QueryAsync<(
             string schema_name,
             string table_name,
-            string column_name,
             string constraint_name,
             string referenced_schema_name,
             string referenced_table_name,
-            string referenced_column_name,
+            string delete_rule,
             string update_rule,
-            string delete_rule
+            string key_ordinal,
+            string column_name,
+            string referenced_column_name
         )>(db, foreignKeysSql, new { schemaName, where }, transaction: tx)
             .ConfigureAwait(false);
         var allForeignKeyConstraints = foreignKeyResults
@@ -434,6 +454,7 @@ public partial class MySqlMethods
                 t.schema_name,
                 t.table_name,
                 t.constraint_name,
+                t.referenced_schema_name,
                 t.referenced_table_name,
                 t.update_rule,
                 t.delete_rule
@@ -453,6 +474,8 @@ public partial class MySqlMethods
             })
             .ToArray();
 
+        // the table CHECK_CONSTRAINTS only exists starting MySQL 8.0.16 and MariaDB 10.2.1
+        // resolve issue for MySQL 5.0.12+
         var checkConstraintsSql =
             @$"
             SELECT 
@@ -472,7 +495,7 @@ public partial class MySqlMethods
             WHERE 
                 tc.TABLE_SCHEMA = DATABASE()
                 and tc.CONSTRAINT_TYPE = 'CHECK'
-                {(string.IsNullOrWhiteSpace(where) ? null : " AND t.[name] LIKE @where")}
+                {(string.IsNullOrWhiteSpace(where) ? null : " AND tc.TABLE_NAME LIKE @where")}
             order by schema_name, table_name, column_name, constraint_name            
             ";
 
@@ -485,9 +508,32 @@ public partial class MySqlMethods
         )>(db, checkConstraintsSql, new { schemaName, where }, transaction: tx)
             .ConfigureAwait(false);
         var allCheckConstraints = checkConstraintResults
-            .Where(t => !string.IsNullOrWhiteSpace(t.column_name))
             .Select(t =>
             {
+                if (string.IsNullOrWhiteSpace(t.column_name))
+                {
+                    // try to associate the check constraint with a column
+                    var columnCount = 0;
+                    var columnName = "";
+                    foreach (var column in columnResults)
+                    {
+                        string pattern = $@"\b{Regex.Escape(column.column_name)}\b";
+                        if (
+                            column.table_name.Equals(
+                                t.table_name,
+                                StringComparison.OrdinalIgnoreCase
+                            ) && Regex.IsMatch(t.check_expression, pattern, RegexOptions.IgnoreCase)
+                        )
+                        {
+                            columnName = column.column_name;
+                            columnCount++;
+                        }
+                    }
+                    if (columnCount == 1)
+                    {
+                        t.column_name = columnName;
+                    }
+                }
                 return new DxCheckConstraint(
                     DefaultSchema,
                     t.table_name,
@@ -500,10 +546,10 @@ public partial class MySqlMethods
 
         var allIndexes = await GetIndexesInternalAsync(
                 db,
-                schemaName,
                 tableNameFilter,
-                tx,
-                cancellationToken
+                null,
+                tx: tx,
+                cancellationToken: cancellationToken
             )
             .ConfigureAwait(false);
 
