@@ -15,10 +15,23 @@ public partial interface IDatabaseMethods
         IDatabaseViewMethods
 {
     DbProviderType ProviderType { get; }
-    bool SupportsOrderedKeysInConstraints { get; }
+
+    bool SupportsSchemas { get; }
+
+    Task<bool> SupportsCheckConstraintsAsync(
+        IDbConnection db,
+        IDbTransaction? tx = null,
+        CancellationToken cancellationToken = default
+    );
+    Task<bool> SupportsOrderedKeysInConstraintsAsync(
+        IDbConnection db,
+        IDbTransaction? tx = null,
+        CancellationToken cancellationToken = default
+    );
+
     string GetLastSql(IDbConnection db);
     (string sql, object? parameters) GetLastSqlWithParams(IDbConnection db);
-    Task<string> GetDatabaseVersionAsync(
+    Task<Version> GetDatabaseVersionAsync(
         IDbConnection db,
         IDbTransaction? tx = null,
         CancellationToken cancellationToken = default

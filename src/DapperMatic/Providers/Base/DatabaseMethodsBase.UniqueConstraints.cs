@@ -103,12 +103,18 @@ public abstract partial class DatabaseMethodsBase : IDatabaseUniqueConstraintMet
         );
 
         var schemaQualifiedTableName = GetSchemaQualifiedTableName(schemaName, tableName);
+        var supportsOrderedKeysInConstraints = await SupportsOrderedKeysInConstraintsAsync(
+                db,
+                tx,
+                cancellationToken
+            )
+            .ConfigureAwait(false);
 
         var sql =
             @$"
             ALTER TABLE {schemaQualifiedTableName}
                 ADD CONSTRAINT {constraintName} 
-                    UNIQUE ({string.Join(", ", columns.Select(c => c.ToString(SupportsOrderedKeysInConstraints)))})
+                    UNIQUE ({string.Join(", ", columns.Select(c => c.ToString(supportsOrderedKeysInConstraints)))})
         ";
 
         await ExecuteAsync(db, sql, transaction: tx).ConfigureAwait(false);

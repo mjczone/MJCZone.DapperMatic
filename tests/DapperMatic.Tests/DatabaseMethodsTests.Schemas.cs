@@ -12,7 +12,7 @@ public abstract partial class DatabaseMethodsTests
         var supportsSchemas = connection.SupportsSchemas();
         if (!supportsSchemas)
         {
-            Logger.LogInformation("This test requires a database that supports schemas.");
+            output.WriteLine("This test requires a database that supports schemas.");
             return;
         }
 
@@ -25,7 +25,7 @@ public abstract partial class DatabaseMethodsTests
         exists = await connection.DoesSchemaExistAsync(schemaName);
         Assert.False(exists);
 
-        Logger.LogInformation("Creating schemaName: {schemaName}", schemaName);
+        output.WriteLine("Creating schemaName: {0}", schemaName);
         var created = await connection.CreateSchemaIfNotExistsAsync(schemaName);
         Assert.True(created);
         exists = await connection.DoesSchemaExistAsync(schemaName);
@@ -34,7 +34,7 @@ public abstract partial class DatabaseMethodsTests
         var schemas = await connection.GetSchemaNamesAsync();
         Assert.Contains(schemaName, schemas, StringComparer.OrdinalIgnoreCase);
 
-        Logger.LogInformation("Dropping schemaName: {schemaName}", schemaName);
+        output.WriteLine("Dropping schemaName: {0}", schemaName);
         var dropped = await connection.DropSchemaIfExistsAsync(schemaName);
         Assert.True(dropped);
 

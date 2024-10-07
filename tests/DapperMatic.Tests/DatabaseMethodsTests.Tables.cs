@@ -102,6 +102,6 @@ public abstract partial class DatabaseMethodsTests
         exists = await connection.DoesTableExistAsync(null, newName);
         Assert.False(exists);
 
-        Logger.LogInformation($"Table names: {tableNames}", string.Join(", ", tableNames));
+        output.WriteLine($"Table names: {0}", string.Join(", ", tableNames));
     }
 }

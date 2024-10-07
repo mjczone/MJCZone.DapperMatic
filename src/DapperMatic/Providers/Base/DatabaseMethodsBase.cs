@@ -10,8 +10,30 @@ namespace DapperMatic.Providers;
 public abstract partial class DatabaseMethodsBase : IDatabaseMethods
 {
     public abstract DbProviderType ProviderType { get; }
-    public virtual bool SupportsOrderedKeysInConstraints => true;
-    protected virtual ILogger Logger => DxLogger.CreateLogger(GetType());
+
+    protected abstract string DefaultSchema { get; }
+
+    public virtual bool SupportsSchemas => !string.IsNullOrWhiteSpace(DefaultSchema);
+
+    public virtual Task<bool> SupportsCheckConstraintsAsync(
+        IDbConnection db,
+        IDbTransaction? tx = null,
+        CancellationToken cancellationToken = default
+    ) => Task.FromResult(true);
+
+    public virtual Task<bool> SupportsOrderedKeysInConstraintsAsync(
+        IDbConnection db,
+        IDbTransaction? tx = null,
+        CancellationToken cancellationToken = default
+    ) => Task.FromResult(true);
+
+    public virtual Task<bool> SupportsDefaultConstraintsAsync(
+        IDbConnection db,
+        IDbTransaction? tx = null,
+        CancellationToken cancellationToken = default
+    ) => Task.FromResult(true);
+
+    private ILogger Logger => DxLogger.CreateLogger(GetType());
 
     protected virtual List<DataTypeMap> DataTypes =>
         DataTypeMapFactory.GetDefaultDbProviderDataTypeMap(ProviderType);
@@ -84,7 +106,7 @@ public abstract partial class DatabaseMethodsBase : IDatabaseMethods
         (string sql, object? parameters)
     > _lastSqls = new();
 
-    public abstract Task<string> GetDatabaseVersionAsync(
+    public abstract Task<Version> GetDatabaseVersionAsync(
         IDbConnection connection,
         IDbTransaction? tx,
         CancellationToken cancellationToken = default
@@ -120,7 +142,8 @@ public abstract partial class DatabaseMethodsBase : IDatabaseMethods
     {
         try
         {
-            Logger.LogInformation(
+            Log(
+                LogLevel.Information,
                 "[{provider}] Executing SQL query: {sql}, with parameters {parameters}",
                 ProviderType,
                 sql,
@@ -136,7 +159,8 @@ public abstract partial class DatabaseMethodsBase : IDatabaseMethods
         }
         catch (Exception ex)
         {
-            Logger.LogError(
+            Log(
+                LogLevel.Error,
                 ex,
                 "An error occurred while executing SQL query: {sql}, with parameters {parameters}.\n{message}",
                 sql,
@@ -158,7 +182,8 @@ public abstract partial class DatabaseMethodsBase : IDatabaseMethods
     {
         try
         {
-            Logger.LogInformation(
+            Log(
+                LogLevel.Information,
                 "[{provider}] Executing SQL scalar: {sql}, with parameters {parameters}",
                 ProviderType,
                 sql,
@@ -176,7 +201,8 @@ public abstract partial class DatabaseMethodsBase : IDatabaseMethods
         }
         catch (Exception ex)
         {
-            Logger.LogError(
+            Log(
+                LogLevel.Error,
                 ex,
                 "An error occurred while executing SQL scalar query: {sql}, with parameters {parameters}.\n{message}",
                 sql,
@@ -198,7 +224,8 @@ public abstract partial class DatabaseMethodsBase : IDatabaseMethods
     {
         try
         {
-            Logger.LogInformation(
+            Log(
+                LogLevel.Information,
                 "[{provider}] Executing SQL statement: {sql}, with parameters {parameters}",
                 ProviderType,
                 sql,
@@ -216,7 +243,8 @@ public abstract partial class DatabaseMethodsBase : IDatabaseMethods
         }
         catch (Exception ex)
         {
-            Logger.LogError(
+            Log(
+                LogLevel.Error,
                 ex,
                 "An error occurred while executing SQL statement: {sql}, with parameters {parameters}.\n{message}",
                 sql,
@@ -396,12 +424,13 @@ public abstract partial class DatabaseMethodsBase : IDatabaseMethods
     /// <returns></returns>
     protected virtual string NormalizeSchemaName(string? schemaName)
     {
-        if (!SupportsSchemas || string.IsNullOrWhiteSpace(schemaName))
-            schemaName = DefaultSchema;
-        else
-            schemaName = NormalizeName(schemaName);
+        if (!SupportsSchemas)
+            return string.Empty;
 
-        return schemaName;
+        if (string.IsNullOrWhiteSpace(schemaName))
+            return DefaultSchema;
+
+        return NormalizeName(schemaName);
     }
 
     /// <summary>
@@ -428,5 +457,40 @@ public abstract partial class DatabaseMethodsBase : IDatabaseMethods
             identifierName = NormalizeName(identifierName);
 
         return (schemaName ?? "", tableName ?? "", identifierName ?? "");
+    }
+
+    protected void Log(LogLevel logLevel, string message, params object?[] args)
+    {
+        if (Logger != null && Logger.IsEnabled(logLevel))
+        {
+            try
+            {
+                Logger.Log(logLevel, message, args);
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine(ex);
+            }
+        }
+    }
+
+    protected void Log(
+        LogLevel logLevel,
+        Exception exception,
+        string message,
+        params object?[] args
+    )
+    {
+        if (Logger != null && Logger.IsEnabled(logLevel))
+        {
+            try
+            {
+                Logger.Log(logLevel, exception, message, args);
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine(ex);
+            }
+        }
     }
 }

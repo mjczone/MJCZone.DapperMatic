@@ -8,7 +8,7 @@ public partial class SqlServerMethods : DatabaseMethodsBase, IDatabaseMethods
 
     internal SqlServerMethods() { }
 
-    public override async Task<string> GetDatabaseVersionAsync(
+    public override async Task<Version> GetDatabaseVersionAsync(
         IDbConnection db,
         IDbTransaction? tx = null,
         CancellationToken cancellationToken = default
@@ -16,16 +16,15 @@ public partial class SqlServerMethods : DatabaseMethodsBase, IDatabaseMethods
     {
         /*
             SELECT
-            SERVERPROPERTY('Productversion') As [SQL Server Version],
-            SERVERPROPERTY('Productlevel') As [SQL Server Build Level],
-            SERVERPROPERTY('edition') As [SQL Server Edition]
+            SERVERPROPERTY('Productversion') As [SQL Server Version]        --> 15.0.2000.5, 15.0.4390.2
+            SERVERPROPERTY('Productlevel') As [SQL Server Build Level],     --> RTM
+            SERVERPROPERTY('edition') As [SQL Server Edition]               --> Express Edition (64-bit), Developer Edition (64-bit), etc.
          */
-        return await ExecuteScalarAsync<string>(
-                    db,
-                    $@"SELECT SERVERPROPERTY('Productversion')",
-                    transaction: tx
-                )
-                .ConfigureAwait(false) ?? "";
+
+        var sql = $@"SELECT SERVERPROPERTY('Productversion')";
+        var versionString =
+            await ExecuteScalarAsync<string>(db, sql, transaction: tx).ConfigureAwait(false) ?? "";
+        return ProviderUtils.ExtractVersionFromVersionString(versionString);
     }
 
     public override Type GetDotnetTypeFromSqlType(string sqlType)

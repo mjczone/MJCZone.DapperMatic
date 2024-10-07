@@ -11,13 +11,13 @@ public abstract partial class DatabaseMethodsTests
         using var connection = await OpenConnectionAsync();
 
         var version = await connection.GetDatabaseVersionAsync();
-        Assert.NotEmpty(version);
+        Assert.True(version.Major > 0);
 
         var supportsDescendingColumnSorts = true;
         var dbType = connection.GetDbProviderType();
         if (dbType.HasFlag(DbProviderType.MySql))
         {
-            if (version.StartsWith("5."))
+            if (version.Major == 5)
             {
                 supportsDescendingColumnSorts = false;
             }
@@ -56,12 +56,12 @@ public abstract partial class DatabaseMethodsTests
             await connection.DropTableIfExistsAsync(null, tableName);
             await connection.CreateTableIfNotExistsAsync(null, tableName, columns: [.. columns]);
 
-            Logger.LogInformation("Index Exists: {tableName}.{indexName}", tableName, indexName);
+            output.WriteLine("Index Exists: {0}.{1}", tableName, indexName);
             var exists = await connection.DoesIndexExistAsync(null, tableName, indexName);
             Assert.False(exists);
 
-            Logger.LogInformation(
-                "Creating unique index: {tableName}.{indexName}",
+            output.WriteLine(
+                "Creating unique index: {0}.{1}",
                 tableName,
                 indexName
             );
@@ -73,8 +73,8 @@ public abstract partial class DatabaseMethodsTests
                 isUnique: true
             );
 
-            Logger.LogInformation(
-                "Creating multiple column unique index: {tableName}.{indexName}_multi",
+            output.WriteLine(
+                "Creating multiple column unique index: {0}.{1}_multi",
                 tableName,
                 indexName + "_multi"
             );
@@ -89,8 +89,8 @@ public abstract partial class DatabaseMethodsTests
                 isUnique: true
             );
 
-            Logger.LogInformation(
-                "Creating multiple column non unique index: {tableName}.{indexName}_multi2",
+            output.WriteLine(
+                "Creating multiple column non unique index: {0}.{1}_multi2",
                 tableName,
                 indexName
             );
@@ -104,7 +104,7 @@ public abstract partial class DatabaseMethodsTests
                 ]
             );
 
-            Logger.LogInformation("Index Exists: {tableName}.{indexName}", tableName, indexName);
+            output.WriteLine("Index Exists: {0}.{1}", tableName, indexName);
             exists = await connection.DoesIndexExistAsync(null, tableName, indexName);
             Assert.True(exists);
             exists = await connection.DoesIndexExistAsync(null, tableName, indexName + "_multi");
@@ -162,14 +162,10 @@ public abstract partial class DatabaseMethodsTests
             );
             Assert.NotEmpty(indexesOnColumn);
 
-            Logger.LogInformation(
-                "Dropping indexName: {tableName}.{indexName}",
-                tableName,
-                indexName
-            );
+            output.WriteLine("Dropping indexName: {0}.{1}", tableName, indexName);
             await connection.DropIndexIfExistsAsync(null, tableName, indexName);
 
-            Logger.LogInformation("Index Exists: {tableName}.{indexName}", tableName, indexName);
+            output.WriteLine("Index Exists: {0}.{1}", tableName, indexName);
             exists = await connection.DoesIndexExistAsync(null, tableName, indexName);
             Assert.False(exists);
 
@@ -178,7 +174,7 @@ public abstract partial class DatabaseMethodsTests
         finally
         {
             var sql = connection.GetLastSql();
-            Logger.LogInformation("Last sql: {sql}", sql);
+            output.WriteLine("Last sql: {0}", sql);
         }
     }
 }

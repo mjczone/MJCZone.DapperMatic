@@ -9,6 +9,8 @@ public abstract partial class DatabaseMethodsTests
     {
         using var connection = await OpenConnectionAsync();
 
+        var supportsCheckConstraints = await connection.SupportsCheckConstraintsAsync();
+
         var testTableName = "testTableCheckConstraints";
         await connection.CreateTableIfNotExistsAsync(
             null,
@@ -39,26 +41,48 @@ public abstract partial class DatabaseMethodsTests
             testTableName,
             constraintName
         );
-        Assert.True(exists);
+        Assert.True(supportsCheckConstraints ? exists : !exists);
 
         var existingConstraint = await connection.GetCheckConstraintAsync(
             null,
             testTableName,
             constraintName
         );
-        Assert.Equal(
-            constraintName,
-            existingConstraint?.ConstraintName,
-            StringComparer.OrdinalIgnoreCase
-        );
+        if (!supportsCheckConstraints)
+            Assert.Null(existingConstraint);
+        else
+            Assert.Equal(
+                constraintName,
+                existingConstraint?.ConstraintName,
+                StringComparer.OrdinalIgnoreCase
+            );
 
         var checkConstraintNames = await connection.GetCheckConstraintNamesAsync(
             null,
             testTableName
         );
-        Assert.Contains(constraintName, checkConstraintNames, StringComparer.OrdinalIgnoreCase);
+        if (!supportsCheckConstraints)
+            Assert.Empty(checkConstraintNames);
+        else
+            Assert.Contains(constraintName, checkConstraintNames, StringComparer.OrdinalIgnoreCase);
 
-        await connection.DropCheckConstraintIfExistsAsync(null, testTableName, constraintName);
+        var dropped = await connection.DropCheckConstraintIfExistsAsync(
+            null,
+            testTableName,
+            constraintName
+        );
+        if (!supportsCheckConstraints)
+            Assert.False(dropped);
+        else
+        {
+            Assert.True(dropped);
+            exists = await connection.DoesCheckConstraintExistAsync(
+                null,
+                testTableName,
+                constraintName
+            );
+        }
+
         exists = await connection.DoesCheckConstraintExistAsync(
             null,
             testTableName,
@@ -88,6 +112,9 @@ public abstract partial class DatabaseMethodsTests
             testTableName,
             "testColumn2"
         );
-        Assert.NotNull(checkConstraint);
+        if (!supportsCheckConstraints)
+            Assert.Null(checkConstraint);
+        else
+            Assert.NotNull(checkConstraint);
     }
 }

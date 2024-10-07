@@ -5,20 +5,28 @@ using Xunit.Abstractions;
 
 namespace DapperMatic.Tests;
 
-public abstract class TestBase
+public abstract class TestBase : IDisposable
 {
-    private readonly ITestOutputHelper output;
-    protected ILogger Logger { get; }
+    protected readonly ITestOutputHelper output;
 
     protected TestBase(ITestOutputHelper output)
     {
         this.output = output;
+
         var loggerFactory = LoggerFactory.Create(builder =>
         {
             builder.AddProvider(new TestLoggerProvider(output));
         });
         DxLogger.SetLoggerFactory(loggerFactory);
-        Logger = loggerFactory.CreateLogger(GetType());
-        Logger.LogInformation("Initializing tests for {test}", GetType().Name);
+    }
+
+    public virtual void Dispose()
+    {
+        DxLogger.SetLoggerFactory(LoggerFactory.Create(builder => builder.ClearProviders()));
+    }
+
+    protected void Log(string message)
+    {
+        output.WriteLine(message);
     }
 }

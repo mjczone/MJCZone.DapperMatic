@@ -5,8 +5,6 @@ namespace DapperMatic;
 
 public partial interface IDatabaseDefaultConstraintMethods
 {
-    bool SupportsNamedDefaultConstraints { get; }
-
     Task<bool> CreateDefaultConstraintIfNotExistsAsync(
         IDbConnection db,
         DxDefaultConstraint constraint,

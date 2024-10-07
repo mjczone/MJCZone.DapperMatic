@@ -263,7 +263,7 @@ public partial class SqliteMethods
         if (existingPrimaryKeyConstraint != null)
         {
             var pkColumns = existingPrimaryKeyConstraint.Columns.Select(c =>
-                c.ToString(SupportsOrderedKeysInConstraints)
+                c.ToString()
             );
             var pkColumnNames = existingPrimaryKeyConstraint
                 .Columns.Select(c => c.ColumnName)
@@ -400,15 +400,6 @@ public partial class SqliteMethods
                 columnSql.Append($" ON UPDATE {onUpdate.Value.ToSql()}");
         }
 
-        var columnSqlString = columnSql.ToString();
-
-        Logger.LogDebug(
-            "Column Definition SQL: \n{sql}\n for column '{columnName}' in table '{tableName}'",
-            columnSqlString,
-            columnName,
-            tableName
-        );
-
-        return columnSqlString;
+        return columnSql.ToString();
     }
 }

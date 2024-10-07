@@ -1,3 +1,5 @@
+using System.Text.RegularExpressions;
+
 namespace DapperMatic.Providers;
 
 public static class ProviderUtils
@@ -48,5 +50,19 @@ public static class ProviderUtils
     )
     {
         return "fk".ToRawIdentifier([tableName, .. columnNames, refTableName, .. refColumnNames]);
+    }
+
+    static readonly Regex pattern = new(@"\d+(\.\d+)+");
+
+    public static Version ExtractVersionFromVersionString(string versionString)
+    {
+        var m = pattern.Match(versionString);
+        var version = m.Value;
+        return Version.TryParse(version, out var vs)
+            ? vs
+            : throw new ArgumentException(
+                $"Could not extract version from: {versionString}",
+                nameof(versionString)
+            );
     }
 }

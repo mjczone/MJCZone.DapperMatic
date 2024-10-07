@@ -461,15 +461,6 @@ public partial class MySqlMethods
             );
         }
 
-        var columnSqlString = columnSql.ToString();
-
-        Logger.LogDebug(
-            "Column Definition SQL: \n{sql}\n for column '{columnName}' in table '{tableName}'",
-            columnSqlString,
-            columnName,
-            tableWithChanges.TableName
-        );
-
-        return columnSqlString;
+        return columnSql.ToString();
     }
 }

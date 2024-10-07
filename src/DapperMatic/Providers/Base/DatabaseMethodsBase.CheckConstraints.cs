@@ -14,6 +14,9 @@ public abstract partial class DatabaseMethodsBase : IDatabaseCheckConstraintMeth
         CancellationToken cancellationToken = default
     )
     {
+        if (!await SupportsCheckConstraintsAsync(db, tx, cancellationToken).ConfigureAwait(false))
+            return false;
+
         return await GetCheckConstraintAsync(
                     db,
                     schemaName,
@@ -34,6 +37,9 @@ public abstract partial class DatabaseMethodsBase : IDatabaseCheckConstraintMeth
         CancellationToken cancellationToken = default
     )
     {
+        if (!await SupportsCheckConstraintsAsync(db, tx, cancellationToken).ConfigureAwait(false))
+            return false;
+
         return await GetCheckConstraintOnColumnAsync(
                     db,
                     schemaName,
@@ -52,6 +58,9 @@ public abstract partial class DatabaseMethodsBase : IDatabaseCheckConstraintMeth
         CancellationToken cancellationToken = default
     )
     {
+        if (!await SupportsCheckConstraintsAsync(db, tx, cancellationToken).ConfigureAwait(false))
+            return false;
+
         return await CreateCheckConstraintIfNotExistsAsync(
                 db,
                 constraint.SchemaName,
@@ -84,6 +93,9 @@ public abstract partial class DatabaseMethodsBase : IDatabaseCheckConstraintMeth
 
         if (string.IsNullOrWhiteSpace(expression))
             throw new ArgumentException("Expression is required.", nameof(expression));
+
+        if (!await SupportsCheckConstraintsAsync(db, tx, cancellationToken).ConfigureAwait(false))
+            return false;
 
         if (
             await DoesCheckConstraintExistAsync(
@@ -138,6 +150,7 @@ public abstract partial class DatabaseMethodsBase : IDatabaseCheckConstraintMeth
                 cancellationToken
             )
             .ConfigureAwait(false);
+
         return checkConstraints.SingleOrDefault();
     }
 
@@ -162,6 +175,7 @@ public abstract partial class DatabaseMethodsBase : IDatabaseCheckConstraintMeth
                 cancellationToken
             )
             .ConfigureAwait(false);
+
         return checkConstraints
             .FirstOrDefault(c =>
                 !string.IsNullOrWhiteSpace(c.ColumnName)
@@ -188,6 +202,7 @@ public abstract partial class DatabaseMethodsBase : IDatabaseCheckConstraintMeth
                 cancellationToken
             )
             .ConfigureAwait(false);
+
         return checkConstraints.Select(c => c.ConstraintName).ToList();
     }
 
@@ -212,6 +227,7 @@ public abstract partial class DatabaseMethodsBase : IDatabaseCheckConstraintMeth
                 cancellationToken
             )
             .ConfigureAwait(false);
+
         return checkConstraints.FirstOrDefault(c =>
             !string.IsNullOrWhiteSpace(c.ColumnName)
             && c.ColumnName.Equals(columnName, StringComparison.OrdinalIgnoreCase)
@@ -229,6 +245,9 @@ public abstract partial class DatabaseMethodsBase : IDatabaseCheckConstraintMeth
     {
         if (string.IsNullOrWhiteSpace(tableName))
             throw new ArgumentException("Table name is required.", nameof(tableName));
+
+        if (!await SupportsCheckConstraintsAsync(db, tx, cancellationToken).ConfigureAwait(false))
+            return [];
 
         var table = await GetTableAsync(db, schemaName, tableName, tx, cancellationToken)
             .ConfigureAwait(false);
@@ -291,6 +310,9 @@ public abstract partial class DatabaseMethodsBase : IDatabaseCheckConstraintMeth
 
         if (string.IsNullOrWhiteSpace(constraintName))
             throw new ArgumentException("Constraint name is required.", nameof(constraintName));
+
+        if (!await SupportsCheckConstraintsAsync(db, tx, cancellationToken).ConfigureAwait(false))
+            return false;
 
         if (
             !await DoesCheckConstraintExistAsync(

@@ -6,10 +6,8 @@ using Xunit.Abstractions;
 
 namespace DapperMatic.Tests;
 
-public abstract partial class DatabaseMethodsTests : TestBase, IDisposable
+public abstract partial class DatabaseMethodsTests : TestBase
 {
-    private bool disposedValue;
-
     protected DatabaseMethodsTests(ITestOutputHelper output)
         : base(output) { }
 
@@ -63,9 +61,9 @@ public abstract partial class DatabaseMethodsTests : TestBase, IDisposable
         using var connection = await OpenConnectionAsync();
 
         var version = await connection.GetDatabaseVersionAsync();
-        Assert.NotEmpty(version);
+        Assert.True(version.Major > 0);
 
-        Logger.LogInformation("Database version: {version}", version);
+        output.WriteLine("Database version: {0}", version);
     }
 
     [Fact]
@@ -79,11 +77,8 @@ public abstract partial class DatabaseMethodsTests : TestBase, IDisposable
         Assert.NotEmpty(lastSql);
         Assert.NotNull(lastParams);
 
-        Logger.LogInformation("Last SQL: {sql}", lastSql);
-        Logger.LogInformation(
-            "Last Parameters: {parameters}",
-            JsonConvert.SerializeObject(lastParams)
-        );
+        output.WriteLine("Last SQL: {0}", lastSql);
+        output.WriteLine("Last Parameters: {0}", JsonConvert.SerializeObject(lastParams));
     }
 
     [Fact]
@@ -96,28 +91,6 @@ public abstract partial class DatabaseMethodsTests : TestBase, IDisposable
         var lastSql = connection.GetLastSql();
         Assert.NotEmpty(lastSql);
 
-        Logger.LogInformation("Last SQL: {sql}", lastSql);
-    }
-
-    protected virtual void Dispose(bool disposing)
-    {
-        if (!disposedValue)
-        {
-            if (disposing)
-            {
-                // TODO: dispose managed state (managed objects)
-            }
-
-            // TODO: free unmanaged resources (unmanaged objects) and override finalizer
-            // TODO: set large fields to null
-            disposedValue = true;
-        }
-    }
-
-    public virtual void Dispose()
-    {
-        // Do not change this code. Put cleanup code in 'Dispose(bool disposing)' method
-        Dispose(disposing: true);
-        GC.SuppressFinalize(this);
+        output.WriteLine("Last SQL: {0}", lastSql);
     }
 }

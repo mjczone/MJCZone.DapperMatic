@@ -91,13 +91,20 @@ public partial class MySqlMethods
         }
         sql.AppendLine(string.Join(", ", columnDefinitionClauses));
 
+        var supportsOrderedKeysInConstraints = await SupportsOrderedKeysInConstraintsAsync(
+                db,
+                tx,
+                cancellationToken
+            )
+            .ConfigureAwait(false);
+
         // add single column primary key constraints as column definitions; and,
         // add multi column primary key constraints here
         var primaryKey = table.PrimaryKeyConstraint ?? tableWithChanges.PrimaryKeyConstraint;
         if (primaryKey != null && primaryKey.Columns.Length > 0)
         {
             var pkColumns = primaryKey.Columns.Select(c =>
-                c.ToString(SupportsOrderedKeysInConstraints)
+                c.ToString(supportsOrderedKeysInConstraints)
             );
             var pkColumnNames = primaryKey.Columns.Select(c => c.ColumnName);
             var primaryKeyConstraintName = !string.IsNullOrWhiteSpace(primaryKey.ConstraintName)
@@ -126,10 +133,10 @@ public partial class MySqlMethods
         foreach (var constraint in foreignKeyConstraints)
         {
             var fkColumns = constraint.SourceColumns.Select(c =>
-                c.ToString(SupportsOrderedKeysInConstraints)
+                c.ToString(supportsOrderedKeysInConstraints)
             );
             var fkReferencedColumns = constraint.ReferencedColumns.Select(c =>
-                c.ToString(SupportsOrderedKeysInConstraints)
+                c.ToString(supportsOrderedKeysInConstraints)
             );
             sql.AppendLine(
                 $", CONSTRAINT {NormalizeName(constraint.ConstraintName)} FOREIGN KEY ({string.Join(", ", fkColumns)}) REFERENCES {NormalizeName(constraint.ReferencedTableName)} ({string.Join(", ", fkReferencedColumns)})"
@@ -143,7 +150,7 @@ public partial class MySqlMethods
         foreach (var constraint in uniqueConstraints)
         {
             var uniqueColumns = constraint.Columns.Select(c =>
-                c.ToString(SupportsOrderedKeysInConstraints)
+                c.ToString(supportsOrderedKeysInConstraints)
             );
             sql.AppendLine(
                 $", CONSTRAINT {NormalizeName(constraint.ConstraintName)} UNIQUE ({string.Join(", ", uniqueColumns)})"
@@ -476,8 +483,11 @@ public partial class MySqlMethods
 
         // the table CHECK_CONSTRAINTS only exists starting MySQL 8.0.16 and MariaDB 10.2.1
         // resolve issue for MySQL 5.0.12+
-        var checkConstraintsSql =
-            @$"
+        DxCheckConstraint[] allCheckConstraints = [];
+        if (await SupportsCheckConstraintsAsync(db, tx, cancellationToken).ConfigureAwait(false))
+        {
+            var checkConstraintsSql =
+                @$"
             SELECT 
                 tc.TABLE_SCHEMA as schema_name,
                 tc.TABLE_NAME as table_name, 
@@ -499,50 +509,56 @@ public partial class MySqlMethods
             order by schema_name, table_name, column_name, constraint_name            
             ";
 
-        var checkConstraintResults = await QueryAsync<(
-            string schema_name,
-            string table_name,
-            string? column_name,
-            string constraint_name,
-            string check_expression
-        )>(db, checkConstraintsSql, new { schemaName, where }, transaction: tx)
-            .ConfigureAwait(false);
-        var allCheckConstraints = checkConstraintResults
-            .Select(t =>
-            {
-                if (string.IsNullOrWhiteSpace(t.column_name))
+            var checkConstraintResults = await QueryAsync<(
+                string schema_name,
+                string table_name,
+                string? column_name,
+                string constraint_name,
+                string check_expression
+            )>(db, checkConstraintsSql, new { schemaName, where }, transaction: tx)
+                .ConfigureAwait(false);
+            allCheckConstraints = checkConstraintResults
+                .Select(t =>
                 {
-                    // try to associate the check constraint with a column
-                    var columnCount = 0;
-                    var columnName = "";
-                    foreach (var column in columnResults)
+                    if (string.IsNullOrWhiteSpace(t.column_name))
                     {
-                        string pattern = $@"\b{Regex.Escape(column.column_name)}\b";
-                        if (
-                            column.table_name.Equals(
-                                t.table_name,
-                                StringComparison.OrdinalIgnoreCase
-                            ) && Regex.IsMatch(t.check_expression, pattern, RegexOptions.IgnoreCase)
-                        )
+                        // try to associate the check constraint with a column
+                        var columnCount = 0;
+                        var columnName = "";
+                        foreach (var column in columnResults)
                         {
-                            columnName = column.column_name;
-                            columnCount++;
+                            string pattern = $@"\b{Regex.Escape(column.column_name)}\b";
+                            if (
+                                column.table_name.Equals(
+                                    t.table_name,
+                                    StringComparison.OrdinalIgnoreCase
+                                )
+                                && Regex.IsMatch(
+                                    t.check_expression,
+                                    pattern,
+                                    RegexOptions.IgnoreCase
+                                )
+                            )
+                            {
+                                columnName = column.column_name;
+                                columnCount++;
+                            }
+                        }
+                        if (columnCount == 1)
+                        {
+                            t.column_name = columnName;
                         }
                     }
-                    if (columnCount == 1)
-                    {
-                        t.column_name = columnName;
-                    }
-                }
-                return new DxCheckConstraint(
-                    DefaultSchema,
-                    t.table_name,
-                    t.column_name,
-                    t.constraint_name,
-                    t.check_expression
-                );
-            })
-            .ToArray();
+                    return new DxCheckConstraint(
+                        DefaultSchema,
+                        t.table_name,
+                        t.column_name,
+                        t.constraint_name,
+                        t.check_expression
+                    );
+                })
+                .ToArray();
+        }
 
         var allIndexes = await GetIndexesInternalAsync(
                 db,

@@ -5,8 +5,6 @@ namespace DapperMatic.Providers.MySql;
 
 public partial class MySqlMethods
 {
-    public override bool SupportsNamedDefaultConstraints => false;
-
     public override async Task<bool> CreateDefaultConstraintIfNotExistsAsync(
         IDbConnection db,
         string? schemaName,

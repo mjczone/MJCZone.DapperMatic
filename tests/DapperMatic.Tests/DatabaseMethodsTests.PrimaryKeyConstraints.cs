@@ -28,15 +28,15 @@ public abstract partial class DatabaseMethodsTests
                 )
             ]
         );
-        Logger.LogInformation(
-            "Primary Key Exists: {tableName}.{primaryKeyName}",
+        output.WriteLine(
+            "Primary Key Exists: {0}.{1}",
             tableName,
             primaryKeyName
         );
         var exists = await connection.DoesPrimaryKeyConstraintExistAsync(null, tableName);
         Assert.False(exists);
-        Logger.LogInformation(
-            "Creating primary key: {tableName}.{primaryKeyName}",
+        output.WriteLine(
+            "Creating primary key: {0}.{1}",
             tableName,
             primaryKeyName
         );
@@ -46,21 +46,21 @@ public abstract partial class DatabaseMethodsTests
             primaryKeyName,
             [new DxOrderedColumn(columnName)]
         );
-        Logger.LogInformation(
-            "Primary Key Exists: {tableName}.{primaryKeyName}",
+        output.WriteLine(
+            "Primary Key Exists: {0}.{1}",
             tableName,
             primaryKeyName
         );
         exists = await connection.DoesPrimaryKeyConstraintExistAsync(null, tableName);
         Assert.True(exists);
-        Logger.LogInformation(
-            "Dropping primary key: {tableName}.{primaryKeyName}",
+        output.WriteLine(
+            "Dropping primary key: {0}.{1}",
             tableName,
             primaryKeyName
         );
         await connection.DropPrimaryKeyConstraintIfExistsAsync(null, tableName);
-        Logger.LogInformation(
-            "Primary Key Exists: {tableName}.{primaryKeyName}",
+        output.WriteLine(
+            "Primary Key Exists: {0}.{1}",
             tableName,
             primaryKeyName
         );

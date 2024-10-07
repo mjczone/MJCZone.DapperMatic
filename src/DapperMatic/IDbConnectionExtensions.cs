@@ -17,7 +17,7 @@ public static partial class IDbConnectionExtensions
         return Database(db).GetLastSqlWithParams(db);
     }
 
-    public static async Task<string> GetDatabaseVersionAsync(
+    public static async Task<Version> GetDatabaseVersionAsync(
         this IDbConnection db,
         IDbTransaction? tx = null,
         CancellationToken cancellationToken = default
@@ -51,9 +51,26 @@ public static partial class IDbConnectionExtensions
         return Database(db).SupportsSchemas;
     }
 
-    public static bool SupportsOrderedKeysInConstraints(this IDbConnection db)
+    public static async Task<bool> SupportsCheckConstraintsAsync(
+        this IDbConnection db,
+        IDbTransaction? tx = null,
+        CancellationToken cancellationToken = default
+    )
     {
-        return Database(db).SupportsOrderedKeysInConstraints;
+        return await Database(db)
+            .SupportsCheckConstraintsAsync(db, tx, cancellationToken)
+            .ConfigureAwait(false);
+    }
+
+    public static async Task<bool> SupportsOrderedKeysInConstraintsAsync(
+        this IDbConnection db,
+        IDbTransaction? tx = null,
+        CancellationToken cancellationToken = default
+    )
+    {
+        return await Database(db)
+            .SupportsOrderedKeysInConstraintsAsync(db, tx, cancellationToken)
+            .ConfigureAwait(false);
     }
 
     public static async Task<bool> CreateSchemaIfNotExistsAsync(
@@ -765,11 +782,6 @@ public static partial class IDbConnectionExtensions
     #endregion // IDatabaseCheckConstraintMethods
 
     #region IDatabaseDefaultConstraintMethods
-
-    public static bool SupportsNamedDefaultConstraints(this IDbConnection db)
-    {
-        return Database(db).SupportsNamedDefaultConstraints;
-    }
 
     public static async Task<DxDefaultConstraint?> GetDefaultConstraintAsync(
         this IDbConnection db,

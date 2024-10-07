@@ -392,15 +392,6 @@ public partial class PostgreSqlMethods
                 columnSql.Append($" ON UPDATE {onUpdate.Value.ToSql()}");
         }
 
-        var columnSqlString = columnSql.ToString();
-
-        Logger.LogDebug(
-            "Column Definition SQL: \n{sql}\n for column '{columnName}' in table '{tableName}'",
-            columnSqlString,
-            columnName,
-            tableName
-        );
-
-        return columnSqlString;
+        return columnSql.ToString();
     }
 }

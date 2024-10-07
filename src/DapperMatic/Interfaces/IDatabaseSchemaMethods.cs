@@ -4,8 +4,6 @@ namespace DapperMatic;
 
 public partial interface IDatabaseSchemaMethods
 {
-    bool SupportsSchemas { get; }
-
     Task<bool> CreateSchemaIfNotExistsAsync(
         IDbConnection db,
         string schemaName,

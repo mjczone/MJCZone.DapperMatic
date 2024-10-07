@@ -61,9 +61,7 @@ public partial class SqliteMethods
         CancellationToken cancellationToken = default
     )
     {
-        var where = string.IsNullOrWhiteSpace(viewNameFilter)
-            ? null
-            : ToLikeString(viewNameFilter);
+        var where = string.IsNullOrWhiteSpace(viewNameFilter) ? null : ToLikeString(viewNameFilter);
 
         var sql = new StringBuilder();
         sql.AppendLine(
@@ -87,9 +85,7 @@ public partial class SqliteMethods
         CancellationToken cancellationToken = default
     )
     {
-        var where = string.IsNullOrWhiteSpace(viewNameFilter)
-            ? null
-            : ToLikeString(viewNameFilter);
+        var where = string.IsNullOrWhiteSpace(viewNameFilter) ? null : ToLikeString(viewNameFilter);
 
         var sql = new StringBuilder();
         sql.AppendLine(
@@ -135,13 +131,15 @@ public partial class SqliteMethods
 
             if (string.IsNullOrWhiteSpace(viewDefinition))
             {
-                Logger?.LogWarning(
+                Log(
+                    LogLevel.Warning,
                     "Could not parse view definition for view {viewName}: {sql}",
                     viewName,
                     viewSql
                 );
                 continue;
             }
+
             views.Add(new DxView(null, viewName, viewDefinition));
         }
         return views;

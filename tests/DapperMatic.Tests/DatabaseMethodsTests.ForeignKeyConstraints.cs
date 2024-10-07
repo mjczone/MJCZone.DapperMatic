@@ -46,8 +46,8 @@ public abstract partial class DatabaseMethodsTests
             ]
         );
 
-        Logger.LogInformation(
-            "Foreign Key Exists: {tableName}.{foreignKeyName}",
+        output.WriteLine(
+            "Foreign Key Exists: {0}.{1}",
             tableName,
             foreignKeyName
         );
@@ -58,8 +58,8 @@ public abstract partial class DatabaseMethodsTests
         );
         Assert.False(exists);
 
-        Logger.LogInformation(
-            "Creating foreign key: {tableName}.{foreignKeyName}",
+        output.WriteLine(
+            "Creating foreign key: {0}.{1}",
             tableName,
             foreignKeyName
         );
@@ -74,8 +74,8 @@ public abstract partial class DatabaseMethodsTests
         );
         Assert.True(created);
 
-        Logger.LogInformation(
-            "Foreign Key Exists: {tableName}.{foreignKeyName}",
+        output.WriteLine(
+            "Foreign Key Exists: {0}.{1}",
             tableName,
             foreignKeyName
         );
@@ -92,14 +92,14 @@ public abstract partial class DatabaseMethodsTests
         );
         Assert.True(exists);
 
-        Logger.LogInformation("Get Foreign Key Names: {tableName}", tableName);
+        output.WriteLine("Get Foreign Key Names: {0}", tableName);
         var fkNames = await connection.GetForeignKeyConstraintNamesAsync(null, tableName);
         Assert.Contains(
             fkNames,
             fk => fk.Equals(foreignKeyName, StringComparison.OrdinalIgnoreCase)
         );
 
-        Logger.LogInformation("Get Foreign Keys: {tableName}", tableName);
+        output.WriteLine("Get Foreign Keys: {0}", tableName);
         var fks = await connection.GetForeignKeyConstraintsAsync(null, tableName);
         Assert.Contains(
             fks,
@@ -116,10 +116,10 @@ public abstract partial class DatabaseMethodsTests
                 && fk.OnDelete.Equals(DxForeignKeyAction.Cascade)
         );
 
-        Logger.LogInformation("Dropping foreign key: {foreignKeyName}", foreignKeyName);
+        output.WriteLine("Dropping foreign key: {0}", foreignKeyName);
         await connection.DropForeignKeyConstraintIfExistsAsync(null, tableName, foreignKeyName);
 
-        Logger.LogInformation("Foreign Key Exists: {foreignKeyName}", foreignKeyName);
+        output.WriteLine("Foreign Key Exists: {0}", foreignKeyName);
         exists = await connection.DoesForeignKeyConstraintExistAsync(
             null,
             tableName,

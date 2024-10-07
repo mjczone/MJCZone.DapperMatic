@@ -45,7 +45,7 @@ public abstract partial class DatabaseMethodsTests
 
         await connection.DropColumnIfExistsAsync(null, tableName, columnName);
 
-        Logger.LogInformation("Column Exists: {tableName}.{columnName}", tableName, columnName);
+        output.WriteLine("Column Exists: {0}.{1}", tableName, columnName);
         var exists = await connection.DoesColumnExistAsync(null, tableName, columnName);
         Assert.False(exists);
 
@@ -73,18 +73,14 @@ public abstract partial class DatabaseMethodsTests
             ]
         );
 
-        Logger.LogInformation("Column Exists: {tableName}.{columnName}", tableName, columnName);
+        output.WriteLine("Column Exists: {0}.{1}", tableName, columnName);
         exists = await connection.DoesColumnExistAsync(null, tableName, columnName);
         Assert.True(exists);
 
-        Logger.LogInformation(
-            "Dropping columnName: {tableName}.{columnName}",
-            tableName,
-            columnName
-        );
+        output.WriteLine("Dropping columnName: {0}.{1}", tableName, columnName);
         await connection.DropColumnIfExistsAsync(null, tableName, columnName);
 
-        Logger.LogInformation("Column Exists: {tableName}.{columnName}", tableName, columnName);
+        output.WriteLine("Column Exists: {0}.{1}", tableName, columnName);
         exists = await connection.DoesColumnExistAsync(null, tableName, columnName);
         Assert.False(exists);
 
@@ -200,9 +196,10 @@ public abstract partial class DatabaseMethodsTests
             var columns = await connection.GetColumnsAsync(null, tableName2);
             // immediately do a check to make sure column was created as expected
             var column = await connection.GetColumnAsync(null, tableName2, col.ColumnName);
+            Assert.NotNull(column);
+
             try
             {
-                Assert.NotNull(column);
                 Assert.Equal(col.IsIndexed, column.IsIndexed);
                 Assert.Equal(col.IsUnique, column.IsUnique);
                 Assert.Equal(col.IsPrimaryKey, column.IsPrimaryKey);
@@ -216,7 +213,6 @@ public abstract partial class DatabaseMethodsTests
                     Assert.Equal(col.OnDelete, column.OnDelete);
                     Assert.Equal(col.OnUpdate, column.OnUpdate);
                 }
-                Assert.Equal(col.ProviderDataType, column.ProviderDataType);
                 Assert.Equal(col.DotnetType, column.DotnetType);
                 Assert.Equal(col.Length, column.Length);
                 Assert.Equal(col.Precision, column.Precision);
@@ -224,13 +220,15 @@ public abstract partial class DatabaseMethodsTests
             }
             catch (Exception ex)
             {
-                Logger.LogError(
-                    ex,
-                    "Error validating column {columnName}: {message}",
-                    col.ColumnName,
-                    ex.Message
-                );
+                output.WriteLine("Error validating column {0}: {1}", col.ColumnName, ex.Message);
                 column = await connection.GetColumnAsync(null, tableName2, col.ColumnName);
+            }
+
+            Assert.NotNull(column?.ProviderDataType);
+            Assert.NotEmpty(column.ProviderDataType);
+            if (!string.IsNullOrWhiteSpace(col.ProviderDataType))
+            {
+                Assert.Equal(col.ProviderDataType, column.ProviderDataType);
             }
         }
 
