@@ -271,6 +271,20 @@ public static partial class IDbConnectionExtensions
 
     #region IDatabaseColumnMethods
 
+    public static async Task<bool> DoesColumnExistAsync(
+        this IDbConnection db,
+        string? schemaName,
+        string tableName,
+        string columnName,
+        IDbTransaction? tx = null,
+        CancellationToken cancellationToken = default
+    )
+    {
+        return await Database(db)
+            .DoesColumnExistAsync(db, schemaName, tableName, columnName, tx, cancellationToken)
+            .ConfigureAwait(false);
+    }
+
     public static async Task<DxColumn?> GetColumnAsync(
         this IDbConnection db,
         string? schemaName,
@@ -310,124 +324,6 @@ public static partial class IDbConnectionExtensions
     {
         return await Database(db)
             .GetColumnsAsync(db, schemaName, tableName, columnNameFilter, tx, cancellationToken)
-            .ConfigureAwait(false);
-    }
-
-    public static async Task<bool> RenameColumnIfExistsAsync(
-        this IDbConnection db,
-        string? schemaName,
-        string tableName,
-        string columnName,
-        string newColumnName,
-        IDbTransaction? tx = null,
-        CancellationToken cancellationToken = default
-    )
-    {
-        return await Database(db)
-            .RenameColumnIfExistsAsync(
-                db,
-                schemaName,
-                tableName,
-                columnName,
-                newColumnName,
-                tx,
-                cancellationToken
-            )
-            .ConfigureAwait(false);
-    }
-    #endregion // IDatabaseColumnMethods
-
-    #region IDatabaseCheckConstraintMethods
-    public static async Task<bool> DoesCheckConstraintExistAsync(
-        this IDbConnection db,
-        string? schemaName,
-        string tableName,
-        string constraintName,
-        IDbTransaction? tx = null,
-        CancellationToken cancellationToken = default
-    )
-    {
-        return await Database(db)
-            .DoesCheckConstraintExistAsync(
-                db,
-                schemaName,
-                tableName,
-                constraintName,
-                tx,
-                cancellationToken
-            )
-            .ConfigureAwait(false);
-    }
-
-    public static async Task<bool> DoesCheckConstraintExistOnColumnAsync(
-        this IDbConnection db,
-        string? schemaName,
-        string tableName,
-        string columnName,
-        IDbTransaction? tx = null,
-        CancellationToken cancellationToken = default
-    )
-    {
-        return await Database(db)
-            .DoesCheckConstraintExistOnColumnAsync(
-                db,
-                schemaName,
-                tableName,
-                columnName,
-                tx,
-                cancellationToken
-            )
-            .ConfigureAwait(false);
-    }
-
-    public static async Task<bool> DoesColumnExistAsync(
-        this IDbConnection db,
-        string? schemaName,
-        string tableName,
-        string columnName,
-        IDbTransaction? tx = null,
-        CancellationToken cancellationToken = default
-    )
-    {
-        return await Database(db)
-            .DoesColumnExistAsync(db, schemaName, tableName, columnName, tx, cancellationToken)
-            .ConfigureAwait(false);
-    }
-
-    public static async Task<bool> CreateCheckConstraintIfNotExistsAsync(
-        this IDbConnection db,
-        DxCheckConstraint constraint,
-        IDbTransaction? tx = null,
-        CancellationToken cancellationToken = default
-    )
-    {
-        return await Database(db)
-            .CreateCheckConstraintIfNotExistsAsync(db, constraint, tx, cancellationToken)
-            .ConfigureAwait(false);
-    }
-
-    public static async Task<bool> CreateCheckConstraintIfNotExistsAsync(
-        this IDbConnection db,
-        string? schemaName,
-        string tableName,
-        string? columnName,
-        string constraintName,
-        string expression,
-        IDbTransaction? tx = null,
-        CancellationToken cancellationToken = default
-    )
-    {
-        return await Database(db)
-            .CreateCheckConstraintIfNotExistsAsync(
-                db,
-                schemaName,
-                tableName,
-                columnName,
-                constraintName,
-                expression,
-                tx,
-                cancellationToken
-            )
             .ConfigureAwait(false);
     }
 
@@ -498,127 +394,6 @@ public static partial class IDbConnectionExtensions
             .ConfigureAwait(false);
     }
 
-    public static async Task<bool> CreateDefaultConstraintIfNotExistsAsync(
-        this IDbConnection db,
-        DxDefaultConstraint constraint,
-        IDbTransaction? tx = null,
-        CancellationToken cancellationToken = default
-    )
-    {
-        return await Database(db)
-            .CreateDefaultConstraintIfNotExistsAsync(db, constraint, tx, cancellationToken)
-            .ConfigureAwait(false);
-    }
-
-    public static async Task<bool> CreateDefaultConstraintIfNotExistsAsync(
-        this IDbConnection db,
-        string? schemaName,
-        string tableName,
-        string columnName,
-        string constraintName,
-        string expression,
-        IDbTransaction? tx = null,
-        CancellationToken cancellationToken = default
-    )
-    {
-        return await Database(db)
-            .CreateDefaultConstraintIfNotExistsAsync(
-                db,
-                schemaName,
-                tableName,
-                columnName,
-                constraintName,
-                expression,
-                tx,
-                cancellationToken
-            )
-            .ConfigureAwait(false);
-    }
-
-    public static async Task<bool> DoesDefaultConstraintExistAsync(
-        this IDbConnection db,
-        string? schemaName,
-        string tableName,
-        string constraintName,
-        IDbTransaction? tx = null,
-        CancellationToken cancellationToken = default
-    )
-    {
-        return await Database(db)
-            .DoesDefaultConstraintExistAsync(
-                db,
-                schemaName,
-                tableName,
-                constraintName,
-                tx,
-                cancellationToken
-            )
-            .ConfigureAwait(false);
-    }
-
-    public static async Task<bool> DoesDefaultConstraintExistOnColumnAsync(
-        this IDbConnection db,
-        string? schemaName,
-        string tableName,
-        string columnName,
-        IDbTransaction? tx = null,
-        CancellationToken cancellationToken = default
-    )
-    {
-        return await Database(db)
-            .DoesDefaultConstraintExistOnColumnAsync(
-                db,
-                schemaName,
-                tableName,
-                columnName,
-                tx,
-                cancellationToken
-            )
-            .ConfigureAwait(false);
-    }
-
-    public static async Task<bool> DropCheckConstraintIfExistsAsync(
-        this IDbConnection db,
-        string? schemaName,
-        string tableName,
-        string constraintName,
-        IDbTransaction? tx = null,
-        CancellationToken cancellationToken = default
-    )
-    {
-        return await Database(db)
-            .DropCheckConstraintIfExistsAsync(
-                db,
-                schemaName,
-                tableName,
-                constraintName,
-                tx,
-                cancellationToken
-            )
-            .ConfigureAwait(false);
-    }
-
-    public static async Task<bool> DropCheckConstraintOnColumnIfExistsAsync(
-        this IDbConnection db,
-        string? schemaName,
-        string tableName,
-        string columnName,
-        IDbTransaction? tx = null,
-        CancellationToken cancellationToken = default
-    )
-    {
-        return await Database(db)
-            .DropCheckConstraintOnColumnIfExistsAsync(
-                db,
-                schemaName,
-                tableName,
-                columnName,
-                tx,
-                cancellationToken
-            )
-            .ConfigureAwait(false);
-    }
-
     public static async Task<bool> DropColumnIfExistsAsync(
         this IDbConnection db,
         string? schemaName,
@@ -633,7 +408,32 @@ public static partial class IDbConnectionExtensions
             .ConfigureAwait(false);
     }
 
-    public static async Task<bool> DropDefaultConstraintIfExistsAsync(
+    public static async Task<bool> RenameColumnIfExistsAsync(
+        this IDbConnection db,
+        string? schemaName,
+        string tableName,
+        string columnName,
+        string newColumnName,
+        IDbTransaction? tx = null,
+        CancellationToken cancellationToken = default
+    )
+    {
+        return await Database(db)
+            .RenameColumnIfExistsAsync(
+                db,
+                schemaName,
+                tableName,
+                columnName,
+                newColumnName,
+                tx,
+                cancellationToken
+            )
+            .ConfigureAwait(false);
+    }
+    #endregion // IDatabaseColumnMethods
+
+    #region IDatabaseCheckConstraintMethods
+    public static async Task<bool> DoesCheckConstraintExistAsync(
         this IDbConnection db,
         string? schemaName,
         string tableName,
@@ -643,7 +443,7 @@ public static partial class IDbConnectionExtensions
     )
     {
         return await Database(db)
-            .DropDefaultConstraintIfExistsAsync(
+            .DoesCheckConstraintExistAsync(
                 db,
                 schemaName,
                 tableName,
@@ -654,7 +454,7 @@ public static partial class IDbConnectionExtensions
             .ConfigureAwait(false);
     }
 
-    public static async Task<bool> DropDefaultConstraintOnColumnIfExistsAsync(
+    public static async Task<bool> DoesCheckConstraintExistOnColumnAsync(
         this IDbConnection db,
         string? schemaName,
         string tableName,
@@ -664,11 +464,48 @@ public static partial class IDbConnectionExtensions
     )
     {
         return await Database(db)
-            .DropDefaultConstraintOnColumnIfExistsAsync(
+            .DoesCheckConstraintExistOnColumnAsync(
                 db,
                 schemaName,
                 tableName,
                 columnName,
+                tx,
+                cancellationToken
+            )
+            .ConfigureAwait(false);
+    }
+
+    public static async Task<bool> CreateCheckConstraintIfNotExistsAsync(
+        this IDbConnection db,
+        DxCheckConstraint constraint,
+        IDbTransaction? tx = null,
+        CancellationToken cancellationToken = default
+    )
+    {
+        return await Database(db)
+            .CreateCheckConstraintIfNotExistsAsync(db, constraint, tx, cancellationToken)
+            .ConfigureAwait(false);
+    }
+
+    public static async Task<bool> CreateCheckConstraintIfNotExistsAsync(
+        this IDbConnection db,
+        string? schemaName,
+        string tableName,
+        string? columnName,
+        string constraintName,
+        string expression,
+        IDbTransaction? tx = null,
+        CancellationToken cancellationToken = default
+    )
+    {
+        return await Database(db)
+            .CreateCheckConstraintIfNotExistsAsync(
+                db,
+                schemaName,
+                tableName,
+                columnName,
+                constraintName,
+                expression,
                 tx,
                 cancellationToken
             )
@@ -779,9 +616,130 @@ public static partial class IDbConnectionExtensions
             )
             .ConfigureAwait(false);
     }
+
+    public static async Task<bool> DropCheckConstraintIfExistsAsync(
+        this IDbConnection db,
+        string? schemaName,
+        string tableName,
+        string constraintName,
+        IDbTransaction? tx = null,
+        CancellationToken cancellationToken = default
+    )
+    {
+        return await Database(db)
+            .DropCheckConstraintIfExistsAsync(
+                db,
+                schemaName,
+                tableName,
+                constraintName,
+                tx,
+                cancellationToken
+            )
+            .ConfigureAwait(false);
+    }
+
+    public static async Task<bool> DropCheckConstraintOnColumnIfExistsAsync(
+        this IDbConnection db,
+        string? schemaName,
+        string tableName,
+        string columnName,
+        IDbTransaction? tx = null,
+        CancellationToken cancellationToken = default
+    )
+    {
+        return await Database(db)
+            .DropCheckConstraintOnColumnIfExistsAsync(
+                db,
+                schemaName,
+                tableName,
+                columnName,
+                tx,
+                cancellationToken
+            )
+            .ConfigureAwait(false);
+    }
     #endregion // IDatabaseCheckConstraintMethods
 
     #region IDatabaseDefaultConstraintMethods
+
+    public static async Task<bool> DoesDefaultConstraintExistAsync(
+        this IDbConnection db,
+        string? schemaName,
+        string tableName,
+        string constraintName,
+        IDbTransaction? tx = null,
+        CancellationToken cancellationToken = default
+    )
+    {
+        return await Database(db)
+            .DoesDefaultConstraintExistAsync(
+                db,
+                schemaName,
+                tableName,
+                constraintName,
+                tx,
+                cancellationToken
+            )
+            .ConfigureAwait(false);
+    }
+
+    public static async Task<bool> DoesDefaultConstraintExistOnColumnAsync(
+        this IDbConnection db,
+        string? schemaName,
+        string tableName,
+        string columnName,
+        IDbTransaction? tx = null,
+        CancellationToken cancellationToken = default
+    )
+    {
+        return await Database(db)
+            .DoesDefaultConstraintExistOnColumnAsync(
+                db,
+                schemaName,
+                tableName,
+                columnName,
+                tx,
+                cancellationToken
+            )
+            .ConfigureAwait(false);
+    }
+
+    public static async Task<bool> CreateDefaultConstraintIfNotExistsAsync(
+        this IDbConnection db,
+        DxDefaultConstraint constraint,
+        IDbTransaction? tx = null,
+        CancellationToken cancellationToken = default
+    )
+    {
+        return await Database(db)
+            .CreateDefaultConstraintIfNotExistsAsync(db, constraint, tx, cancellationToken)
+            .ConfigureAwait(false);
+    }
+
+    public static async Task<bool> CreateDefaultConstraintIfNotExistsAsync(
+        this IDbConnection db,
+        string? schemaName,
+        string tableName,
+        string columnName,
+        string constraintName,
+        string expression,
+        IDbTransaction? tx = null,
+        CancellationToken cancellationToken = default
+    )
+    {
+        return await Database(db)
+            .CreateDefaultConstraintIfNotExistsAsync(
+                db,
+                schemaName,
+                tableName,
+                columnName,
+                constraintName,
+                expression,
+                tx,
+                cancellationToken
+            )
+            .ConfigureAwait(false);
+    }
 
     public static async Task<DxDefaultConstraint?> GetDefaultConstraintAsync(
         this IDbConnection db,
@@ -887,9 +845,93 @@ public static partial class IDbConnectionExtensions
             )
             .ConfigureAwait(false);
     }
+
+    public static async Task<bool> DropDefaultConstraintIfExistsAsync(
+        this IDbConnection db,
+        string? schemaName,
+        string tableName,
+        string constraintName,
+        IDbTransaction? tx = null,
+        CancellationToken cancellationToken = default
+    )
+    {
+        return await Database(db)
+            .DropDefaultConstraintIfExistsAsync(
+                db,
+                schemaName,
+                tableName,
+                constraintName,
+                tx,
+                cancellationToken
+            )
+            .ConfigureAwait(false);
+    }
+
+    public static async Task<bool> DropDefaultConstraintOnColumnIfExistsAsync(
+        this IDbConnection db,
+        string? schemaName,
+        string tableName,
+        string columnName,
+        IDbTransaction? tx = null,
+        CancellationToken cancellationToken = default
+    )
+    {
+        return await Database(db)
+            .DropDefaultConstraintOnColumnIfExistsAsync(
+                db,
+                schemaName,
+                tableName,
+                columnName,
+                tx,
+                cancellationToken
+            )
+            .ConfigureAwait(false);
+    }
     #endregion // IDatabaseDefaultConstraintMethods
 
     #region IDatabaseForeignKeyConstraintMethods
+
+    public static async Task<bool> DoesForeignKeyConstraintExistOnColumnAsync(
+        this IDbConnection db,
+        string? schemaName,
+        string tableName,
+        string columnName,
+        IDbTransaction? tx = null,
+        CancellationToken cancellationToken = default
+    )
+    {
+        return await Database(db)
+            .DoesForeignKeyConstraintExistOnColumnAsync(
+                db,
+                schemaName,
+                tableName,
+                columnName,
+                tx,
+                cancellationToken
+            )
+            .ConfigureAwait(false);
+    }
+
+    public static async Task<bool> DoesForeignKeyConstraintExistAsync(
+        this IDbConnection db,
+        string? schemaName,
+        string tableName,
+        string constraintName,
+        IDbTransaction? tx = null,
+        CancellationToken cancellationToken = default
+    )
+    {
+        return await Database(db)
+            .DoesForeignKeyConstraintExistAsync(
+                db,
+                schemaName,
+                tableName,
+                constraintName,
+                tx,
+                cancellationToken
+            )
+            .ConfigureAwait(false);
+    }
 
     public static async Task<bool> CreateForeignKeyConstraintIfNotExistsAsync(
         this IDbConnection db,
@@ -928,48 +970,6 @@ public static partial class IDbConnectionExtensions
                 referencedColumns,
                 onDelete,
                 onUpdate,
-                tx,
-                cancellationToken
-            )
-            .ConfigureAwait(false);
-    }
-
-    public static async Task<bool> DoesForeignKeyConstraintExistOnColumnAsync(
-        this IDbConnection db,
-        string? schemaName,
-        string tableName,
-        string columnName,
-        IDbTransaction? tx = null,
-        CancellationToken cancellationToken = default
-    )
-    {
-        return await Database(db)
-            .DoesForeignKeyConstraintExistOnColumnAsync(
-                db,
-                schemaName,
-                tableName,
-                columnName,
-                tx,
-                cancellationToken
-            )
-            .ConfigureAwait(false);
-    }
-
-    public static async Task<bool> DoesForeignKeyConstraintExistAsync(
-        this IDbConnection db,
-        string? schemaName,
-        string tableName,
-        string constraintName,
-        IDbTransaction? tx = null,
-        CancellationToken cancellationToken = default
-    )
-    {
-        return await Database(db)
-            .DoesForeignKeyConstraintExistAsync(
-                db,
-                schemaName,
-                tableName,
-                constraintName,
                 tx,
                 cancellationToken
             )
@@ -1126,6 +1126,41 @@ public static partial class IDbConnectionExtensions
 
     #region IDatabaseIndexMethods
 
+    public static async Task<bool> DoesIndexExistOnColumnAsync(
+        this IDbConnection db,
+        string? schemaName,
+        string tableName,
+        string columnName,
+        IDbTransaction? tx = null,
+        CancellationToken cancellationToken = default
+    )
+    {
+        return await Database(db)
+            .DoesIndexExistOnColumnAsync(
+                db,
+                schemaName,
+                tableName,
+                columnName,
+                tx,
+                cancellationToken
+            )
+            .ConfigureAwait(false);
+    }
+
+    public static async Task<bool> DoesIndexExistAsync(
+        this IDbConnection db,
+        string? schemaName,
+        string tableName,
+        string indexName,
+        IDbTransaction? tx = null,
+        CancellationToken cancellationToken = default
+    )
+    {
+        return await Database(db)
+            .DoesIndexExistAsync(db, schemaName, tableName, indexName, tx, cancellationToken)
+            .ConfigureAwait(false);
+    }
+
     public static async Task<bool> CreateIndexIfNotExistsAsync(
         this IDbConnection db,
         DxIndex constraint,
@@ -1160,41 +1195,6 @@ public static partial class IDbConnectionExtensions
                 tx,
                 cancellationToken
             )
-            .ConfigureAwait(false);
-    }
-
-    public static async Task<bool> DoesIndexExistOnColumnAsync(
-        this IDbConnection db,
-        string? schemaName,
-        string tableName,
-        string columnName,
-        IDbTransaction? tx = null,
-        CancellationToken cancellationToken = default
-    )
-    {
-        return await Database(db)
-            .DoesIndexExistOnColumnAsync(
-                db,
-                schemaName,
-                tableName,
-                columnName,
-                tx,
-                cancellationToken
-            )
-            .ConfigureAwait(false);
-    }
-
-    public static async Task<bool> DoesIndexExistAsync(
-        this IDbConnection db,
-        string? schemaName,
-        string tableName,
-        string indexName,
-        IDbTransaction? tx = null,
-        CancellationToken cancellationToken = default
-    )
-    {
-        return await Database(db)
-            .DoesIndexExistAsync(db, schemaName, tableName, indexName, tx, cancellationToken)
             .ConfigureAwait(false);
     }
 
@@ -1313,41 +1313,6 @@ public static partial class IDbConnectionExtensions
 
     #region IDatabaseUniqueConstraintMethods
 
-    public static async Task<bool> CreateUniqueConstraintIfNotExistsAsync(
-        this IDbConnection db,
-        DxUniqueConstraint constraint,
-        IDbTransaction? tx = null,
-        CancellationToken cancellationToken = default
-    )
-    {
-        return await Database(db)
-            .CreateUniqueConstraintIfNotExistsAsync(db, constraint, tx, cancellationToken)
-            .ConfigureAwait(false);
-    }
-
-    public static async Task<bool> CreateUniqueConstraintIfNotExistsAsync(
-        this IDbConnection db,
-        string? schemaName,
-        string tableName,
-        string constraintName,
-        DxOrderedColumn[] columns,
-        IDbTransaction? tx = null,
-        CancellationToken cancellationToken = default
-    )
-    {
-        return await Database(db)
-            .CreateUniqueConstraintIfNotExistsAsync(
-                db,
-                schemaName,
-                tableName,
-                constraintName,
-                columns,
-                tx,
-                cancellationToken
-            )
-            .ConfigureAwait(false);
-    }
-
     public static async Task<bool> DoesUniqueConstraintExistOnColumnAsync(
         this IDbConnection db,
         string? schemaName,
@@ -1384,6 +1349,41 @@ public static partial class IDbConnectionExtensions
                 schemaName,
                 tableName,
                 constraintName,
+                tx,
+                cancellationToken
+            )
+            .ConfigureAwait(false);
+    }
+
+    public static async Task<bool> CreateUniqueConstraintIfNotExistsAsync(
+        this IDbConnection db,
+        DxUniqueConstraint constraint,
+        IDbTransaction? tx = null,
+        CancellationToken cancellationToken = default
+    )
+    {
+        return await Database(db)
+            .CreateUniqueConstraintIfNotExistsAsync(db, constraint, tx, cancellationToken)
+            .ConfigureAwait(false);
+    }
+
+    public static async Task<bool> CreateUniqueConstraintIfNotExistsAsync(
+        this IDbConnection db,
+        string? schemaName,
+        string tableName,
+        string constraintName,
+        DxOrderedColumn[] columns,
+        IDbTransaction? tx = null,
+        CancellationToken cancellationToken = default
+    )
+    {
+        return await Database(db)
+            .CreateUniqueConstraintIfNotExistsAsync(
+                db,
+                schemaName,
+                tableName,
+                constraintName,
+                columns,
                 tx,
                 cancellationToken
             )
@@ -1540,6 +1540,19 @@ public static partial class IDbConnectionExtensions
 
     #region IDatabasePrimaryKeyConstraintMethods
 
+    public static async Task<bool> DoesPrimaryKeyConstraintExistAsync(
+        this IDbConnection db,
+        string? schemaName,
+        string tableName,
+        IDbTransaction? tx = null,
+        CancellationToken cancellationToken = default
+    )
+    {
+        return await Database(db)
+            .DoesPrimaryKeyConstraintExistAsync(db, schemaName, tableName, tx, cancellationToken)
+            .ConfigureAwait(false);
+    }
+
     public static async Task<bool> CreatePrimaryKeyConstraintIfNotExistsAsync(
         this IDbConnection db,
         DxPrimaryKeyConstraint constraint,
@@ -1572,19 +1585,6 @@ public static partial class IDbConnectionExtensions
                 tx,
                 cancellationToken
             )
-            .ConfigureAwait(false);
-    }
-
-    public static async Task<bool> DoesPrimaryKeyConstraintExistAsync(
-        this IDbConnection db,
-        string? schemaName,
-        string tableName,
-        IDbTransaction? tx = null,
-        CancellationToken cancellationToken = default
-    )
-    {
-        return await Database(db)
-            .DoesPrimaryKeyConstraintExistAsync(db, schemaName, tableName, tx, cancellationToken)
             .ConfigureAwait(false);
     }
 
@@ -1626,6 +1626,18 @@ public static partial class IDbConnectionExtensions
     {
         return await Database(db)
             .DoesViewExistAsync(db, schemaName, viewName, tx, cancellationToken)
+            .ConfigureAwait(false);
+    }
+
+    public static async Task<bool> CreateViewIfNotExistsAsync(
+        this IDbConnection db,
+        DxView view,
+        IDbTransaction? tx = null,
+        CancellationToken cancellationToken = default
+    )
+    {
+        return await Database(db)
+            .CreateViewIfNotExistsAsync(db, view, tx, cancellationToken)
             .ConfigureAwait(false);
     }
 

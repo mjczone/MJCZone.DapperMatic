@@ -7,34 +7,18 @@ using Xunit.Abstractions;
 namespace DapperMatic.Tests.ProviderTests;
 
 /// <summary>
-/// Testing MySql 90
+/// Testing MariaDb 10.11
 /// </summary>
-public class MySql_90_DatabaseMethodsTests(
-    MySql_90_DatabaseFixture fixture,
+public class MariaDb_10_11_DatabaseMethodsTests(
+    MariaDb_10_11_DatabaseFixture fixture,
     ITestOutputHelper output
-) : MySqlDatabaseMethodsTests<MySql_90_DatabaseFixture>(fixture, output) { }
-
-/// <summary>
-/// Testing MySql 84
-/// </summary>
-public class MySql_84_DatabaseMethodsTests(
-    MySql_84_DatabaseFixture fixture,
-    ITestOutputHelper output
-) : MySqlDatabaseMethodsTests<MySql_84_DatabaseFixture>(fixture, output) { }
-
-/// <summary>
-/// Testing MySql 57
-/// </summary>
-public class MySql_57_DatabaseMethodsTests(
-    MySql_57_DatabaseFixture fixture,
-    ITestOutputHelper output
-) : MySqlDatabaseMethodsTests<MySql_57_DatabaseFixture>(fixture, output) { }
+) : MariaDbDatabaseMethodsTests<MariaDb_10_11_DatabaseFixture>(fixture, output) { }
 
 /// <summary>
 /// Abstract class for MySql database tests
 /// </summary>
 /// <typeparam name="TDatabaseFixture"></typeparam>
-public abstract class MySqlDatabaseMethodsTests<TDatabaseFixture>(
+public abstract class MariaDbDatabaseMethodsTests<TDatabaseFixture>(
     TDatabaseFixture fixture,
     ITestOutputHelper output
 ) : DatabaseMethodsTests(output), IClassFixture<TDatabaseFixture>, IDisposable
