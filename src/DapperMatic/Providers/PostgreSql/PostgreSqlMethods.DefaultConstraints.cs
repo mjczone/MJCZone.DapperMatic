@@ -47,7 +47,7 @@ public partial class PostgreSqlMethods
 
         columnName = NormalizeName(columnName);
 
-        var schemaQualifiedTableName = GetSchemaQualifiedTableName(schemaName, tableName);
+        var schemaQualifiedTableName = GetSchemaQualifiedIdentifierName(schemaName, tableName);
 
         var sql =
             @$"
@@ -55,7 +55,7 @@ public partial class PostgreSqlMethods
                 ALTER COLUMN {columnName} SET DEFAULT {expression}
         ";
 
-        await ExecuteAsync(db, sql, transaction: tx).ConfigureAwait(false);
+        await ExecuteAsync(db, sql, tx: tx).ConfigureAwait(false);
 
         return true;
     }
@@ -95,8 +95,8 @@ public partial class PostgreSqlMethods
 
         await ExecuteAsync(
             db,
-            $"ALTER TABLE {GetSchemaQualifiedTableName(schemaName, tableName)} ALTER COLUMN {columnName} DROP DEFAULT",
-            transaction: tx
+            $"ALTER TABLE {GetSchemaQualifiedIdentifierName(schemaName, tableName)} ALTER COLUMN {columnName} DROP DEFAULT",
+            tx: tx
         );
 
         return true;
@@ -165,8 +165,8 @@ public partial class PostgreSqlMethods
 
         await ExecuteAsync(
             db,
-            $"ALTER TABLE {GetSchemaQualifiedTableName(schemaName, tableName)} ALTER COLUMN {columnName} DROP DEFAULT",
-            transaction: tx
+            $"ALTER TABLE {GetSchemaQualifiedIdentifierName(schemaName, tableName)} ALTER COLUMN {columnName} DROP DEFAULT",
+            tx: tx
         );
 
         return true;

@@ -1,6 +1,5 @@
 using System.Data;
 using Dapper;
-using Microsoft.Extensions.Logging;
 using Newtonsoft.Json;
 using Xunit.Abstractions;
 
@@ -16,13 +15,13 @@ public abstract partial class DatabaseMethodsTests : TestBase
     [Fact]
     protected virtual async Task Database_Can_RunArbitraryQueriesAsync()
     {
-        using var connection = await OpenConnectionAsync();
+        using var db = await OpenConnectionAsync();
         const int expected = 1;
-        var actual = await connection.QueryFirstAsync<int>("SELECT 1");
+        var actual = await db.QueryFirstAsync<int>("SELECT 1");
         Assert.Equal(expected, actual);
 
         // run a statement with many sql statements at the same time
-        await connection.ExecuteAsync(
+        await db.ExecuteAsync(
             @"
             CREATE TABLE test (id INT PRIMARY KEY);
             INSERT INTO test VALUES (1);
@@ -30,11 +29,11 @@ public abstract partial class DatabaseMethodsTests : TestBase
             INSERT INTO test VALUES (3);
             "
         );
-        var values = await connection.QueryAsync<int>("SELECT id FROM test");
+        var values = await db.QueryAsync<int>("SELECT id FROM test");
         Assert.Equal(3, values.Count());
 
         // run multiple select statements and read multiple result sets
-        var result = await connection.QueryMultipleAsync(
+        var result = await db.QueryMultipleAsync(
             @"
             SELECT id FROM test WHERE id = 1;
             SELECT id FROM test WHERE id = 2;
@@ -58,22 +57,27 @@ public abstract partial class DatabaseMethodsTests : TestBase
     [Fact]
     protected virtual async Task GetDatabaseVersionAsync_ReturnsVersion()
     {
-        using var connection = await OpenConnectionAsync();
+        using var db = await OpenConnectionAsync();
 
-        var version = await connection.GetDatabaseVersionAsync();
+        var version = await db.GetDatabaseVersionAsync();
         Assert.True(version.Major > 0);
 
         output.WriteLine("Database version: {0}", version);
     }
 
-    [Fact]
-    protected virtual async Task GetLastSqlWithParamsAsync_ReturnsLastSqlWithParams()
+    [Theory]
+    [InlineData(null)]
+    [InlineData("my_app")]
+    protected virtual async Task GetLastSqlWithParamsAsync_ReturnsLastSqlWithParams(
+        string? schemaName
+    )
     {
-        using var connection = await OpenConnectionAsync();
+        using var db = await OpenConnectionAsync();
+        await InitFreshSchemaAsync(db, schemaName);
 
-        var tableNames = await connection.GetTableNamesAsync(null, "testing*");
+        var tableNames = await db.GetTableNamesAsync(schemaName, "testing*");
 
-        var (lastSql, lastParams) = connection.GetLastSqlWithParams();
+        var (lastSql, lastParams) = db.GetLastSqlWithParams();
         Assert.NotEmpty(lastSql);
         Assert.NotNull(lastParams);
 
@@ -81,14 +85,17 @@ public abstract partial class DatabaseMethodsTests : TestBase
         output.WriteLine("Last Parameters: {0}", JsonConvert.SerializeObject(lastParams));
     }
 
-    [Fact]
-    protected virtual async Task GetLastSqlAsync_ReturnsLastSql()
+    [Theory]
+    [InlineData(null)]
+    [InlineData("my_app")]
+    protected virtual async Task GetLastSqlAsync_ReturnsLastSql(string? schemaName)
     {
-        using var connection = await OpenConnectionAsync();
+        using var db = await OpenConnectionAsync();
+        await InitFreshSchemaAsync(db, schemaName);
 
-        var tableNames = await connection.GetTableNamesAsync(null, "testing*");
+        var tableNames = await db.GetTableNamesAsync(schemaName, "testing*");
 
-        var lastSql = connection.GetLastSql();
+        var lastSql = db.GetLastSql();
         Assert.NotEmpty(lastSql);
 
         output.WriteLine("Last SQL: {0}", lastSql);

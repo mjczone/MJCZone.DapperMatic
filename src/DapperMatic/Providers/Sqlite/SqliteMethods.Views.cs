@@ -29,7 +29,7 @@ public partial class SqliteMethods
         sql.AppendLine($"CREATE VIEW {viewName} AS");
         sql.AppendLine(definition);
 
-        await ExecuteAsync(db, sql.ToString(), transaction: tx).ConfigureAwait(false);
+        await ExecuteAsync(db, sql.ToString(), tx: tx).ConfigureAwait(false);
 
         return true;
     }
@@ -48,7 +48,7 @@ public partial class SqliteMethods
                     db,
                     "SELECT COUNT(*) FROM sqlite_master WHERE type = 'view' AND name = @viewName",
                     new { viewName },
-                    transaction: tx
+                    tx: tx
                 )
                 .ConfigureAwait(false) > 0;
     }
@@ -73,7 +73,7 @@ public partial class SqliteMethods
             sql.AppendLine(" AND name LIKE @where");
         sql.AppendLine("ORDER BY name");
 
-        return await QueryAsync<string>(db, sql.ToString(), new { where }, transaction: tx)
+        return await QueryAsync<string>(db, sql.ToString(), new { where }, tx: tx)
             .ConfigureAwait(false);
     }
 
@@ -101,7 +101,7 @@ public partial class SqliteMethods
                 db,
                 sql.ToString(),
                 new { where },
-                transaction: tx
+                tx: tx
             )
             .ConfigureAwait(false);
 

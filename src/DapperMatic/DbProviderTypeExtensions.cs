@@ -7,9 +7,9 @@ public static class DbProviderTypeExtensions
 {
     private static readonly ConcurrentDictionary<Type, DbProviderType> _providerTypes = new();
 
-    public static DbProviderType GetDbProviderType(this IDbConnection connection)
+    public static DbProviderType GetDbProviderType(this IDbConnection db)
     {
-        var type = connection.GetType();
+        var type = db.GetType();
         if (_providerTypes.TryGetValue(type, out var dbType))
         {
             return dbType;

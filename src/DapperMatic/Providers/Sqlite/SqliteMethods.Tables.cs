@@ -98,9 +98,7 @@ public partial class SqliteMethods
         // add multi column primary key constraints here
         if (primaryKey != null && primaryKey.Columns.Length > 1)
         {
-            var pkColumns = primaryKey.Columns.Select(c =>
-                c.ToString()
-            );
+            var pkColumns = primaryKey.Columns.Select(c => c.ToString());
             var pkColumnNames = primaryKey.Columns.Select(c => c.ColumnName);
             sql.AppendLine(
                 $", CONSTRAINT {ProviderUtils.GeneratePrimaryKeyConstraintName(tableName, [.. pkColumnNames])} PRIMARY KEY ({string.Join(", ", pkColumns)})"
@@ -127,12 +125,8 @@ public partial class SqliteMethods
         {
             foreach (var constraint in foreignKeyConstraints)
             {
-                var fkColumns = constraint.SourceColumns.Select(c =>
-                    c.ToString()
-                );
-                var fkReferencedColumns = constraint.ReferencedColumns.Select(c =>
-                    c.ToString()
-                );
+                var fkColumns = constraint.SourceColumns.Select(c => c.ToString());
+                var fkReferencedColumns = constraint.ReferencedColumns.Select(c => c.ToString());
                 sql.AppendLine(
                     $", CONSTRAINT {NormalizeName(constraint.ConstraintName)} FOREIGN KEY ({string.Join(", ", fkColumns)}) REFERENCES {NormalizeName(constraint.ReferencedTableName)} ({string.Join(", ", fkReferencedColumns)})"
                 );
@@ -146,9 +140,7 @@ public partial class SqliteMethods
         {
             foreach (var constraint in uniqueConstraints)
             {
-                var uniqueColumns = constraint.Columns.Select(c =>
-                    c.ToString()
-                );
+                var uniqueColumns = constraint.Columns.Select(c => c.ToString());
                 sql.AppendLine(
                     $", CONSTRAINT {NormalizeName(constraint.ConstraintName)} UNIQUE ({string.Join(", ", uniqueColumns)})"
                 );
@@ -158,7 +150,7 @@ public partial class SqliteMethods
         sql.AppendLine(")");
         var createTableSql = sql.ToString();
 
-        await ExecuteAsync(db, createTableSql, transaction: tx).ConfigureAwait(false);
+        await ExecuteAsync(db, createTableSql, tx: tx).ConfigureAwait(false);
 
         var combinedIndexes = (indexes ?? []).Union(fillWithAdditionalIndexesToCreate).ToList();
 
@@ -191,7 +183,7 @@ public partial class SqliteMethods
             sql.AppendLine(" AND name LIKE @where");
         sql.AppendLine("ORDER BY name");
 
-        return await QueryAsync<string>(db, sql.ToString(), new { where }, transaction: tx)
+        return await QueryAsync<string>(db, sql.ToString(), new { where }, tx: tx)
             .ConfigureAwait(false);
     }
 
@@ -221,7 +213,7 @@ public partial class SqliteMethods
                 db,
                 sql.ToString(),
                 new { where },
-                transaction: tx
+                tx: tx
             )
             .ConfigureAwait(false);
 
@@ -323,7 +315,7 @@ public partial class SqliteMethods
                 db,
                 $"select sql FROM sqlite_master WHERE type = 'table' AND name = @tableName",
                 new { tableName },
-                transaction: tx
+                tx: tx
             )
             .ConfigureAwait(false);
 
@@ -332,7 +324,7 @@ public partial class SqliteMethods
 
         await DropTableIfExistsAsync(db, schemaName, tableName, tx, cancellationToken)
             .ConfigureAwait(false);
-        await ExecuteAsync(db, createTableSql, transaction: tx).ConfigureAwait(false);
+        await ExecuteAsync(db, createTableSql, tx: tx).ConfigureAwait(false);
         return true;
     }
 
@@ -419,13 +411,12 @@ public partial class SqliteMethods
             await ExecuteAsync(
                     db,
                     $@"CREATE TEMP TABLE {tempTableName} AS SELECT * FROM {tableName}",
-                    transaction: innerTx
+                    tx: innerTx
                 )
                 .ConfigureAwait(false);
 
             // drop the old table
-            await ExecuteAsync(db, $@"DROP TABLE {tableName}", transaction: innerTx)
-                .ConfigureAwait(false);
+            await ExecuteAsync(db, $@"DROP TABLE {tableName}", tx: innerTx).ConfigureAwait(false);
 
             var created = await CreateTableIfNotExistsAsync(
                     db,
@@ -453,13 +444,13 @@ public partial class SqliteMethods
                     await ExecuteAsync(
                             db,
                             $@"INSERT INTO {updatedTable.TableName} ({columnsToCopyString}) SELECT {columnsToCopyString} FROM {tempTableName}",
-                            transaction: innerTx
+                            tx: innerTx
                         )
                         .ConfigureAwait(false);
                 }
 
                 // drop the temp table
-                await ExecuteAsync(db, $@"DROP TABLE {tempTableName}", transaction: innerTx)
+                await ExecuteAsync(db, $@"DROP TABLE {tempTableName}", tx: innerTx)
                     .ConfigureAwait(false);
 
                 // commit the transaction

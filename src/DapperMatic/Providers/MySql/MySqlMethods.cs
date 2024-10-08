@@ -13,8 +13,8 @@ public partial class MySqlMethods : DatabaseMethodsBase, IDatabaseMethods
     )
     {
         var versionStr =
-            await ExecuteScalarAsync<string>(db, "SELECT VERSION()", transaction: tx)
-                .ConfigureAwait(false) ?? "";
+            await ExecuteScalarAsync<string>(db, "SELECT VERSION()", tx: tx).ConfigureAwait(false)
+            ?? "";
         var version = ProviderUtils.ExtractVersionFromVersionString(versionStr);
         return (
             (
@@ -45,7 +45,7 @@ public partial class MySqlMethods : DatabaseMethodsBase, IDatabaseMethods
         // sample output: 8.0.27, 8.4.2
         var sql = $@"SELECT VERSION()";
         var versionString =
-            await ExecuteScalarAsync<string>(db, sql, transaction: tx).ConfigureAwait(false) ?? "";
+            await ExecuteScalarAsync<string>(db, sql, tx: tx).ConfigureAwait(false) ?? "";
         return ProviderUtils.ExtractVersionFromVersionString(versionString);
     }
 

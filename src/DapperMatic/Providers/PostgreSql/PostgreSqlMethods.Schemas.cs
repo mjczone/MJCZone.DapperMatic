@@ -32,8 +32,7 @@ public partial class PostgreSqlMethods
             {(string.IsNullOrWhiteSpace(where) ? "" : $"WHERE lower(nspname) LIKE @where")}
             ORDER BY nspname";
 
-        return await QueryAsync<string>(db, sql, new { where }, transaction: tx)
-            .ConfigureAwait(false);
+        return await QueryAsync<string>(db, sql, new { where }, tx: tx).ConfigureAwait(false);
     }
 
     public override async Task<bool> DropSchemaIfExistsAsync(

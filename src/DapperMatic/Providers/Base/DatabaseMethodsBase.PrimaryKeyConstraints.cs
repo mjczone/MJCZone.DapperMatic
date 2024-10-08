@@ -72,7 +72,7 @@ public abstract partial class DatabaseMethodsBase : IDatabasePrimaryKeyConstrain
             constraintName
         );
 
-        var schemaQualifiedTableName = GetSchemaQualifiedTableName(schemaName, tableName);
+        var schemaQualifiedTableName = GetSchemaQualifiedIdentifierName(schemaName, tableName);
         var supportsOrderedKeysInConstraints = await SupportsOrderedKeysInConstraintsAsync(
                 db,
                 tx,
@@ -87,7 +87,7 @@ public abstract partial class DatabaseMethodsBase : IDatabasePrimaryKeyConstrain
                     PRIMARY KEY ({string.Join(", ", columns.Select(c => c.ToString(supportsOrderedKeysInConstraints)))})
         ";
 
-        await ExecuteAsync(db, sql, transaction: tx).ConfigureAwait(false);
+        await ExecuteAsync(db, sql, tx: tx).ConfigureAwait(false);
 
         return true;
     }
@@ -128,13 +128,13 @@ public abstract partial class DatabaseMethodsBase : IDatabasePrimaryKeyConstrain
 
         (schemaName, tableName, _) = NormalizeNames(schemaName, tableName);
 
-        var schemaQualifiedTableName = GetSchemaQualifiedTableName(schemaName, tableName);
+        var schemaQualifiedTableName = GetSchemaQualifiedIdentifierName(schemaName, tableName);
 
         await ExecuteAsync(
                 db,
                 $@"ALTER TABLE {schemaQualifiedTableName} 
                     DROP CONSTRAINT {primaryKeyConstraint.ConstraintName}",
-                transaction: tx
+                tx: tx
             )
             .ConfigureAwait(false);
 

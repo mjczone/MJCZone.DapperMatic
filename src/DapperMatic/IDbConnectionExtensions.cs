@@ -51,6 +51,15 @@ public static partial class IDbConnectionExtensions
         return Database(db).SupportsSchemas;
     }
 
+    public static string GetSchemaQualifiedTableName(
+        this IDbConnection db,
+        string? schemaName,
+        string tableName
+    )
+    {
+        return Database(db).GetSchemaQualifiedIdentifierName(schemaName, tableName);
+    }
+
     public static async Task<bool> SupportsCheckConstraintsAsync(
         this IDbConnection db,
         IDbTransaction? tx = null,

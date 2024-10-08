@@ -25,12 +25,7 @@ public partial class MySqlMethods
                 and TABLE_NAME = @tableName
             ".Trim();
 
-        var result = await ExecuteScalarAsync<int>(
-                db,
-                sql,
-                new { schemaName, tableName },
-                transaction: tx
-            )
+        var result = await ExecuteScalarAsync<int>(db, sql, new { schemaName, tableName }, tx: tx)
             .ConfigureAwait(false);
 
         return result > 0;
@@ -58,7 +53,7 @@ public partial class MySqlMethods
         var tableWithChanges = new DxTable(schemaName, tableName);
 
         var sql = new StringBuilder();
-        sql.Append($"CREATE TABLE {GetSchemaQualifiedTableName(schemaName, tableName)} (");
+        sql.Append($"CREATE TABLE {GetSchemaQualifiedIdentifierName(schemaName, tableName)} (");
         var columnDefinitionClauses = new List<string>();
         for (var i = 0; i < table.Columns.Count; i++)
         {
@@ -160,7 +155,7 @@ public partial class MySqlMethods
         sql.AppendLine(")");
         var createTableSql = sql.ToString();
 
-        await ExecuteAsync(db, createTableSql, transaction: tx).ConfigureAwait(false);
+        await ExecuteAsync(db, createTableSql, tx: tx).ConfigureAwait(false);
 
         var indexes = table.Indexes.Union(tableWithChanges.Indexes).ToArray();
         foreach (var index in indexes)
@@ -229,7 +224,7 @@ public partial class MySqlMethods
                     {(string.IsNullOrWhiteSpace(where) ? null : " AND t.TABLE_NAME LIKE @where")}
                 ORDER BY t.TABLE_SCHEMA, t.TABLE_NAME",
                 new { schemaName, where },
-                transaction: tx
+                tx: tx
             )
             .ConfigureAwait(false);
     }
@@ -297,7 +292,7 @@ public partial class MySqlMethods
             int? numeric_precision,
             int? numeric_scale,
             string? extra
-        )>(db, columnsSql, new { schemaName, where }, transaction: tx)
+        )>(db, columnsSql, new { schemaName, where }, tx: tx)
             .ConfigureAwait(false);
 
         // get primary key, unique key in a single query
@@ -347,7 +342,7 @@ public partial class MySqlMethods
             string constraint_name,
             string columns_csv,
             string columns_desc_csv
-        )>(db, constraintsSql, new { schemaName, where }, transaction: tx)
+        )>(db, constraintsSql, new { schemaName, where }, tx: tx)
             .ConfigureAwait(false);
 
         var allDefaultConstraints = columnResults
@@ -453,7 +448,7 @@ public partial class MySqlMethods
             string key_ordinal,
             string column_name,
             string referenced_column_name
-        )>(db, foreignKeysSql, new { schemaName, where }, transaction: tx)
+        )>(db, foreignKeysSql, new { schemaName, where }, tx: tx)
             .ConfigureAwait(false);
         var allForeignKeyConstraints = foreignKeyResults
             .GroupBy(t => new
@@ -515,7 +510,7 @@ public partial class MySqlMethods
                 string? column_name,
                 string constraint_name,
                 string check_expression
-            )>(db, checkConstraintsSql, new { schemaName, where }, transaction: tx)
+            )>(db, checkConstraintsSql, new { schemaName, where }, tx: tx)
                 .ConfigureAwait(false);
             allCheckConstraints = checkConstraintResults
                 .Select(t =>

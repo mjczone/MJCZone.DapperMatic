@@ -5,13 +5,6 @@ namespace DapperMatic.Providers;
 
 public abstract partial class DatabaseMethodsBase : IDatabaseSchemaMethods
 {
-    protected virtual string GetSchemaQualifiedTableName(string schemaName, string tableName)
-    {
-        return SupportsSchemas && !string.IsNullOrWhiteSpace(schemaName)
-            ? $"{schemaName.ToQuotedIdentifier(QuoteChars)}.{tableName.ToQuotedIdentifier(QuoteChars)}"
-            : tableName.ToQuotedIdentifier(QuoteChars);
-    }
-
     public virtual async Task<bool> DoesSchemaExistAsync(
         IDbConnection db,
         string schemaName,
@@ -45,7 +38,7 @@ public abstract partial class DatabaseMethodsBase : IDatabaseSchemaMethods
 
         var sql = $"CREATE SCHEMA {schemaName}";
 
-        await ExecuteAsync(db, sql, transaction: tx).ConfigureAwait(false);
+        await ExecuteAsync(db, sql, tx: tx).ConfigureAwait(false);
 
         return true;
     }
@@ -76,7 +69,7 @@ public abstract partial class DatabaseMethodsBase : IDatabaseSchemaMethods
 
         var sql = $"DROP SCHEMA {schemaName}";
 
-        await ExecuteAsync(db, sql, transaction: tx).ConfigureAwait(false);
+        await ExecuteAsync(db, sql, tx: tx).ConfigureAwait(false);
 
         return true;
     }

@@ -4,6 +4,8 @@ namespace DapperMatic;
 
 public partial interface IDatabaseSchemaMethods
 {
+    string GetSchemaQualifiedIdentifierName(string? schemaName, string tableName);
+
     Task<bool> CreateSchemaIfNotExistsAsync(
         IDbConnection db,
         string schemaName,

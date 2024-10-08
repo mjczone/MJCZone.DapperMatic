@@ -32,8 +32,8 @@ public abstract class MariaDbDatabaseMethodsTests<TDatabaseFixture>(
         {
             connectionString += ";SSL Mode=None";
         }
-        var connection = new MySqlConnection(connectionString);
-        await connection.OpenAsync();
-        return connection;
+        var db = new MySqlConnection(connectionString);
+        await db.OpenAsync();
+        return db;
     }
 }

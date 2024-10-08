@@ -82,7 +82,7 @@ public partial class MySqlMethods
 
         var sql = new StringBuilder();
         sql.Append(
-            $"ALTER TABLE {GetSchemaQualifiedTableName(schemaName, tableName)} ADD {columnSql}"
+            $"ALTER TABLE {GetSchemaQualifiedIdentifierName(schemaName, tableName)} ADD {columnSql}"
         );
 
         await ExecuteAsync(db, sql.ToString(), tx).ConfigureAwait(false);
@@ -252,7 +252,7 @@ public partial class MySqlMethods
 
         var sql = new StringBuilder();
         sql.Append(
-            $"ALTER TABLE {GetSchemaQualifiedTableName(schemaName, tableName)} DROP COLUMN {columnName}"
+            $"ALTER TABLE {GetSchemaQualifiedIdentifierName(schemaName, tableName)} DROP COLUMN {columnName}"
         );
         await ExecuteAsync(db, sql.ToString(), tx).ConfigureAwait(false);
         return true;

@@ -1,3 +1,4 @@
+using System.Data;
 using DapperMatic.Logging;
 using DapperMatic.Tests.Logging;
 using Microsoft.Extensions.Logging;
@@ -18,6 +19,15 @@ public abstract class TestBase : IDisposable
             builder.AddProvider(new TestLoggerProvider(output));
         });
         DxLogger.SetLoggerFactory(loggerFactory);
+    }
+
+    protected async Task InitFreshSchemaAsync(IDbConnection db, string? schemaName)
+    {
+        if (db.SupportsSchemas() && !string.IsNullOrWhiteSpace(schemaName))
+        {
+            await db.DropSchemaIfExistsAsync(schemaName);
+            await db.CreateSchemaIfNotExistsAsync(schemaName);
+        }
     }
 
     public virtual void Dispose()

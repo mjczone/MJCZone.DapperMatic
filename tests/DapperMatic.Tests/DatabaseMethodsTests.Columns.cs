@@ -1,22 +1,25 @@
 using DapperMatic.Models;
-using Microsoft.Extensions.Logging;
+using Newtonsoft.Json;
 
 namespace DapperMatic.Tests;
 
 public abstract partial class DatabaseMethodsTests
 {
-    [Fact]
-    protected virtual async Task Can_perform_simple_CRUD_on_Columns_Async()
+    [Theory]
+    [InlineData(null)]
+    [InlineData("my_app")]
+    protected virtual async Task Can_perform_simple_CRUD_on_Columns_Async(string? schemaName)
     {
-        using var connection = await OpenConnectionAsync();
+        using var db = await OpenConnectionAsync();
+        await InitFreshSchemaAsync(db, schemaName);
 
         const string tableName = "testWithColumn";
-        var tableName2 = "testWithAllColumns";
+        const string tableName2 = "testWithAllColumns";
         const string columnName = "testColumn";
 
         string? defaultDateTimeSql = null;
         string? defaultGuidSql = null;
-        var dbType = connection.GetDbProviderType();
+        var dbType = db.GetDbProviderType();
 
         var supportsMultipleIdentityColumns = true;
         switch (dbType)
@@ -43,18 +46,18 @@ public abstract partial class DatabaseMethodsTests
                 break;
         }
 
-        await connection.DropColumnIfExistsAsync(null, tableName, columnName);
+        await db.DropColumnIfExistsAsync(schemaName, tableName, columnName);
 
         output.WriteLine("Column Exists: {0}.{1}", tableName, columnName);
-        var exists = await connection.DoesColumnExistAsync(null, tableName, columnName);
+        var exists = await db.DoesColumnExistAsync(schemaName, tableName, columnName);
         Assert.False(exists);
 
-        await connection.CreateTableIfNotExistsAsync(
-            null,
+        await db.CreateTableIfNotExistsAsync(
+            schemaName,
             tableName,
             [
                 new DxColumn(
-                    null,
+                    schemaName,
                     tableName,
                     "id",
                     typeof(int),
@@ -63,7 +66,7 @@ public abstract partial class DatabaseMethodsTests
                     isNullable: false
                 ),
                 new DxColumn(
-                    null,
+                    schemaName,
                     tableName,
                     columnName,
                     typeof(int),
@@ -74,41 +77,41 @@ public abstract partial class DatabaseMethodsTests
         );
 
         output.WriteLine("Column Exists: {0}.{1}", tableName, columnName);
-        exists = await connection.DoesColumnExistAsync(null, tableName, columnName);
+        exists = await db.DoesColumnExistAsync(schemaName, tableName, columnName);
         Assert.True(exists);
 
         output.WriteLine("Dropping columnName: {0}.{1}", tableName, columnName);
-        await connection.DropColumnIfExistsAsync(null, tableName, columnName);
+        await db.DropColumnIfExistsAsync(schemaName, tableName, columnName);
 
         output.WriteLine("Column Exists: {0}.{1}", tableName, columnName);
-        exists = await connection.DoesColumnExistAsync(null, tableName, columnName);
+        exists = await db.DoesColumnExistAsync(schemaName, tableName, columnName);
         Assert.False(exists);
 
         // try adding a columnName of all the supported types
         var columnCount = 1;
         var addColumns = new List<DxColumn>
         {
-            new(null, tableName2, "abc", typeof(int)),
+            new(schemaName, tableName2, "intid" + columnCount++, typeof(int)),
             new(
-                null,
+                schemaName,
                 tableName2,
-                "id" + columnCount++,
+                "intpkid" + columnCount++,
                 typeof(int),
                 isPrimaryKey: true,
                 isAutoIncrement: supportsMultipleIdentityColumns ? true : false
             ),
-            new(null, tableName2, "id" + columnCount++, typeof(int), isUnique: true),
+            new(schemaName, tableName2, "intucid" + columnCount++, typeof(int), isUnique: true),
             new(
-                null,
+                schemaName,
                 tableName2,
                 "id" + columnCount++,
                 typeof(int),
                 isUnique: true,
                 isIndexed: true
             ),
-            new(null, tableName2, "id" + columnCount++, typeof(int), isIndexed: true),
+            new(schemaName, tableName2, "intixid" + columnCount++, typeof(int), isIndexed: true),
             new(
-                null,
+                schemaName,
                 tableName2,
                 "colWithFk" + columnCount++,
                 typeof(int),
@@ -119,84 +122,95 @@ public abstract partial class DatabaseMethodsTests
                 onUpdate: DxForeignKeyAction.Cascade
             ),
             new(
-                null,
+                schemaName,
                 tableName2,
                 "createdDateColumn" + columnCount++,
                 typeof(DateTime),
                 defaultExpression: defaultDateTimeSql
             ),
             new(
-                null,
+                schemaName,
                 tableName2,
                 "newidColumn" + columnCount++,
                 typeof(Guid),
                 defaultExpression: defaultGuidSql
             ),
-            new(null, tableName2, "bigintColumn" + columnCount++, typeof(long)),
-            new(null, tableName2, "binaryColumn" + columnCount++, typeof(byte[])),
-            new(null, tableName2, "bitColumn" + columnCount++, typeof(bool)),
-            new(null, tableName2, "charColumn" + columnCount++, typeof(string), length: 10),
-            new(null, tableName2, "dateColumn" + columnCount++, typeof(DateTime)),
-            new(null, tableName2, "datetimeColumn" + columnCount++, typeof(DateTime)),
-            new(null, tableName2, "datetime2Column" + columnCount++, typeof(DateTime)),
-            new(null, tableName2, "datetimeoffsetColumn" + columnCount++, typeof(DateTimeOffset)),
-            new(null, tableName2, "decimalColumn" + columnCount++, typeof(decimal)),
+            new(schemaName, tableName2, "bigintColumn" + columnCount++, typeof(long)),
+            new(schemaName, tableName2, "binaryColumn" + columnCount++, typeof(byte[])),
+            new(schemaName, tableName2, "bitColumn" + columnCount++, typeof(bool)),
+            new(schemaName, tableName2, "charColumn" + columnCount++, typeof(string), length: 10),
+            new(schemaName, tableName2, "dateColumn" + columnCount++, typeof(DateTime)),
+            new(schemaName, tableName2, "datetimeColumn" + columnCount++, typeof(DateTime)),
+            new(schemaName, tableName2, "datetime2Column" + columnCount++, typeof(DateTime)),
             new(
-                null,
+                schemaName,
+                tableName2,
+                "datetimeoffsetColumn" + columnCount++,
+                typeof(DateTimeOffset)
+            ),
+            new(schemaName, tableName2, "decimalColumn" + columnCount++, typeof(decimal)),
+            new(
+                schemaName,
                 tableName2,
                 "decimalColumnWithPrecision" + columnCount++,
                 typeof(decimal),
                 precision: 10
             ),
             new(
-                null,
+                schemaName,
                 tableName2,
                 "decimalColumnWithPrecisionAndScale" + columnCount++,
                 typeof(decimal),
                 precision: 10,
                 scale: 5
             ),
-            new(null, tableName2, "floatColumn" + columnCount++, typeof(double)),
-            new(null, tableName2, "imageColumn" + columnCount++, typeof(byte[])),
-            new(null, tableName2, "intColumn" + columnCount++, typeof(int)),
-            new(null, tableName2, "moneyColumn" + columnCount++, typeof(decimal)),
-            new(null, tableName2, "ncharColumn" + columnCount++, typeof(string), length: 10),
+            new(schemaName, tableName2, "floatColumn" + columnCount++, typeof(double)),
+            new(schemaName, tableName2, "imageColumn" + columnCount++, typeof(byte[])),
+            new(schemaName, tableName2, "intColumn" + columnCount++, typeof(int)),
+            new(schemaName, tableName2, "moneyColumn" + columnCount++, typeof(decimal)),
+            new(schemaName, tableName2, "ncharColumn" + columnCount++, typeof(string), length: 10),
             new(
-                null,
+                schemaName,
                 tableName2,
                 "ntextColumn" + columnCount++,
                 typeof(string),
                 length: int.MaxValue
             ),
-            new(null, tableName2, "floatColumn2" + columnCount++, typeof(float)),
-            new(null, tableName2, "doubleColumn2" + columnCount++, typeof(double)),
-            new(null, tableName2, "guidArrayColumn" + columnCount++, typeof(Guid[])),
-            new(null, tableName2, "intArrayColumn" + columnCount++, typeof(int[])),
-            new(null, tableName2, "longArrayColumn" + columnCount++, typeof(long[])),
-            new(null, tableName2, "doubleArrayColumn" + columnCount++, typeof(double[])),
-            new(null, tableName2, "decimalArrayColumn" + columnCount++, typeof(decimal[])),
-            new(null, tableName2, "stringArrayColumn" + columnCount++, typeof(string[])),
+            new(schemaName, tableName2, "floatColumn2" + columnCount++, typeof(float)),
+            new(schemaName, tableName2, "doubleColumn2" + columnCount++, typeof(double)),
+            new(schemaName, tableName2, "guidArrayColumn" + columnCount++, typeof(Guid[])),
+            new(schemaName, tableName2, "intArrayColumn" + columnCount++, typeof(int[])),
+            new(schemaName, tableName2, "longArrayColumn" + columnCount++, typeof(long[])),
+            new(schemaName, tableName2, "doubleArrayColumn" + columnCount++, typeof(double[])),
+            new(schemaName, tableName2, "decimalArrayColumn" + columnCount++, typeof(decimal[])),
+            new(schemaName, tableName2, "stringArrayColumn" + columnCount++, typeof(string[])),
             new(
-                null,
+                schemaName,
                 tableName2,
-                "stringDectionaryArrayColumn" + columnCount++,
+                "stringDictionaryArrayColumn" + columnCount++,
                 typeof(Dictionary<string, string>)
             ),
             new(
-                null,
+                schemaName,
                 tableName2,
-                "objectDectionaryArrayColumn" + columnCount++,
+                "objectDitionaryArrayColumn" + columnCount++,
                 typeof(Dictionary<string, object>)
             )
         };
-        await connection.CreateTableIfNotExistsAsync(null, tableName2, [addColumns[0]]);
+        await db.DropTableIfExistsAsync(schemaName, tableName2);
+        await db.CreateTableIfNotExistsAsync(schemaName, tableName2, [addColumns[0]]);
         foreach (var col in addColumns.Skip(1))
         {
-            await connection.CreateColumnIfNotExistsAsync(col);
-            var columns = await connection.GetColumnsAsync(null, tableName2);
+            await db.CreateColumnIfNotExistsAsync(col);
+            var columns = await db.GetColumnsAsync(schemaName, tableName2);
             // immediately do a check to make sure column was created as expected
-            var column = await connection.GetColumnAsync(null, tableName2, col.ColumnName);
+            var column = await db.GetColumnAsync(schemaName, tableName2, col.ColumnName);
             Assert.NotNull(column);
+
+            if (!string.IsNullOrWhiteSpace(schemaName) && db.SupportsSchemas())
+            {
+                Assert.Equal(schemaName, column.SchemaName, true);
+            }
 
             try
             {
@@ -221,7 +235,7 @@ public abstract partial class DatabaseMethodsTests
             catch (Exception ex)
             {
                 output.WriteLine("Error validating column {0}: {1}", col.ColumnName, ex.Message);
-                column = await connection.GetColumnAsync(null, tableName2, col.ColumnName);
+                column = await db.GetColumnAsync(schemaName, tableName2, col.ColumnName);
             }
 
             Assert.NotNull(column?.ProviderDataType);
@@ -232,8 +246,31 @@ public abstract partial class DatabaseMethodsTests
             }
         }
 
-        var columnNames = await connection.GetColumnNamesAsync(null, tableName2);
-        Assert.Equal(columnCount, columnNames.Count());
+        var actualColumns = await db.GetColumnsAsync(schemaName, tableName2);
+        output.WriteLine(JsonConvert.SerializeObject(actualColumns, Formatting.Indented));
+        var columnNames = await db.GetColumnNamesAsync(schemaName, tableName2);
+        var expectedColumnNames = addColumns
+            .OrderBy(c => c.ColumnName.ToLowerInvariant())
+            .Select(c => c.ColumnName.ToLowerInvariant())
+            .ToArray();
+        var actualColumnNames = columnNames
+            .OrderBy(s => s.ToLowerInvariant())
+            .Select(s => s.ToLowerInvariant())
+            .ToArray();
+        output.WriteLine("Expected columns: {0}", string.Join(", ", expectedColumnNames));
+        output.WriteLine("Actual columns: {0}", string.Join(", ", actualColumnNames));
+        output.WriteLine("Expected columns count: {0}", expectedColumnNames.Length);
+        output.WriteLine("Actual columns count: {0}", actualColumnNames.Length);
+        output.WriteLine(
+            "Expected not in actual: {0}",
+            string.Join(", ", expectedColumnNames.Except(actualColumnNames))
+        );
+        output.WriteLine(
+            "Actual not in expected: {0}",
+            string.Join(", ", actualColumnNames.Except(expectedColumnNames))
+        );
+        Assert.Equal(expectedColumnNames.Length, actualColumnNames.Length);
+        // Assert.Same(expectedColumnNames, actualColumnNames);
 
         // validate that:
         // - all columns are of the expected types
@@ -247,7 +284,7 @@ public abstract partial class DatabaseMethodsTests
         // - all columns are unique or not unique as specified
         // - all columns are indexed or not indexed as specified
         // - all columns are foreign key or not foreign key as specified
-        var table = await connection.GetTableAsync(null, tableName2);
+        var table = await db.GetTableAsync(schemaName, tableName2);
         Assert.NotNull(table);
 
         foreach (var column in table.Columns)
@@ -305,5 +342,8 @@ public abstract partial class DatabaseMethodsTests
                 : indexedColumnsExpected.Length,
             indexedColumnsActual.Length
         );
+
+        await db.DropTableIfExistsAsync(schemaName, tableName2);
+        await db.DropTableIfExistsAsync(schemaName, tableName);
     }
 }

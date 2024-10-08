@@ -46,7 +46,7 @@ public partial class MySqlMethods
 
         columnName = NormalizeName(columnName);
 
-        var schemaQualifiedTableName = GetSchemaQualifiedTableName(schemaName, tableName);
+        var schemaQualifiedTableName = GetSchemaQualifiedIdentifierName(schemaName, tableName);
 
         var defaultExpression = expression.Trim();
         var addParentheses =
@@ -61,7 +61,7 @@ public partial class MySqlMethods
                 ALTER COLUMN {columnName} SET DEFAULT {(addParentheses ? $"({defaultExpression})" : defaultExpression)}
         ";
 
-        await ExecuteAsync(db, sql, transaction: tx).ConfigureAwait(false);
+        await ExecuteAsync(db, sql, tx: tx).ConfigureAwait(false);
 
         return true;
     }
@@ -116,7 +116,7 @@ public partial class MySqlMethods
 
         (schemaName, tableName, columnName) = NormalizeNames(schemaName, tableName, columnName);
 
-        var schemaQualifiedTableName = GetSchemaQualifiedTableName(schemaName, tableName);
+        var schemaQualifiedTableName = GetSchemaQualifiedIdentifierName(schemaName, tableName);
 
         var sql =
             @$"
@@ -124,7 +124,7 @@ public partial class MySqlMethods
                 ALTER COLUMN {columnName} DROP DEFAULT
         ";
 
-        await ExecuteAsync(db, sql, null, transaction: tx).ConfigureAwait(false);
+        await ExecuteAsync(db, sql, null, tx: tx).ConfigureAwait(false);
 
         return true;
     }

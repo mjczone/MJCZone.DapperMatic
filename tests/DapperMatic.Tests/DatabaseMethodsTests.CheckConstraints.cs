@@ -4,47 +4,48 @@ namespace DapperMatic.Tests;
 
 public abstract partial class DatabaseMethodsTests
 {
-    [Fact]
-    protected virtual async Task Can_perform_simple_CRUD_on_CheckConstraints_Async()
+    [Theory]
+    [InlineData(null)]
+    [InlineData("my_app")]
+    protected virtual async Task Can_perform_simple_CRUD_on_CheckConstraints_Async(
+        string? schemaName
+    )
     {
-        using var connection = await OpenConnectionAsync();
+        using var db = await OpenConnectionAsync();
+        await InitFreshSchemaAsync(db, schemaName);
 
-        var supportsCheckConstraints = await connection.SupportsCheckConstraintsAsync();
+        var supportsCheckConstraints = await db.SupportsCheckConstraintsAsync();
 
         var testTableName = "testTableCheckConstraints";
-        await connection.CreateTableIfNotExistsAsync(
-            null,
+        await db.CreateTableIfNotExistsAsync(
+            schemaName,
             testTableName,
-            [new DxColumn(null, testTableName, "testColumn", typeof(int))]
+            [new DxColumn(schemaName, testTableName, "testColumn", typeof(int))]
         );
 
         var constraintName = $"ck_testTable";
-        var exists = await connection.DoesCheckConstraintExistAsync(
-            null,
+        var exists = await db.DoesCheckConstraintExistAsync(
+            schemaName,
             testTableName,
             constraintName
         );
 
         if (exists)
-            await connection.DropCheckConstraintIfExistsAsync(null, testTableName, constraintName);
+            await db.DropCheckConstraintIfExistsAsync(schemaName, testTableName, constraintName);
 
-        await connection.CreateCheckConstraintIfNotExistsAsync(
-            null,
+        await db.CreateCheckConstraintIfNotExistsAsync(
+            schemaName,
             testTableName,
             null,
             constraintName,
             "testColumn > 0"
         );
 
-        exists = await connection.DoesCheckConstraintExistAsync(
-            null,
-            testTableName,
-            constraintName
-        );
+        exists = await db.DoesCheckConstraintExistAsync(schemaName, testTableName, constraintName);
         Assert.True(supportsCheckConstraints ? exists : !exists);
 
-        var existingConstraint = await connection.GetCheckConstraintAsync(
-            null,
+        var existingConstraint = await db.GetCheckConstraintAsync(
+            schemaName,
             testTableName,
             constraintName
         );
@@ -57,17 +58,14 @@ public abstract partial class DatabaseMethodsTests
                 StringComparer.OrdinalIgnoreCase
             );
 
-        var checkConstraintNames = await connection.GetCheckConstraintNamesAsync(
-            null,
-            testTableName
-        );
+        var checkConstraintNames = await db.GetCheckConstraintNamesAsync(schemaName, testTableName);
         if (!supportsCheckConstraints)
             Assert.Empty(checkConstraintNames);
         else
             Assert.Contains(constraintName, checkConstraintNames, StringComparer.OrdinalIgnoreCase);
 
-        var dropped = await connection.DropCheckConstraintIfExistsAsync(
-            null,
+        var dropped = await db.DropCheckConstraintIfExistsAsync(
+            schemaName,
             testTableName,
             constraintName
         );
@@ -76,29 +74,25 @@ public abstract partial class DatabaseMethodsTests
         else
         {
             Assert.True(dropped);
-            exists = await connection.DoesCheckConstraintExistAsync(
-                null,
+            exists = await db.DoesCheckConstraintExistAsync(
+                schemaName,
                 testTableName,
                 constraintName
             );
         }
 
-        exists = await connection.DoesCheckConstraintExistAsync(
-            null,
-            testTableName,
-            constraintName
-        );
+        exists = await db.DoesCheckConstraintExistAsync(schemaName, testTableName, constraintName);
         Assert.False(exists);
 
-        await connection.DropTableIfExistsAsync(null, testTableName);
+        await db.DropTableIfExistsAsync(schemaName, testTableName);
 
-        await connection.CreateTableIfNotExistsAsync(
-            null,
+        await db.CreateTableIfNotExistsAsync(
+            schemaName,
             testTableName,
             [
-                new DxColumn(null, testTableName, "testColumn", typeof(int)),
+                new DxColumn(schemaName, testTableName, "testColumn", typeof(int)),
                 new DxColumn(
-                    null,
+                    schemaName,
                     testTableName,
                     "testColumn2",
                     typeof(int),
@@ -107,8 +101,8 @@ public abstract partial class DatabaseMethodsTests
             ]
         );
 
-        var checkConstraint = await connection.GetCheckConstraintOnColumnAsync(
-            null,
+        var checkConstraint = await db.GetCheckConstraintOnColumnAsync(
+            schemaName,
             testTableName,
             "testColumn2"
         );

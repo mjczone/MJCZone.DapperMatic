@@ -20,16 +20,12 @@ public partial class SqlServerMethods
             $@"
             SELECT COUNT(*)
             FROM INFORMATION_SCHEMA.TABLES
-            WHERE TABLE_SCHEMA = @schemaName
+            WHERE TABLE_TYPE='BASE TABLE' 
+            AND TABLE_SCHEMA = @schemaName
             AND TABLE_NAME = @tableName            
             ";
 
-        var result = await ExecuteScalarAsync<int>(
-                db,
-                sql,
-                new { schemaName, tableName },
-                transaction: tx
-            )
+        var result = await ExecuteScalarAsync<int>(db, sql, new { schemaName, tableName }, tx: tx)
             .ConfigureAwait(false);
 
         return result > 0;
@@ -63,13 +59,14 @@ public partial class SqlServerMethods
         var fillWithAdditionalIndexesToCreate = new List<DxIndex>();
 
         var sql = new StringBuilder();
-        sql.Append($"CREATE TABLE {GetSchemaQualifiedTableName(schemaName, tableName)} (");
+        sql.Append($"CREATE TABLE {GetSchemaQualifiedIdentifierName(schemaName, tableName)} (");
         var columnDefinitionClauses = new List<string>();
         for (var i = 0; i < columns?.Length; i++)
         {
             var column = columns[i];
 
             var colSql = BuildColumnDefinitionSql(
+                schemaName,
                 tableName,
                 column.ColumnName,
                 column.DotnetType,
@@ -106,9 +103,7 @@ public partial class SqlServerMethods
         // add multi column primary key constraints here
         if (primaryKey != null && primaryKey.Columns.Length > 1)
         {
-            var pkColumns = primaryKey.Columns.Select(c =>
-                c.ToString()
-            );
+            var pkColumns = primaryKey.Columns.Select(c => c.ToString());
             var pkColumnNames = primaryKey.Columns.Select(c => c.ColumnName);
             sql.AppendLine(
                 $", CONSTRAINT {ProviderUtils.GeneratePrimaryKeyConstraintName(tableName, [.. pkColumnNames])} PRIMARY KEY ({string.Join(", ", pkColumns)})"
@@ -135,14 +130,16 @@ public partial class SqlServerMethods
         {
             foreach (var constraint in foreignKeyConstraints)
             {
-                var fkColumns = constraint.SourceColumns.Select(c =>
-                    c.ToString()
+                var fkColumns = constraint.SourceColumns.Select(c => c.ToString());
+                var fkReferencedColumns = constraint.ReferencedColumns.Select(c => c.ToString());
+
+                var schemaQualifiedReferencedTableName = GetSchemaQualifiedIdentifierName(
+                    schemaName,
+                    constraint.ReferencedTableName
                 );
-                var fkReferencedColumns = constraint.ReferencedColumns.Select(c =>
-                    c.ToString()
-                );
+
                 sql.AppendLine(
-                    $", CONSTRAINT {NormalizeName(constraint.ConstraintName)} FOREIGN KEY ({string.Join(", ", fkColumns)}) REFERENCES {NormalizeName(constraint.ReferencedTableName)} ({string.Join(", ", fkReferencedColumns)})"
+                    $", CONSTRAINT {NormalizeName(constraint.ConstraintName)} FOREIGN KEY ({string.Join(", ", fkColumns)}) REFERENCES {schemaQualifiedReferencedTableName} ({string.Join(", ", fkReferencedColumns)})"
                 );
                 sql.AppendLine($" ON DELETE {constraint.OnDelete.ToSql()}");
                 sql.AppendLine($" ON UPDATE {constraint.OnUpdate.ToSql()}");
@@ -154,9 +151,7 @@ public partial class SqlServerMethods
         {
             foreach (var constraint in uniqueConstraints)
             {
-                var uniqueColumns = constraint.Columns.Select(c =>
-                    c.ToString()
-                );
+                var uniqueColumns = constraint.Columns.Select(c => c.ToString());
                 sql.AppendLine(
                     $", CONSTRAINT {NormalizeName(constraint.ConstraintName)} UNIQUE ({string.Join(", ", uniqueColumns)})"
                 );
@@ -166,7 +161,7 @@ public partial class SqlServerMethods
         sql.AppendLine(")");
         var createTableSql = sql.ToString();
 
-        await ExecuteAsync(db, createTableSql, transaction: tx).ConfigureAwait(false);
+        await ExecuteAsync(db, createTableSql, tx: tx).ConfigureAwait(false);
 
         var combinedIndexes = (indexes ?? []).Union(fillWithAdditionalIndexesToCreate).ToList();
 
@@ -198,11 +193,12 @@ public partial class SqlServerMethods
                 $@"
                 SELECT TABLE_NAME
                 FROM INFORMATION_SCHEMA.TABLES
-                WHERE TABLE_SCHEMA = @schemaName
+                WHERE TABLE_TYPE='BASE TABLE' 
+                AND TABLE_SCHEMA = @schemaName
                 {(string.IsNullOrWhiteSpace(where) ? null : " AND TABLE_NAME LIKE @where")}
                 ORDER BY TABLE_NAME",
                 new { schemaName, where },
-                transaction: tx
+                tx: tx
             )
             .ConfigureAwait(false);
     }
@@ -268,7 +264,7 @@ public partial class SqlServerMethods
             int? max_length,
             int? numeric_precision,
             int? numeric_scale
-        )>(db, columnsSql, new { schemaName, where }, transaction: tx)
+        )>(db, columnsSql, new { schemaName, where }, tx: tx)
             .ConfigureAwait(false);
 
         // get primary key, unique key, and indexes in a single query
@@ -311,7 +307,7 @@ public partial class SqlServerMethods
             bool is_unique,
             bool is_primary_key,
             bool is_unique_constraint
-        )>(db, constraintsSql, new { schemaName, where }, transaction: tx)
+        )>(db, constraintsSql, new { schemaName, where }, tx: tx)
             .ConfigureAwait(false);
 
         var foreignKeysSql =
@@ -344,7 +340,7 @@ public partial class SqlServerMethods
             string referenced_column_name,
             string update_rule,
             string delete_rule
-        )>(db, foreignKeysSql, new { schemaName, where }, transaction: tx)
+        )>(db, foreignKeysSql, new { schemaName, where }, tx: tx)
             .ConfigureAwait(false);
 
         var checkConstraintsSql =
@@ -370,7 +366,7 @@ public partial class SqlServerMethods
             string? column_name,
             string constraint_name,
             string check_expression
-        )>(db, checkConstraintsSql, new { schemaName, where }, transaction: tx)
+        )>(db, checkConstraintsSql, new { schemaName, where }, tx: tx)
             .ConfigureAwait(false);
 
         var defaultConstraintsSql =
@@ -395,7 +391,7 @@ public partial class SqlServerMethods
             string column_name,
             string constraint_name,
             string default_expression
-        )>(db, defaultConstraintsSql, new { schemaName, where }, transaction: tx)
+        )>(db, defaultConstraintsSql, new { schemaName, where }, tx: tx)
             .ConfigureAwait(false);
 
         var tables = new List<DxTable>();
@@ -699,7 +695,7 @@ public partial class SqlServerMethods
 
         (schemaName, tableName, _) = NormalizeNames(schemaName, tableName);
 
-        var schemaQualifiedTableName = GetSchemaQualifiedTableName(schemaName, tableName);
+        var schemaQualifiedTableName = GetSchemaQualifiedIdentifierName(schemaName, tableName);
 
         await ExecuteAsync(
                 db,
@@ -710,7 +706,7 @@ public partial class SqlServerMethods
                     tableName,
                     newTableName
                 },
-                transaction: tx
+                tx: tx
             )
             .ConfigureAwait(false);
 

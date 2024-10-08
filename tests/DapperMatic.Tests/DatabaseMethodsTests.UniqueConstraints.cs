@@ -5,10 +5,15 @@ namespace DapperMatic.Tests;
 
 public abstract partial class DatabaseMethodsTests
 {
-    [Fact]
-    protected virtual async Task Can_perform_simple_CRUD_on_UniqueConstraints_Async()
+    [Theory]
+    [InlineData(null)]
+    [InlineData("my_app")]
+    protected virtual async Task Can_perform_simple_CRUD_on_UniqueConstraints_Async(
+        string? schemaName
+    )
     {
-        using var connection = await OpenConnectionAsync();
+        using var db = await OpenConnectionAsync();
+        await InitFreshSchemaAsync(db, schemaName);
 
         var tableName = "testWithUc";
         var columnName = "testColumn";
@@ -16,12 +21,12 @@ public abstract partial class DatabaseMethodsTests
         var uniqueConstraintName = "testUc";
         var uniqueConstraintName2 = "testUc2";
 
-        await connection.CreateTableIfNotExistsAsync(
-            null,
+        await db.CreateTableIfNotExistsAsync(
+            schemaName,
             tableName,
             [
                 new DxColumn(
-                    null,
+                    schemaName,
                     tableName,
                     columnName,
                     typeof(int),
@@ -29,7 +34,7 @@ public abstract partial class DatabaseMethodsTests
                     isNullable: false
                 ),
                 new DxColumn(
-                    null,
+                    schemaName,
                     tableName,
                     columnName2,
                     typeof(int),
@@ -40,7 +45,7 @@ public abstract partial class DatabaseMethodsTests
             uniqueConstraints: new[]
             {
                 new DxUniqueConstraint(
-                    null,
+                    schemaName,
                     tableName,
                     uniqueConstraintName2,
                     [new DxOrderedColumn(columnName2)]
@@ -49,30 +54,30 @@ public abstract partial class DatabaseMethodsTests
         );
 
         output.WriteLine("Unique Constraint Exists: {0}.{1}", tableName, uniqueConstraintName);
-        var exists = await connection.DoesUniqueConstraintExistAsync(
-            null,
+        var exists = await db.DoesUniqueConstraintExistAsync(
+            schemaName,
             tableName,
             uniqueConstraintName
         );
         Assert.False(exists);
 
         output.WriteLine("Unique Constraint2 Exists: {0}.{1}", tableName, uniqueConstraintName2);
-        exists = await connection.DoesUniqueConstraintExistAsync(
-            null,
+        exists = await db.DoesUniqueConstraintExistAsync(
+            schemaName,
             tableName,
             uniqueConstraintName2
         );
         Assert.True(exists);
-        exists = await connection.DoesUniqueConstraintExistOnColumnAsync(
-            null,
+        exists = await db.DoesUniqueConstraintExistOnColumnAsync(
+            schemaName,
             tableName,
             columnName2
         );
         Assert.True(exists);
 
         output.WriteLine("Creating unique constraint: {0}.{1}", tableName, uniqueConstraintName);
-        await connection.CreateUniqueConstraintIfNotExistsAsync(
-            null,
+        await db.CreateUniqueConstraintIfNotExistsAsync(
+            schemaName,
             tableName,
             uniqueConstraintName,
             [new DxOrderedColumn(columnName)]
@@ -80,36 +85,32 @@ public abstract partial class DatabaseMethodsTests
 
         // make sure the new constraint is there
         output.WriteLine("Unique Constraint Exists: {0}.{1}", tableName, uniqueConstraintName);
-        exists = await connection.DoesUniqueConstraintExistAsync(
-            null,
+        exists = await db.DoesUniqueConstraintExistAsync(
+            schemaName,
             tableName,
             uniqueConstraintName
         );
         Assert.True(exists);
-        exists = await connection.DoesUniqueConstraintExistOnColumnAsync(
-            null,
-            tableName,
-            columnName
-        );
+        exists = await db.DoesUniqueConstraintExistOnColumnAsync(schemaName, tableName, columnName);
         Assert.True(exists);
 
         // make sure the original constraint is still there
         output.WriteLine("Unique Constraint Exists: {0}.{1}", tableName, uniqueConstraintName2);
-        exists = await connection.DoesUniqueConstraintExistAsync(
-            null,
+        exists = await db.DoesUniqueConstraintExistAsync(
+            schemaName,
             tableName,
             uniqueConstraintName2
         );
         Assert.True(exists);
-        exists = await connection.DoesUniqueConstraintExistOnColumnAsync(
-            null,
+        exists = await db.DoesUniqueConstraintExistOnColumnAsync(
+            schemaName,
             tableName,
             columnName2
         );
         Assert.True(exists);
 
         output.WriteLine("Get Unique Constraint Names: {0}", tableName);
-        var uniqueConstraintNames = await connection.GetUniqueConstraintNamesAsync(null, tableName);
+        var uniqueConstraintNames = await db.GetUniqueConstraintNamesAsync(schemaName, tableName);
         Assert.Contains(
             uniqueConstraintName2,
             uniqueConstraintNames,
@@ -121,7 +122,7 @@ public abstract partial class DatabaseMethodsTests
             StringComparer.OrdinalIgnoreCase
         );
 
-        var uniqueConstraints = await connection.GetUniqueConstraintsAsync(null, tableName);
+        var uniqueConstraints = await db.GetUniqueConstraintsAsync(schemaName, tableName);
         Assert.Contains(
             uniqueConstraints,
             uc =>
@@ -133,11 +134,11 @@ public abstract partial class DatabaseMethodsTests
         );
 
         output.WriteLine("Dropping unique constraint: {0}.{1}", tableName, uniqueConstraintName);
-        await connection.DropUniqueConstraintIfExistsAsync(null, tableName, uniqueConstraintName);
+        await db.DropUniqueConstraintIfExistsAsync(schemaName, tableName, uniqueConstraintName);
 
         output.WriteLine("Unique Constraint Exists: {0}.{1}", tableName, uniqueConstraintName);
-        exists = await connection.DoesUniqueConstraintExistAsync(
-            null,
+        exists = await db.DoesUniqueConstraintExistAsync(
+            schemaName,
             tableName,
             uniqueConstraintName
         );
@@ -146,12 +147,12 @@ public abstract partial class DatabaseMethodsTests
         // test key ordering
         tableName = "testWithUc2";
         uniqueConstraintName = "uc_testWithUc2";
-        await connection.CreateTableIfNotExistsAsync(
-            null,
+        await db.CreateTableIfNotExistsAsync(
+            schemaName,
             tableName,
             [
                 new DxColumn(
-                    null,
+                    schemaName,
                     tableName,
                     columnName,
                     typeof(int),
@@ -159,7 +160,7 @@ public abstract partial class DatabaseMethodsTests
                     isNullable: false
                 ),
                 new DxColumn(
-                    null,
+                    schemaName,
                     tableName,
                     columnName2,
                     typeof(int),
@@ -170,7 +171,7 @@ public abstract partial class DatabaseMethodsTests
             uniqueConstraints:
             [
                 new DxUniqueConstraint(
-                    null,
+                    schemaName,
                     tableName,
                     uniqueConstraintName,
                     [
@@ -181,8 +182,8 @@ public abstract partial class DatabaseMethodsTests
             ]
         );
 
-        var uniqueConstraint = await connection.GetUniqueConstraintAsync(
-            null,
+        var uniqueConstraint = await db.GetUniqueConstraintAsync(
+            schemaName,
             tableName,
             uniqueConstraintName
         );
@@ -200,10 +201,10 @@ public abstract partial class DatabaseMethodsTests
             uniqueConstraint.Columns[1].ColumnName,
             StringComparer.OrdinalIgnoreCase
         );
-        if (await connection.SupportsOrderedKeysInConstraintsAsync())
+        if (await db.SupportsOrderedKeysInConstraintsAsync())
         {
             Assert.Equal(DxColumnOrder.Descending, uniqueConstraint.Columns[1].Order);
         }
-        await connection.DropTableIfExistsAsync(null, tableName);
+        await db.DropTableIfExistsAsync(schemaName, tableName);
     }
 }

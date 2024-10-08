@@ -23,7 +23,7 @@ public partial class SqlServerMethods : DatabaseMethodsBase, IDatabaseMethods
 
         var sql = $@"SELECT SERVERPROPERTY('Productversion')";
         var versionString =
-            await ExecuteScalarAsync<string>(db, sql, transaction: tx).ConfigureAwait(false) ?? "";
+            await ExecuteScalarAsync<string>(db, sql, tx: tx).ConfigureAwait(false) ?? "";
         return ProviderUtils.ExtractVersionFromVersionString(versionString);
     }
 

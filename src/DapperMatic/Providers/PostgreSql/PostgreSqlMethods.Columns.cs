@@ -55,6 +55,7 @@ public partial class PostgreSqlMethods
 
         var additionalIndexes = new List<DxIndex>();
         var columnSql = BuildColumnDefinitionSql(
+            schemaName,
             tableName,
             columnName,
             dotnetType,
@@ -85,7 +86,7 @@ public partial class PostgreSqlMethods
 
         var sql = new StringBuilder();
         sql.Append(
-            $"ALTER TABLE {GetSchemaQualifiedTableName(schemaName, tableName)} ADD {columnSql}"
+            $"ALTER TABLE {GetSchemaQualifiedIdentifierName(schemaName, tableName)} ADD {columnSql}"
         );
 
         await ExecuteAsync(db, sql.ToString(), tx).ConfigureAwait(false);
@@ -200,13 +201,14 @@ public partial class PostgreSqlMethods
 
         var sql = new StringBuilder();
         sql.Append(
-            $"ALTER TABLE {GetSchemaQualifiedTableName(schemaName, tableName)} DROP COLUMN {columnName}"
+            $"ALTER TABLE {GetSchemaQualifiedIdentifierName(schemaName, tableName)} DROP COLUMN {columnName}"
         );
         await ExecuteAsync(db, sql.ToString(), tx).ConfigureAwait(false);
         return true;
     }
 
     private string BuildColumnDefinitionSql(
+        string? schemaName,
         string tableName,
         string columnName,
         Type dotnetType,
@@ -310,7 +312,7 @@ public partial class PostgreSqlMethods
         {
             populateNewIndexes?.Add(
                 new DxIndex(
-                    null,
+                    schemaName,
                     tableName,
                     ProviderUtils.GenerateIndexName(tableName, columnName),
                     [new DxOrderedColumn(columnName)],
@@ -374,22 +376,23 @@ public partial class PostgreSqlMethods
             )
         )
         {
-            referencedTableName = NormalizeName(referencedTableName);
-            referencedColumnName = NormalizeName(referencedColumnName);
-
             var foreignKeyConstraintName = ProviderUtils.GenerateForeignKeyConstraintName(
-                tableName,
-                columnName,
+                NormalizeName(tableName),
+                NormalizeName(columnName),
+                NormalizeName(referencedTableName),
+                NormalizeName(referencedColumnName)
+            );
+
+            var foreignKeyConstraintSql = SqlInlineAddForeignKeyConstraint(
+                schemaName,
+                foreignKeyConstraintName,
                 referencedTableName,
-                referencedColumnName
+                new DxOrderedColumn(referencedColumnName),
+                onDelete,
+                onUpdate
             );
-            columnSql.Append(
-                $" CONSTRAINT {foreignKeyConstraintName} REFERENCES {referencedTableName} ({referencedColumnName})"
-            );
-            if (onDelete.HasValue)
-                columnSql.Append($" ON DELETE {onDelete.Value.ToSql()}");
-            if (onUpdate.HasValue)
-                columnSql.Append($" ON UPDATE {onUpdate.Value.ToSql()}");
+
+            columnSql.Append($" {foreignKeyConstraintSql}");
         }
 
         return columnSql.ToString();

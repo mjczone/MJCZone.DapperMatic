@@ -113,10 +113,10 @@ public abstract partial class DatabaseMethodsBase : IDatabaseTableMethods
 
         (schemaName, tableName, _) = NormalizeNames(schemaName, tableName);
 
-        var schemaQualifiedTableName = GetSchemaQualifiedTableName(schemaName, tableName);
+        var schemaQualifiedTableName = GetSchemaQualifiedIdentifierName(schemaName, tableName);
 
         // drop table
-        await ExecuteAsync(db, $@"DROP TABLE {schemaQualifiedTableName}", transaction: tx)
+        await ExecuteAsync(db, $@"DROP TABLE {schemaQualifiedTableName}", tx: tx)
             .ConfigureAwait(false);
 
         return true;
@@ -141,12 +141,12 @@ public abstract partial class DatabaseMethodsBase : IDatabaseTableMethods
 
         (schemaName, tableName, _) = NormalizeNames(schemaName, tableName);
 
-        var schemaQualifiedTableName = GetSchemaQualifiedTableName(schemaName, tableName);
+        var schemaQualifiedTableName = GetSchemaQualifiedIdentifierName(schemaName, tableName);
 
         await ExecuteAsync(
                 db,
                 $@"ALTER TABLE {schemaQualifiedTableName} RENAME TO {newTableName}",
-                transaction: tx
+                tx: tx
             )
             .ConfigureAwait(false);
 
@@ -171,9 +171,9 @@ public abstract partial class DatabaseMethodsBase : IDatabaseTableMethods
 
         (schemaName, tableName, _) = NormalizeNames(schemaName, tableName);
 
-        var schemaQualifiedTableName = GetSchemaQualifiedTableName(schemaName, tableName);
+        var schemaQualifiedTableName = GetSchemaQualifiedIdentifierName(schemaName, tableName);
 
-        await ExecuteAsync(db, $@"TRUNCATE TABLE {schemaQualifiedTableName}", transaction: tx)
+        await ExecuteAsync(db, $@"TRUNCATE TABLE {schemaQualifiedTableName}", tx: tx)
             .ConfigureAwait(false);
 
         return true;

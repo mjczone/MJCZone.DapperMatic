@@ -70,7 +70,7 @@ public partial class SqliteMethods
             bool is_unique,
             string column_name,
             bool is_descending
-        )>(db, sql, whereParams, transaction: tx)
+        )>(db, sql, whereParams, tx: tx)
             .ConfigureAwait(false);
 
         var indexes = new List<DxIndex>();
@@ -126,12 +126,7 @@ public partial class SqliteMethods
                  ORDER BY m.name, il.name, ii.seqno
         ";
         return (
-            await QueryAsync<string>(
-                    db,
-                    getSqlCreateIndexStatements,
-                    new { tableName },
-                    transaction: tx
-                )
+            await QueryAsync<string>(db, getSqlCreateIndexStatements, new { tableName }, tx: tx)
                 .ConfigureAwait(false)
         )
             .Select(sql =>
@@ -151,28 +146,5 @@ public partial class SqliteMethods
                         .Trim();
             })
             .ToList();
-    }
-
-    public override async Task<bool> DropIndexIfExistsAsync(
-        IDbConnection db,
-        string? schemaName,
-        string tableName,
-        string indexName,
-        IDbTransaction? tx = null,
-        CancellationToken cancellationToken = default
-    )
-    {
-        if (
-            !await DoesIndexExistAsync(db, schemaName, tableName, indexName, tx, cancellationToken)
-                .ConfigureAwait(false)
-        )
-            return false;
-
-        indexName = NormalizeName(indexName);
-
-        // drop index
-        await ExecuteAsync(db, $@"DROP INDEX {indexName}", transaction: tx).ConfigureAwait(false);
-
-        return true;
     }
 }

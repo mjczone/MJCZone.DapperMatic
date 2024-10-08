@@ -102,7 +102,7 @@ public abstract partial class DatabaseMethodsBase : IDatabaseUniqueConstraintMet
             constraintName
         );
 
-        var schemaQualifiedTableName = GetSchemaQualifiedTableName(schemaName, tableName);
+        var schemaQualifiedTableName = GetSchemaQualifiedIdentifierName(schemaName, tableName);
         var supportsOrderedKeysInConstraints = await SupportsOrderedKeysInConstraintsAsync(
                 db,
                 tx,
@@ -117,7 +117,7 @@ public abstract partial class DatabaseMethodsBase : IDatabaseUniqueConstraintMet
                     UNIQUE ({string.Join(", ", columns.Select(c => c.ToString(supportsOrderedKeysInConstraints)))})
         ";
 
-        await ExecuteAsync(db, sql, transaction: tx).ConfigureAwait(false);
+        await ExecuteAsync(db, sql, tx: tx).ConfigureAwait(false);
 
         return true;
     }
@@ -274,13 +274,13 @@ public abstract partial class DatabaseMethodsBase : IDatabaseUniqueConstraintMet
             constraintName
         );
 
-        var schemaQualifiedTableName = GetSchemaQualifiedTableName(schemaName, tableName);
+        var schemaQualifiedTableName = GetSchemaQualifiedIdentifierName(schemaName, tableName);
 
         await ExecuteAsync(
                 db,
                 $@"ALTER TABLE {schemaQualifiedTableName} 
                     DROP CONSTRAINT {constraintName}",
-                transaction: tx
+                tx: tx
             )
             .ConfigureAwait(false);
 

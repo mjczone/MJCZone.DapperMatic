@@ -7,19 +7,17 @@ public abstract partial class DatabaseMethodsTests
 {
     [Theory]
     [InlineData(null)]
-    [InlineData("blah")]
+    [InlineData("my_app")]
     protected virtual async Task Can_perform_simple_CRUD_on_DefaultConstraints_Async(
         string? schemaName
     )
     {
-        using var connection = await OpenConnectionAsync();
-
-        if (!string.IsNullOrWhiteSpace(schemaName))
-            await connection.CreateSchemaIfNotExistsAsync(schemaName);
+        using var db = await OpenConnectionAsync();
+        await InitFreshSchemaAsync(db, schemaName);
 
         var testTableName = "testTableDefaultConstraints";
         var testColumnName = "testColumn";
-        await connection.CreateTableIfNotExistsAsync(
+        await db.CreateTableIfNotExistsAsync(
             schemaName,
             testTableName,
             [new DxColumn(schemaName, testTableName, testColumnName, typeof(int))]
@@ -30,26 +28,22 @@ public abstract partial class DatabaseMethodsTests
             testTableName,
             testColumnName
         );
-        var exists = await connection.DoesDefaultConstraintExistAsync(
+        var exists = await db.DoesDefaultConstraintExistAsync(
             schemaName,
             testTableName,
             constraintName
         );
         if (exists)
-            await connection.DropDefaultConstraintIfExistsAsync(
-                schemaName,
-                testTableName,
-                constraintName
-            );
+            await db.DropDefaultConstraintIfExistsAsync(schemaName, testTableName, constraintName);
 
-        await connection.CreateDefaultConstraintIfNotExistsAsync(
+        await db.CreateDefaultConstraintIfNotExistsAsync(
             schemaName,
             testTableName,
             testColumnName,
             constraintName,
             "0"
         );
-        var existingConstraint = await connection.GetDefaultConstraintAsync(
+        var existingConstraint = await db.GetDefaultConstraintAsync(
             schemaName,
             testTableName,
             constraintName
@@ -60,27 +54,23 @@ public abstract partial class DatabaseMethodsTests
             StringComparer.OrdinalIgnoreCase
         );
 
-        var defaultConstraintNames = await connection.GetDefaultConstraintNamesAsync(
+        var defaultConstraintNames = await db.GetDefaultConstraintNamesAsync(
             schemaName,
             testTableName
         );
         Assert.Contains(constraintName, defaultConstraintNames, StringComparer.OrdinalIgnoreCase);
 
-        await connection.DropDefaultConstraintIfExistsAsync(
-            schemaName,
-            testTableName,
-            constraintName
-        );
-        exists = await connection.DoesDefaultConstraintExistAsync(
+        await db.DropDefaultConstraintIfExistsAsync(schemaName, testTableName, constraintName);
+        exists = await db.DoesDefaultConstraintExistAsync(
             schemaName,
             testTableName,
             constraintName
         );
         Assert.False(exists);
 
-        await connection.DropTableIfExistsAsync(schemaName, testTableName);
+        await db.DropTableIfExistsAsync(schemaName, testTableName);
 
-        await connection.CreateTableIfNotExistsAsync(
+        await db.CreateTableIfNotExistsAsync(
             schemaName,
             testTableName,
             [
@@ -94,17 +84,16 @@ public abstract partial class DatabaseMethodsTests
                 )
             ]
         );
-        var defaultConstraint = await connection.GetDefaultConstraintOnColumnAsync(
+        var defaultConstraint = await db.GetDefaultConstraintOnColumnAsync(
             schemaName,
             testTableName,
             "testColumn2"
         );
         Assert.NotNull(defaultConstraint);
 
-        var tableDeleted = await connection.DropTableIfExistsAsync(schemaName, testTableName);
+        var tableDeleted = await db.DropTableIfExistsAsync(schemaName, testTableName);
         Assert.True(tableDeleted);
 
-        if (!string.IsNullOrWhiteSpace(schemaName))
-            await connection.DropSchemaIfExistsAsync(schemaName);
+        await InitFreshSchemaAsync(db, schemaName);
     }
 }

@@ -4,41 +4,40 @@ namespace DapperMatic.Tests;
 
 public abstract partial class DatabaseMethodsTests
 {
-    [Fact]
-    protected virtual async Task Can_perform_simple_CRUD_on_Schemas_Async()
+    [Theory]
+    [InlineData("my_app")]
+    protected virtual async Task Can_perform_simple_CRUD_on_Schemas_Async(string schemaName)
     {
-        using var connection = await OpenConnectionAsync();
+        using var db = await OpenConnectionAsync();
 
-        var supportsSchemas = connection.SupportsSchemas();
+        var supportsSchemas = db.SupportsSchemas();
         if (!supportsSchemas)
         {
             output.WriteLine("This test requires a database that supports schemas.");
             return;
         }
 
-        var schemaName = "test";
-
-        var exists = await connection.DoesSchemaExistAsync(schemaName);
+        var exists = await db.DoesSchemaExistAsync(schemaName);
         if (exists)
-            await connection.DropSchemaIfExistsAsync(schemaName);
+            await db.DropSchemaIfExistsAsync(schemaName);
 
-        exists = await connection.DoesSchemaExistAsync(schemaName);
+        exists = await db.DoesSchemaExistAsync(schemaName);
         Assert.False(exists);
 
         output.WriteLine("Creating schemaName: {0}", schemaName);
-        var created = await connection.CreateSchemaIfNotExistsAsync(schemaName);
+        var created = await db.CreateSchemaIfNotExistsAsync(schemaName);
         Assert.True(created);
-        exists = await connection.DoesSchemaExistAsync(schemaName);
+        exists = await db.DoesSchemaExistAsync(schemaName);
         Assert.True(exists);
 
-        var schemas = await connection.GetSchemaNamesAsync();
+        var schemas = await db.GetSchemaNamesAsync();
         Assert.Contains(schemaName, schemas, StringComparer.OrdinalIgnoreCase);
 
         output.WriteLine("Dropping schemaName: {0}", schemaName);
-        var dropped = await connection.DropSchemaIfExistsAsync(schemaName);
+        var dropped = await db.DropSchemaIfExistsAsync(schemaName);
         Assert.True(dropped);
 
-        exists = await connection.DoesSchemaExistAsync(schemaName);
+        exists = await db.DoesSchemaExistAsync(schemaName);
         Assert.False(exists);
     }
 }

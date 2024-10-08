@@ -26,7 +26,7 @@ public partial class PostgreSqlMethods : DatabaseMethodsBase, IDatabaseMethods
         // sample output: PostgreSQL 15.7 (Debian 15.7-1.pgdg110+1) on x86_64-pc-linux-gnu, compiled by gcc (Debian 10.2.1-6) 10.2.1 20210110, 64-bit
         var sql = $@"SELECT VERSION()";
         var versionString =
-            await ExecuteScalarAsync<string>(db, sql, transaction: tx).ConfigureAwait(false) ?? "";
+            await ExecuteScalarAsync<string>(db, sql, tx: tx).ConfigureAwait(false) ?? "";
         return ProviderUtils.ExtractVersionFromVersionString(versionString);
     }
 

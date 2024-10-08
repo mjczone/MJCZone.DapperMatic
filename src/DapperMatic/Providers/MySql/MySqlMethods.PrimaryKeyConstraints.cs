@@ -24,13 +24,13 @@ public partial class MySqlMethods
 
         (schemaName, tableName, _) = NormalizeNames(schemaName, tableName);
 
-        var schemaQualifiedTableName = GetSchemaQualifiedTableName(schemaName, tableName);
+        var schemaQualifiedTableName = GetSchemaQualifiedIdentifierName(schemaName, tableName);
 
         await ExecuteAsync(
                 db,
                 $@"ALTER TABLE {schemaQualifiedTableName} 
                     DROP PRIMARY KEY",
-                transaction: tx
+                tx: tx
             )
             .ConfigureAwait(false);
 

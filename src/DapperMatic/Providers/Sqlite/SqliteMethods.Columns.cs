@@ -163,7 +163,7 @@ public partial class SqliteMethods
 
         sql.AppendLine(")");
         var alterTableSql = sql.ToString();
-        await ExecuteAsync(db, alterTableSql, transaction: tx).ConfigureAwait(false);
+        await ExecuteAsync(db, alterTableSql, tx: tx).ConfigureAwait(false);
 
         foreach (var index in additionalIndexes)
         {
@@ -262,9 +262,7 @@ public partial class SqliteMethods
         // only add the primary key here if the primary key is a single column key
         if (existingPrimaryKeyConstraint != null)
         {
-            var pkColumns = existingPrimaryKeyConstraint.Columns.Select(c =>
-                c.ToString()
-            );
+            var pkColumns = existingPrimaryKeyConstraint.Columns.Select(c => c.ToString());
             var pkColumnNames = existingPrimaryKeyConstraint
                 .Columns.Select(c => c.ColumnName)
                 .ToArray();
@@ -382,22 +380,23 @@ public partial class SqliteMethods
             )
         )
         {
-            referencedTableName = NormalizeName(referencedTableName);
-            referencedColumnName = NormalizeName(referencedColumnName);
-
             var foreignKeyConstraintName = ProviderUtils.GenerateForeignKeyConstraintName(
-                tableName,
-                columnName,
+                NormalizeName(tableName),
+                NormalizeName(columnName),
+                NormalizeName(referencedTableName),
+                NormalizeName(referencedColumnName)
+            );
+
+            var foreignKeyConstraintSql = SqlInlineAddForeignKeyConstraint(
+                DefaultSchema,
+                foreignKeyConstraintName,
                 referencedTableName,
-                referencedColumnName
+                new DxOrderedColumn(referencedColumnName),
+                onDelete,
+                onUpdate
             );
-            columnSql.Append(
-                $" CONSTRAINT {foreignKeyConstraintName} REFERENCES {referencedTableName} ({referencedColumnName})"
-            );
-            if (onDelete.HasValue)
-                columnSql.Append($" ON DELETE {onDelete.Value.ToSql()}");
-            if (onUpdate.HasValue)
-                columnSql.Append($" ON UPDATE {onUpdate.Value.ToSql()}");
+
+            columnSql.Append($" {foreignKeyConstraintSql}");
         }
 
         return columnSql.ToString();

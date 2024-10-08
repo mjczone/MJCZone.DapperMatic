@@ -60,13 +60,9 @@ public abstract partial class DatabaseMethodsBase : IDatabaseViewMethods
 
         (schemaName, viewName, _) = NormalizeNames(schemaName, viewName);
 
-        var schemaQualifiedTableName = GetSchemaQualifiedTableName(schemaName, viewName);
+        var schemaQualifiedTableName = GetSchemaQualifiedIdentifierName(schemaName, viewName);
 
-        await ExecuteAsync(
-                db,
-                $@"CREATE VIEW {schemaQualifiedTableName} AS {definition}",
-                transaction: tx
-            )
+        await ExecuteAsync(db, $@"CREATE VIEW {schemaQualifiedTableName} AS {definition}", tx: tx)
             .ConfigureAwait(false);
 
         return true;
@@ -131,9 +127,9 @@ public abstract partial class DatabaseMethodsBase : IDatabaseViewMethods
 
         (schemaName, viewName, _) = NormalizeNames(schemaName, viewName);
 
-        var schemaQualifiedTableName = GetSchemaQualifiedTableName(schemaName, viewName);
+        var schemaQualifiedTableName = GetSchemaQualifiedIdentifierName(schemaName, viewName);
 
-        await ExecuteAsync(db, $@"DROP VIEW {schemaQualifiedTableName}", transaction: tx)
+        await ExecuteAsync(db, $@"DROP VIEW {schemaQualifiedTableName}", tx: tx)
             .ConfigureAwait(false);
 
         return true;

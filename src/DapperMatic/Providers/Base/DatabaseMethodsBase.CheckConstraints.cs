@@ -116,7 +116,7 @@ public abstract partial class DatabaseMethodsBase : IDatabaseCheckConstraintMeth
             constraintName
         );
 
-        var schemaQualifiedTableName = GetSchemaQualifiedTableName(schemaName, tableName);
+        var schemaQualifiedTableName = GetSchemaQualifiedIdentifierName(schemaName, tableName);
 
         var sql =
             @$"
@@ -124,7 +124,7 @@ public abstract partial class DatabaseMethodsBase : IDatabaseCheckConstraintMeth
                 ADD CONSTRAINT {constraintName} CHECK ({expression})
         ";
 
-        await ExecuteAsync(db, sql, transaction: tx).ConfigureAwait(false);
+        await ExecuteAsync(db, sql, tx: tx).ConfigureAwait(false);
 
         return true;
     }
@@ -333,7 +333,7 @@ public abstract partial class DatabaseMethodsBase : IDatabaseCheckConstraintMeth
             constraintName
         );
 
-        var schemaQualifiedTableName = GetSchemaQualifiedTableName(schemaName, tableName);
+        var schemaQualifiedTableName = GetSchemaQualifiedIdentifierName(schemaName, tableName);
 
         var sql =
             @$"
@@ -341,7 +341,7 @@ public abstract partial class DatabaseMethodsBase : IDatabaseCheckConstraintMeth
                 DROP CONSTRAINT {constraintName}
         ";
 
-        await ExecuteAsync(db, sql, transaction: tx).ConfigureAwait(false);
+        await ExecuteAsync(db, sql, tx: tx).ConfigureAwait(false);
 
         return true;
     }

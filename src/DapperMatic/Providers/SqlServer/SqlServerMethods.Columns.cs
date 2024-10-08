@@ -56,6 +56,7 @@ public partial class SqlServerMethods
 
         var additionalIndexes = new List<DxIndex>();
         var columnSql = BuildColumnDefinitionSql(
+            schemaName,
             tableName,
             columnName,
             dotnetType,
@@ -86,7 +87,7 @@ public partial class SqlServerMethods
 
         var sql = new StringBuilder();
         sql.Append(
-            $"ALTER TABLE {GetSchemaQualifiedTableName(schemaName, tableName)} ADD {columnSql}"
+            $"ALTER TABLE {GetSchemaQualifiedIdentifierName(schemaName, tableName)} ADD {columnSql}"
         );
 
         await ExecuteAsync(db, sql.ToString(), tx).ConfigureAwait(false);
@@ -201,13 +202,14 @@ public partial class SqlServerMethods
 
         var sql = new StringBuilder();
         sql.Append(
-            $"ALTER TABLE {GetSchemaQualifiedTableName(schemaName, tableName)} DROP COLUMN {columnName}"
+            $"ALTER TABLE {GetSchemaQualifiedIdentifierName(schemaName, tableName)} DROP COLUMN {columnName}"
         );
         await ExecuteAsync(db, sql.ToString(), tx).ConfigureAwait(false);
         return true;
     }
 
     private string BuildColumnDefinitionSql(
+        string? schemaName,
         string tableName,
         string columnName,
         Type dotnetType,
@@ -311,7 +313,7 @@ public partial class SqlServerMethods
         {
             populateNewIndexes?.Add(
                 new DxIndex(
-                    null,
+                    schemaName,
                     tableName,
                     ProviderUtils.GenerateIndexName(tableName, columnName),
                     [new DxOrderedColumn(columnName)],
@@ -375,16 +377,23 @@ public partial class SqlServerMethods
             )
         )
         {
-            referencedTableName = NormalizeName(referencedTableName);
-            referencedColumnName = NormalizeName(referencedColumnName);
-
-            columnSql.Append(
-                $" CONSTRAINT {ProviderUtils.GenerateForeignKeyConstraintName(tableName, columnName, referencedTableName, referencedColumnName)} REFERENCES {referencedTableName} ({referencedColumnName})"
+            var foreignKeyConstraintName = ProviderUtils.GenerateForeignKeyConstraintName(
+                NormalizeName(tableName),
+                NormalizeName(columnName),
+                NormalizeName(referencedTableName),
+                NormalizeName(referencedColumnName)
             );
-            if (onDelete.HasValue)
-                columnSql.Append($" ON DELETE {onDelete.Value.ToSql()}");
-            if (onUpdate.HasValue)
-                columnSql.Append($" ON UPDATE {onUpdate.Value.ToSql()}");
+
+            var foreignKeyConstraintSql = SqlInlineAddForeignKeyConstraint(
+                schemaName,
+                foreignKeyConstraintName,
+                referencedTableName,
+                new DxOrderedColumn(referencedColumnName),
+                onDelete,
+                onUpdate
+            );
+
+            columnSql.Append($" {foreignKeyConstraintSql}");
         }
 
         return columnSql.ToString();

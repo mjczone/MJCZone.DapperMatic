@@ -5,10 +5,15 @@ namespace DapperMatic.Tests;
 
 public abstract partial class DatabaseMethodsTests
 {
-    [Fact]
-    protected virtual async Task Can_perform_simple_CRUD_on_ForeignKeyConstraints_Async()
+    [Theory]
+    [InlineData(null)]
+    [InlineData("my_app")]
+    protected virtual async Task Can_perform_simple_CRUD_on_ForeignKeyConstraints_Async(
+        string? schemaName
+    )
     {
-        using var connection = await OpenConnectionAsync();
+        using var db = await OpenConnectionAsync();
+        await InitFreshSchemaAsync(db, schemaName);
 
         const string tableName = "testWithFk";
         const string columnName = "testFkColumn";
@@ -16,12 +21,12 @@ public abstract partial class DatabaseMethodsTests
         const string refTableName = "testRefPk";
         const string refTableColumn = "id";
 
-        await connection.CreateTableIfNotExistsAsync(
-            null,
+        await db.CreateTableIfNotExistsAsync(
+            schemaName,
             tableName,
             [
                 new DxColumn(
-                    null,
+                    schemaName,
                     tableName,
                     columnName,
                     typeof(int),
@@ -30,12 +35,12 @@ public abstract partial class DatabaseMethodsTests
                 )
             ]
         );
-        await connection.CreateTableIfNotExistsAsync(
-            null,
+        await db.CreateTableIfNotExistsAsync(
+            schemaName,
             refTableName,
             [
                 new DxColumn(
-                    null,
+                    schemaName,
                     refTableName,
                     refTableColumn,
                     typeof(int),
@@ -46,25 +51,17 @@ public abstract partial class DatabaseMethodsTests
             ]
         );
 
-        output.WriteLine(
-            "Foreign Key Exists: {0}.{1}",
-            tableName,
-            foreignKeyName
-        );
-        var exists = await connection.DoesForeignKeyConstraintExistAsync(
-            null,
+        output.WriteLine("Foreign Key Exists: {0}.{1}", tableName, foreignKeyName);
+        var exists = await db.DoesForeignKeyConstraintExistAsync(
+            schemaName,
             tableName,
             foreignKeyName
         );
         Assert.False(exists);
 
-        output.WriteLine(
-            "Creating foreign key: {0}.{1}",
-            tableName,
-            foreignKeyName
-        );
-        var created = await connection.CreateForeignKeyConstraintIfNotExistsAsync(
-            null,
+        output.WriteLine("Creating foreign key: {0}.{1}", tableName, foreignKeyName);
+        var created = await db.CreateForeignKeyConstraintIfNotExistsAsync(
+            schemaName,
             tableName,
             foreignKeyName,
             [new DxOrderedColumn(columnName)],
@@ -74,33 +71,25 @@ public abstract partial class DatabaseMethodsTests
         );
         Assert.True(created);
 
-        output.WriteLine(
-            "Foreign Key Exists: {0}.{1}",
-            tableName,
-            foreignKeyName
-        );
-        exists = await connection.DoesForeignKeyConstraintExistAsync(
-            null,
-            tableName,
-            foreignKeyName
-        );
+        output.WriteLine("Foreign Key Exists: {0}.{1}", tableName, foreignKeyName);
+        exists = await db.DoesForeignKeyConstraintExistAsync(schemaName, tableName, foreignKeyName);
         Assert.True(exists);
-        exists = await connection.DoesForeignKeyConstraintExistOnColumnAsync(
-            null,
+        exists = await db.DoesForeignKeyConstraintExistOnColumnAsync(
+            schemaName,
             tableName,
             columnName
         );
         Assert.True(exists);
 
         output.WriteLine("Get Foreign Key Names: {0}", tableName);
-        var fkNames = await connection.GetForeignKeyConstraintNamesAsync(null, tableName);
+        var fkNames = await db.GetForeignKeyConstraintNamesAsync(schemaName, tableName);
         Assert.Contains(
             fkNames,
             fk => fk.Equals(foreignKeyName, StringComparison.OrdinalIgnoreCase)
         );
 
         output.WriteLine("Get Foreign Keys: {0}", tableName);
-        var fks = await connection.GetForeignKeyConstraintsAsync(null, tableName);
+        var fks = await db.GetForeignKeyConstraintsAsync(schemaName, tableName);
         Assert.Contains(
             fks,
             fk =>
@@ -117,23 +106,19 @@ public abstract partial class DatabaseMethodsTests
         );
 
         output.WriteLine("Dropping foreign key: {0}", foreignKeyName);
-        await connection.DropForeignKeyConstraintIfExistsAsync(null, tableName, foreignKeyName);
+        await db.DropForeignKeyConstraintIfExistsAsync(schemaName, tableName, foreignKeyName);
 
         output.WriteLine("Foreign Key Exists: {0}", foreignKeyName);
-        exists = await connection.DoesForeignKeyConstraintExistAsync(
-            null,
-            tableName,
-            foreignKeyName
-        );
+        exists = await db.DoesForeignKeyConstraintExistAsync(schemaName, tableName, foreignKeyName);
         Assert.False(exists);
-        exists = await connection.DoesForeignKeyConstraintExistOnColumnAsync(
-            null,
+        exists = await db.DoesForeignKeyConstraintExistOnColumnAsync(
+            schemaName,
             tableName,
             columnName
         );
         Assert.False(exists);
 
-        await connection.DropTableIfExistsAsync(null, tableName);
-        await connection.DropTableIfExistsAsync(null, refTableName);
+        await db.DropTableIfExistsAsync(schemaName, tableName);
+        await db.DropTableIfExistsAsync(schemaName, refTableName);
     }
 }

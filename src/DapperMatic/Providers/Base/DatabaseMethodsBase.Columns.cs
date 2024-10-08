@@ -168,13 +168,13 @@ public abstract partial class DatabaseMethodsBase : IDatabaseColumnMethods
 
         (schemaName, tableName, columnName) = NormalizeNames(schemaName, tableName, columnName);
 
-        var schemaQualifiedTableName = GetSchemaQualifiedTableName(schemaName, tableName);
+        var schemaQualifiedTableName = GetSchemaQualifiedIdentifierName(schemaName, tableName);
 
         // drop column
         await ExecuteAsync(
                 db,
                 $@"ALTER TABLE {schemaQualifiedTableName} DROP COLUMN {columnName}",
-                transaction: tx
+                tx: tx
             )
             .ConfigureAwait(false);
 
@@ -219,7 +219,7 @@ public abstract partial class DatabaseMethodsBase : IDatabaseColumnMethods
 
         (schemaName, tableName, columnName) = NormalizeNames(schemaName, tableName, columnName);
 
-        var schemaQualifiedTableName = GetSchemaQualifiedTableName(schemaName, tableName);
+        var schemaQualifiedTableName = GetSchemaQualifiedIdentifierName(schemaName, tableName);
 
         // As of version 3.25.0 released September 2018, SQLite supports renaming columns
         await ExecuteAsync(
@@ -227,7 +227,7 @@ public abstract partial class DatabaseMethodsBase : IDatabaseColumnMethods
                 $@"ALTER TABLE {schemaQualifiedTableName} 
                     RENAME COLUMN {columnName}
                             TO {newColumnName}",
-                transaction: tx
+                tx: tx
             )
             .ConfigureAwait(false);
 

@@ -50,9 +50,9 @@ public abstract class PostgreSqlDatabaseMethodsTests<TDatabaseFixture>(
 {
     public override async Task<IDbConnection> OpenConnectionAsync()
     {
-        var connection = new NpgsqlConnection(fixture.ConnectionString);
-        await connection.OpenAsync();
-        await connection.ExecuteAsync("CREATE EXTENSION IF NOT EXISTS \"uuid-ossp\";");
-        return connection;
+        var db = new NpgsqlConnection(fixture.ConnectionString);
+        await db.OpenAsync();
+        await db.ExecuteAsync("CREATE EXTENSION IF NOT EXISTS \"uuid-ossp\";");
+        return db;
     }
 }

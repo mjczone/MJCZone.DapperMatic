@@ -125,26 +125,18 @@ public abstract partial class DatabaseMethodsBase : IDatabaseForeignKeyConstrain
         )
             return false;
 
-        (schemaName, tableName, constraintName) = NormalizeNames(
+        var sql = SqlAlterTableAddForeignKeyConstraint(
             schemaName,
+            constraintName,
             tableName,
-            constraintName
+            sourceColumns,
+            referencedTableName,
+            referencedColumns,
+            onDelete,
+            onUpdate
         );
 
-        var schemaQualifiedTableName = GetSchemaQualifiedTableName(schemaName, tableName);
-        referencedTableName = NormalizeName(referencedTableName);
-
-        var sql =
-            @$"
-            ALTER TABLE {schemaQualifiedTableName}
-                ADD CONSTRAINT {constraintName} 
-                    FOREIGN KEY ({string.Join(", ", sourceColumns.Select(c => c.ColumnName))})
-                        REFERENCES {referencedTableName} ({string.Join(", ", referencedColumns.Select(c => c.ColumnName))})
-                            ON DELETE {onDelete.ToSql()}
-                            ON UPDATE {onUpdate.ToSql()}
-        ";
-
-        await ExecuteAsync(db, sql, transaction: tx).ConfigureAwait(false);
+        await ExecuteAsync(db, sql, tx: tx).ConfigureAwait(false);
 
         return true;
     }
@@ -333,13 +325,13 @@ public abstract partial class DatabaseMethodsBase : IDatabaseForeignKeyConstrain
             constraintName
         );
 
-        var schemaQualifiedTableName = GetSchemaQualifiedTableName(schemaName, tableName);
+        var schemaQualifiedTableName = GetSchemaQualifiedIdentifierName(schemaName, tableName);
 
         await ExecuteAsync(
                 db,
                 $@"ALTER TABLE {schemaQualifiedTableName} 
                     DROP CONSTRAINT {constraintName}",
-                transaction: tx
+                tx: tx
             )
             .ConfigureAwait(false);
 

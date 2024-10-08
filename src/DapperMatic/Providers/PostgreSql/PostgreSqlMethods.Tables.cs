@@ -27,12 +27,7 @@ public partial class PostgreSqlMethods
                 AND lower(nspname) = @schemaName
                 AND lower(relname) = @tableName";
 
-        var result = await ExecuteScalarAsync<int>(
-                db,
-                sql,
-                new { schemaName, tableName },
-                transaction: tx
-            )
+        var result = await ExecuteScalarAsync<int>(db, sql, new { schemaName, tableName }, tx: tx)
             .ConfigureAwait(false);
 
         return result > 0;
@@ -66,13 +61,14 @@ public partial class PostgreSqlMethods
         var fillWithAdditionalIndexesToCreate = new List<DxIndex>();
 
         var sql = new StringBuilder();
-        sql.Append($"CREATE TABLE {GetSchemaQualifiedTableName(schemaName, tableName)} (");
+        sql.Append($"CREATE TABLE {GetSchemaQualifiedIdentifierName(schemaName, tableName)} (");
         var columnDefinitionClauses = new List<string>();
         for (var i = 0; i < columns?.Length; i++)
         {
             var column = columns[i];
 
             var colSql = BuildColumnDefinitionSql(
+                schemaName,
                 tableName,
                 column.ColumnName,
                 column.DotnetType,
@@ -152,6 +148,13 @@ public partial class PostgreSqlMethods
                 var fkReferencedColumns = constraint.ReferencedColumns.Select(c =>
                     c.ToString(supportsOrderedKeysInConstraints)
                 );
+                // var schemaQualifiedReferencedTableName = GetSchemaQualifiedTableName(
+                //     schemaName,
+                //     constraint.ReferencedTableName
+                // );
+                // sql.AppendLine(
+                //     $", CONSTRAINT {NormalizeName(constraint.ConstraintName)} FOREIGN KEY ({string.Join(", ", fkColumns)}) REFERENCES {schemaQualifiedReferencedTableName} ({string.Join(", ", fkReferencedColumns)})"
+                // );
                 sql.AppendLine(
                     $", CONSTRAINT {NormalizeName(constraint.ConstraintName)} FOREIGN KEY ({string.Join(", ", fkColumns)}) REFERENCES {NormalizeName(constraint.ReferencedTableName)} ({string.Join(", ", fkReferencedColumns)})"
                 );
@@ -177,7 +180,7 @@ public partial class PostgreSqlMethods
         sql.AppendLine(")");
         var createTableSql = sql.ToString();
 
-        await ExecuteAsync(db, createTableSql, transaction: tx).ConfigureAwait(false);
+        await ExecuteAsync(db, createTableSql, tx: tx).ConfigureAwait(false);
 
         var combinedIndexes = (indexes ?? []).Union(fillWithAdditionalIndexesToCreate).ToList();
 
@@ -213,7 +216,7 @@ public partial class PostgreSqlMethods
                 {(string.IsNullOrWhiteSpace(where) ? null : " AND lower(TABLE_NAME) LIKE @where")}
                 ORDER BY TABLE_NAME",
                 new { schemaName, where },
-                transaction: tx
+                tx: tx
             )
             .ConfigureAwait(false);
     }
@@ -273,7 +276,7 @@ public partial class PostgreSqlMethods
             bool is_identity,
             string data_type,
             string data_type_ext
-        )>(db, columnsSql, new { schemaName, where }, transaction: tx)
+        )>(db, columnsSql, new { schemaName, where }, tx: tx)
             .ConfigureAwait(false);
 
         // get indexes
@@ -348,7 +351,7 @@ public partial class PostgreSqlMethods
             string referenced_column_ordinals_csv,
             string delete_rule,
             string update_rule
-        )>(db, constraintsSql, new { schemaName, where }, transaction: tx).ConfigureAwait(false);
+        )>(db, constraintsSql, new { schemaName, where }, tx: tx).ConfigureAwait(false);
 
         var referencedTableNames = constraintResults
             .Where(c => c.constraint_type == "FOREIGN KEY")
@@ -379,12 +382,7 @@ public partial class PostgreSqlMethods
                     string table_name,
                     string column_name,
                     int column_ordinal
-                )>(
-                        db,
-                        referencedColumnsSql,
-                        new { schemaName, referencedTableNames },
-                        transaction: tx
-                    )
+                )>(db, referencedColumnsSql, new { schemaName, referencedTableNames }, tx: tx)
                     .ConfigureAwait(false);
 
         var tables = new List<DxTable>();
@@ -713,14 +711,10 @@ public partial class PostgreSqlMethods
 
         (schemaName, tableName, _) = NormalizeNames(schemaName, tableName);
 
-        var schemaQualifiedTableName = GetSchemaQualifiedTableName(schemaName, tableName);
+        var schemaQualifiedTableName = GetSchemaQualifiedIdentifierName(schemaName, tableName);
 
         // drop table
-        await ExecuteAsync(
-                db,
-                $@"DROP TABLE IF EXISTS {schemaQualifiedTableName} CASCADE",
-                transaction: tx
-            )
+        await ExecuteAsync(db, $@"DROP TABLE IF EXISTS {schemaQualifiedTableName} CASCADE", tx: tx)
             .ConfigureAwait(false);
 
         return true;

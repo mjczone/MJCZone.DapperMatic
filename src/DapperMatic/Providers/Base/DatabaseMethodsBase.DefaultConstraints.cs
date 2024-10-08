@@ -106,7 +106,7 @@ public abstract partial class DatabaseMethodsBase : IDatabaseDefaultConstraintMe
 
         columnName = NormalizeName(columnName);
 
-        var schemaQualifiedTableName = GetSchemaQualifiedTableName(schemaName, tableName);
+        var schemaQualifiedTableName = GetSchemaQualifiedIdentifierName(schemaName, tableName);
 
         var sql =
             @$"
@@ -114,7 +114,7 @@ public abstract partial class DatabaseMethodsBase : IDatabaseDefaultConstraintMe
                 ADD CONSTRAINT {constraintName} DEFAULT {expression} FOR {columnName}
         ";
 
-        await ExecuteAsync(db, sql, transaction: tx).ConfigureAwait(false);
+        await ExecuteAsync(db, sql, tx: tx).ConfigureAwait(false);
 
         return true;
     }
@@ -312,13 +312,13 @@ public abstract partial class DatabaseMethodsBase : IDatabaseDefaultConstraintMe
             constraintName
         );
 
-        var schemaQualifiedTableName = GetSchemaQualifiedTableName(schemaName, tableName);
+        var schemaQualifiedTableName = GetSchemaQualifiedIdentifierName(schemaName, tableName);
 
         await ExecuteAsync(
                 db,
                 $@"ALTER TABLE {schemaQualifiedTableName} 
                     DROP CONSTRAINT {constraintName}",
-                transaction: tx
+                tx: tx
             )
             .ConfigureAwait(false);
 

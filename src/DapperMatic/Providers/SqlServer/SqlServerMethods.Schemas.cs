@@ -33,8 +33,7 @@ public partial class SqlServerMethods
             {(string.IsNullOrWhiteSpace(where) ? "" : $"WHERE SCHEMA_NAME LIKE @where")}
             ORDER BY SCHEMA_NAME";
 
-        return await QueryAsync<string>(db, sql, new { where }, transaction: tx)
-            .ConfigureAwait(false);
+        return await QueryAsync<string>(db, sql, new { where }, tx: tx).ConfigureAwait(false);
     }
 
     public override async Task<bool> DropSchemaIfExistsAsync(
@@ -64,7 +63,7 @@ public partial class SqlServerMethods
                     $@"
                 SELECT CASE
                     WHEN type in ('C', 'D', 'F', 'UQ', 'PK') THEN
-                        CONCAT('ALTER TABLE ', QUOTENAME(SCHEMA_NAME(o.schema_id))+'.'+QUOTENAME(o.[name]), ' DROP CONSTRAINT ', QUOTENAME(o.[name]))
+                        CONCAT('ALTER TABLE ', QUOTENAME(SCHEMA_NAME(o.schema_id))+'.'+QUOTENAME(OBJECT_NAME(o.parent_object_id)), ' DROP CONSTRAINT ', QUOTENAME(o.[name]))
                     WHEN type in ('SN') THEN
                         CONCAT('DROP SYNONYM ', QUOTENAME(SCHEMA_NAME(o.schema_id))+'.'+QUOTENAME(o.[name]))
                     WHEN type in ('SO') THEN
@@ -116,12 +115,12 @@ public partial class SqlServerMethods
                     WHEN type in ('P', 'PC') THEN 8
                     END            
             ",
-                    transaction: innerTx
+                    tx: innerTx
                 )
                 .ConfigureAwait(false);
             foreach (var dropSql in dropAllRelatedTypesSqlStatement)
             {
-                await ExecuteAsync(db, dropSql, transaction: innerTx).ConfigureAwait(false);
+                await ExecuteAsync(db, dropSql, tx: innerTx).ConfigureAwait(false);
             }
 
             // drop xml schemaName collection
@@ -130,12 +129,12 @@ public partial class SqlServerMethods
                     $@"SELECT 'DROP XML SCHEMA COLLECTION ' + QUOTENAME(SCHEMA_NAME(schema_id)) + '.' + QUOTENAME(name)
                     FROM sys.xml_schema_collections
                     WHERE schema_id = SCHEMA_ID('{schemaName}')",
-                    transaction: innerTx
+                    tx: innerTx
                 )
                 .ConfigureAwait(false);
             foreach (var dropSql in dropXmlSchemaCollectionSqlStatements)
             {
-                await ExecuteAsync(db, dropSql, transaction: innerTx).ConfigureAwait(false);
+                await ExecuteAsync(db, dropSql, tx: innerTx).ConfigureAwait(false);
             }
 
             // drop all custom types
@@ -144,16 +143,16 @@ public partial class SqlServerMethods
                     $@"SELECT 'DROP TYPE ' +QUOTENAME(SCHEMA_NAME(schema_id))+'.'+QUOTENAME(name)
                     FROM sys.types
                     WHERE schema_id = SCHEMA_ID('{schemaName}')",
-                    transaction: innerTx
+                    tx: innerTx
                 )
                 .ConfigureAwait(false);
             foreach (var dropSql in dropCustomTypesSqlStatements)
             {
-                await ExecuteAsync(db, dropSql, transaction: innerTx).ConfigureAwait(false);
+                await ExecuteAsync(db, dropSql, tx: innerTx).ConfigureAwait(false);
             }
 
             // drop the schemaName itself
-            await ExecuteAsync(db, $"DROP SCHEMA [{schemaName}]", transaction: innerTx)
+            await ExecuteAsync(db, $"DROP SCHEMA [{schemaName}]", tx: innerTx)
                 .ConfigureAwait(false);
 
             if (tx == null)

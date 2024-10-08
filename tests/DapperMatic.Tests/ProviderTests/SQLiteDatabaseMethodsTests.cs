@@ -13,11 +13,11 @@ public class SQLiteDatabaseMethodsTests(ITestOutputHelper output)
         if (File.Exists("sqlite_tests.sqlite"))
             File.Delete("sqlite_tests.sqlite");
 
-        var connection = new SQLiteConnection(
+        var db = new SQLiteConnection(
             "Data Source=sqlite_tests.sqlite;Version=3;BinaryGuid=False;"
         );
-        await connection.OpenAsync();
-        return connection;
+        await db.OpenAsync();
+        return db;
     }
 
     public override void Dispose()

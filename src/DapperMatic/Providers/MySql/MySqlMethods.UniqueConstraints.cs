@@ -28,20 +28,15 @@ public partial class MySqlMethods
         )
             return false;
 
-        (schemaName, tableName, constraintName) = NormalizeNames(
-            schemaName,
-            tableName,
-            constraintName
-        );
-
-        var schemaQualifiedTableName = GetSchemaQualifiedTableName(schemaName, tableName);
+        var schemaQualifiedTableName = GetSchemaQualifiedIdentifierName(schemaName, tableName);
+        constraintName = NormalizeName(constraintName);
 
         // in mysql <= 5.7, you can't drop a unique constraint by name, you have to drop the index
         await ExecuteAsync(
                 db,
                 $@"ALTER TABLE {schemaQualifiedTableName} 
                     DROP INDEX {constraintName}",
-                transaction: tx
+                tx: tx
             )
             .ConfigureAwait(false);
 

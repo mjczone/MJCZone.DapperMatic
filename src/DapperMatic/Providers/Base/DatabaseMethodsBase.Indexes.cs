@@ -42,18 +42,18 @@ public abstract partial class DatabaseMethodsBase : IDatabaseIndexMethods
 
     public virtual async Task<bool> CreateIndexIfNotExistsAsync(
         IDbConnection db,
-        DxIndex constraint,
+        DxIndex index,
         IDbTransaction? tx = null,
         CancellationToken cancellationToken = default
     )
     {
         return await CreateIndexIfNotExistsAsync(
                 db,
-                constraint.SchemaName,
-                constraint.TableName,
-                constraint.IndexName,
-                constraint.Columns,
-                constraint.IsUnique,
+                index.SchemaName,
+                index.TableName,
+                index.IndexName,
+                index.Columns,
+                index.IsUnique,
                 tx,
                 cancellationToken
             )
@@ -86,12 +86,12 @@ public abstract partial class DatabaseMethodsBase : IDatabaseIndexMethods
 
         (schemaName, tableName, indexName) = NormalizeNames(schemaName, tableName, indexName);
 
-        var schemaQualifiedTableName = GetSchemaQualifiedTableName(schemaName, tableName);
+        var schemaQualifiedTableName = GetSchemaQualifiedIdentifierName(schemaName, tableName);
 
         var createIndexSql =
             $"CREATE {(isUnique ? "UNIQUE INDEX" : "INDEX")} {indexName} ON {schemaQualifiedTableName} ({string.Join(", ", columns.Select(c => c.ToString()))})";
 
-        await ExecuteAsync(db, createIndexSql, transaction: tx).ConfigureAwait(false);
+        await ExecuteAsync(db, createIndexSql, tx: tx).ConfigureAwait(false);
 
         return true;
     }
@@ -209,17 +209,9 @@ public abstract partial class DatabaseMethodsBase : IDatabaseIndexMethods
         )
             return false;
 
-        (schemaName, tableName, indexName) = NormalizeNames(schemaName, tableName, indexName);
+        var sql = SqlDropIndex(schemaName, tableName, indexName);
 
-        var schemaQualifiedTableName = GetSchemaQualifiedTableName(schemaName, tableName);
-
-        // drop index
-        await ExecuteAsync(
-                db,
-                $@"DROP INDEX {indexName} ON {schemaQualifiedTableName}",
-                transaction: tx
-            )
-            .ConfigureAwait(false);
+        await ExecuteAsync(db, sql, tx: tx).ConfigureAwait(false);
 
         return true;
     }

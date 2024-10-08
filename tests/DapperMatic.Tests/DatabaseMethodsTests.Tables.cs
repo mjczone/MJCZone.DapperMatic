@@ -6,31 +6,34 @@ namespace DapperMatic.Tests;
 
 public abstract partial class DatabaseMethodsTests
 {
-    [Fact]
-    protected virtual async Task Can_perform_simple_CRUD_on_Tables_Async()
+    [Theory]
+    [InlineData(null)]
+    [InlineData("my_app")]
+    protected virtual async Task Can_perform_simple_CRUD_on_Tables_Async(string? schemaName)
     {
-        using var connection = await OpenConnectionAsync();
+        using var db = await OpenConnectionAsync();
+        await InitFreshSchemaAsync(db, schemaName);
 
-        var supportsSchemas = connection.SupportsSchemas();
+        var supportsSchemas = db.SupportsSchemas();
 
         var tableName = "testTable";
 
-        var exists = await connection.DoesTableExistAsync(null, tableName);
+        var exists = await db.DoesTableExistAsync(schemaName, tableName);
         if (exists)
-            await connection.DropTableIfExistsAsync(null, tableName);
+            await db.DropTableIfExistsAsync(schemaName, tableName);
 
-        exists = await connection.DoesTableExistAsync(null, tableName);
+        exists = await db.DoesTableExistAsync(schemaName, tableName);
         Assert.False(exists);
 
-        var nonExistentTable = await connection.GetTableAsync(null, tableName);
+        var nonExistentTable = await db.GetTableAsync(schemaName, tableName);
         Assert.Null(nonExistentTable);
 
         var table = new DxTable(
-            null,
+            schemaName,
             tableName,
             [
                 new DxColumn(
-                    null,
+                    schemaName,
                     tableName,
                     "id",
                     typeof(int),
@@ -38,23 +41,23 @@ public abstract partial class DatabaseMethodsTests
                     isPrimaryKey: true,
                     isAutoIncrement: true
                 ),
-                new DxColumn(null, tableName, "name", typeof(string), null, isUnique: true)
+                new DxColumn(schemaName, tableName, "name", typeof(string), null, isUnique: true)
             ]
         );
-        var created = await connection.CreateTableIfNotExistsAsync(table);
+        var created = await db.CreateTableIfNotExistsAsync(table);
         Assert.True(created);
 
-        var createdAgain = await connection.CreateTableIfNotExistsAsync(table);
+        var createdAgain = await db.CreateTableIfNotExistsAsync(table);
         Assert.False(createdAgain);
 
-        exists = await connection.DoesTableExistAsync(null, tableName);
+        exists = await db.DoesTableExistAsync(schemaName, tableName);
         Assert.True(exists);
 
-        var tableNames = await connection.GetTableNamesAsync(null);
+        var tableNames = await db.GetTableNamesAsync(schemaName);
         Assert.NotEmpty(tableNames);
         Assert.Contains(tableName, tableNames, StringComparer.OrdinalIgnoreCase);
 
-        var existingTable = await connection.GetTableAsync(null, tableName);
+        var existingTable = await db.GetTableAsync(schemaName, tableName);
         Assert.NotNull(existingTable);
 
         if (supportsSchemas)
@@ -67,39 +70,47 @@ public abstract partial class DatabaseMethodsTests
 
         // rename the table
         var newName = "newTestTable";
-        var renamed = await connection.RenameTableIfExistsAsync(null, tableName, newName);
+        var renamed = await db.RenameTableIfExistsAsync(schemaName, tableName, newName);
         Assert.True(renamed);
 
-        exists = await connection.DoesTableExistAsync(null, tableName);
+        exists = await db.DoesTableExistAsync(schemaName, tableName);
         Assert.False(exists);
 
-        exists = await connection.DoesTableExistAsync(null, newName);
+        exists = await db.DoesTableExistAsync(schemaName, newName);
         Assert.True(exists);
 
-        existingTable = await connection.GetTableAsync(null, newName);
+        existingTable = await db.GetTableAsync(schemaName, newName);
         Assert.NotNull(existingTable);
         Assert.Equal(newName, existingTable.TableName, true);
 
-        tableNames = await connection.GetTableNamesAsync(null);
+        tableNames = await db.GetTableNamesAsync(schemaName);
         Assert.Contains(newName, tableNames, StringComparer.OrdinalIgnoreCase);
+
+        var schemaQualifiedTableName = db.GetSchemaQualifiedTableName(schemaName, newName);
 
         // add a new row
         var newRow = new { id = 0, name = "Test" };
-        await connection.ExecuteAsync(@$"INSERT INTO {newName} (name) VALUES (@name)", newRow);
+        await db.ExecuteAsync(
+            @$"INSERT INTO {schemaQualifiedTableName} (name) VALUES (@name)",
+            newRow
+        );
 
         // get all rows
-        var rows = await connection.QueryAsync<dynamic>(@$"SELECT * FROM {newName}", new { });
+        var rows = await db.QueryAsync<dynamic>(
+            @$"SELECT * FROM {schemaQualifiedTableName}",
+            new { }
+        );
         Assert.Single(rows);
 
         // truncate the table
-        await connection.TruncateTableIfExistsAsync(null, newName);
-        rows = await connection.QueryAsync<dynamic>(@$"SELECT * FROM {newName}", new { });
+        await db.TruncateTableIfExistsAsync(schemaName, newName);
+        rows = await db.QueryAsync<dynamic>(@$"SELECT * FROM {schemaQualifiedTableName}", new { });
         Assert.Empty(rows);
 
         // drop the table
-        await connection.DropTableIfExistsAsync(null, newName);
+        await db.DropTableIfExistsAsync(schemaName, newName);
 
-        exists = await connection.DoesTableExistAsync(null, newName);
+        exists = await db.DoesTableExistAsync(schemaName, newName);
         Assert.False(exists);
 
         output.WriteLine($"Table names: {0}", string.Join(", ", tableNames));

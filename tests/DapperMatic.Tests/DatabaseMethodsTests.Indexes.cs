@@ -5,16 +5,19 @@ namespace DapperMatic.Tests;
 
 public abstract partial class DatabaseMethodsTests
 {
-    [Fact]
-    protected virtual async Task Can_perform_simple_CRUD_on_Indexes_Async()
+    [Theory]
+    [InlineData(null)]
+    [InlineData("my_app")]
+    protected virtual async Task Can_perform_simple_CRUD_on_Indexes_Async(string? schemaName)
     {
-        using var connection = await OpenConnectionAsync();
+        using var db = await OpenConnectionAsync();
+        await InitFreshSchemaAsync(db, schemaName);
 
-        var version = await connection.GetDatabaseVersionAsync();
+        var version = await db.GetDatabaseVersionAsync();
         Assert.True(version.Major > 0);
 
         var supportsDescendingColumnSorts = true;
-        var dbType = connection.GetDbProviderType();
+        var dbType = db.GetDbProviderType();
         if (dbType.HasFlag(DbProviderType.MySql))
         {
             if (version.Major == 5)
@@ -31,7 +34,7 @@ public abstract partial class DatabaseMethodsTests
             var columns = new List<DxColumn>
             {
                 new DxColumn(
-                    null,
+                    schemaName,
                     tableName,
                     columnName,
                     typeof(int),
@@ -43,7 +46,7 @@ public abstract partial class DatabaseMethodsTests
             {
                 columns.Add(
                     new DxColumn(
-                        null,
+                        schemaName,
                         tableName,
                         columnName + "_" + i,
                         typeof(int),
@@ -53,20 +56,16 @@ public abstract partial class DatabaseMethodsTests
                 );
             }
 
-            await connection.DropTableIfExistsAsync(null, tableName);
-            await connection.CreateTableIfNotExistsAsync(null, tableName, columns: [.. columns]);
+            await db.DropTableIfExistsAsync(schemaName, tableName);
+            await db.CreateTableIfNotExistsAsync(schemaName, tableName, columns: [.. columns]);
 
             output.WriteLine("Index Exists: {0}.{1}", tableName, indexName);
-            var exists = await connection.DoesIndexExistAsync(null, tableName, indexName);
+            var exists = await db.DoesIndexExistAsync(schemaName, tableName, indexName);
             Assert.False(exists);
 
-            output.WriteLine(
-                "Creating unique index: {0}.{1}",
-                tableName,
-                indexName
-            );
-            await connection.CreateIndexIfNotExistsAsync(
-                null,
+            output.WriteLine("Creating unique index: {0}.{1}", tableName, indexName);
+            await db.CreateIndexIfNotExistsAsync(
+                schemaName,
                 tableName,
                 indexName,
                 [new DxOrderedColumn(columnName)],
@@ -78,8 +77,8 @@ public abstract partial class DatabaseMethodsTests
                 tableName,
                 indexName + "_multi"
             );
-            await connection.CreateIndexIfNotExistsAsync(
-                null,
+            await db.CreateIndexIfNotExistsAsync(
+                schemaName,
                 tableName,
                 indexName + "_multi",
                 [
@@ -94,8 +93,8 @@ public abstract partial class DatabaseMethodsTests
                 tableName,
                 indexName
             );
-            await connection.CreateIndexIfNotExistsAsync(
-                null,
+            await db.CreateIndexIfNotExistsAsync(
+                schemaName,
                 tableName,
                 indexName + "_multi2",
                 [
@@ -105,14 +104,14 @@ public abstract partial class DatabaseMethodsTests
             );
 
             output.WriteLine("Index Exists: {0}.{1}", tableName, indexName);
-            exists = await connection.DoesIndexExistAsync(null, tableName, indexName);
+            exists = await db.DoesIndexExistAsync(schemaName, tableName, indexName);
             Assert.True(exists);
-            exists = await connection.DoesIndexExistAsync(null, tableName, indexName + "_multi");
+            exists = await db.DoesIndexExistAsync(schemaName, tableName, indexName + "_multi");
             Assert.True(exists);
-            exists = await connection.DoesIndexExistAsync(null, tableName, indexName + "_multi2");
+            exists = await db.DoesIndexExistAsync(schemaName, tableName, indexName + "_multi2");
             Assert.True(exists);
 
-            var indexNames = await connection.GetIndexNamesAsync(null, tableName);
+            var indexNames = await db.GetIndexNamesAsync(schemaName, tableName);
             Assert.Contains(
                 indexNames,
                 i => i.Equals(indexName, StringComparison.OrdinalIgnoreCase)
@@ -126,7 +125,7 @@ public abstract partial class DatabaseMethodsTests
                 i => i.Equals(indexName + "_multi2", StringComparison.OrdinalIgnoreCase)
             );
 
-            var indexes = await connection.GetIndexesAsync(null, tableName);
+            var indexes = await db.GetIndexesAsync(schemaName, tableName);
             Assert.True(indexes.Count() >= 3);
             var idxMulti1 = indexes.SingleOrDefault(i =>
                 i.TableName.Equals(tableName, StringComparison.OrdinalIgnoreCase)
@@ -155,25 +154,25 @@ public abstract partial class DatabaseMethodsTests
                 Assert.Equal(DxColumnOrder.Descending, idxMulti2.Columns[1].Order);
             }
 
-            var indexesOnColumn = await connection.GetIndexesOnColumnAsync(
-                null,
+            var indexesOnColumn = await db.GetIndexesOnColumnAsync(
+                schemaName,
                 tableName,
                 columnName
             );
             Assert.NotEmpty(indexesOnColumn);
 
             output.WriteLine("Dropping indexName: {0}.{1}", tableName, indexName);
-            await connection.DropIndexIfExistsAsync(null, tableName, indexName);
+            await db.DropIndexIfExistsAsync(schemaName, tableName, indexName);
 
             output.WriteLine("Index Exists: {0}.{1}", tableName, indexName);
-            exists = await connection.DoesIndexExistAsync(null, tableName, indexName);
+            exists = await db.DoesIndexExistAsync(schemaName, tableName, indexName);
             Assert.False(exists);
 
-            await connection.DropTableIfExistsAsync(null, tableName);
+            await db.DropTableIfExistsAsync(schemaName, tableName);
         }
         finally
         {
-            var sql = connection.GetLastSql();
+            var sql = db.GetLastSql();
             output.WriteLine("Last sql: {0}", sql);
         }
     }

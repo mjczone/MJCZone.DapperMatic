@@ -34,13 +34,13 @@ public partial class MySqlMethods
             constraintName
         );
 
-        var schemaQualifiedTableName = GetSchemaQualifiedTableName(schemaName, tableName);
+        var schemaQualifiedTableName = GetSchemaQualifiedIdentifierName(schemaName, tableName);
 
         await ExecuteAsync(
                 db,
                 $@"ALTER TABLE {schemaQualifiedTableName} 
                     DROP FOREIGN KEY {constraintName}",
-                transaction: tx
+                tx: tx
             )
             .ConfigureAwait(false);
 

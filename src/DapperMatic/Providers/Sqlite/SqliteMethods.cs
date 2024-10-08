@@ -17,7 +17,7 @@ public partial class SqliteMethods : DatabaseMethodsBase, IDatabaseMethods
         // sample output: 3.44.1
         var sql = $@"SELECT sqlite_version()";
         var versionString =
-            await ExecuteScalarAsync<string>(db, sql, transaction: tx).ConfigureAwait(false) ?? "";
+            await ExecuteScalarAsync<string>(db, sql, tx: tx).ConfigureAwait(false) ?? "";
         return ProviderUtils.ExtractVersionFromVersionString(versionString);
     }
 

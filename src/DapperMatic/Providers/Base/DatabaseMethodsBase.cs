@@ -107,35 +107,31 @@ public abstract partial class DatabaseMethodsBase : IDatabaseMethods
     > _lastSqls = new();
 
     public abstract Task<Version> GetDatabaseVersionAsync(
-        IDbConnection connection,
+        IDbConnection db,
         IDbTransaction? tx,
         CancellationToken cancellationToken = default
     );
 
-    public string GetLastSql(IDbConnection connection)
+    public string GetLastSql(IDbConnection db)
     {
-        return _lastSqls.TryGetValue(connection.ConnectionString, out var sql) ? sql.sql : "";
+        return _lastSqls.TryGetValue(db.ConnectionString, out var sql) ? sql.sql : "";
     }
 
-    public (string sql, object? parameters) GetLastSqlWithParams(IDbConnection connection)
+    public (string sql, object? parameters) GetLastSqlWithParams(IDbConnection db)
     {
-        return _lastSqls.TryGetValue(connection.ConnectionString, out var sql) ? sql : ("", null);
+        return _lastSqls.TryGetValue(db.ConnectionString, out var sql) ? sql : ("", null);
     }
 
-    private static void SetLastSql(IDbConnection connection, string sql, object? param = null)
+    private static void SetLastSql(IDbConnection db, string sql, object? param = null)
     {
-        _lastSqls.AddOrUpdate(
-            connection.ConnectionString,
-            (sql, param),
-            (key, oldValue) => (sql, param)
-        );
+        _lastSqls.AddOrUpdate(db.ConnectionString, (sql, param), (key, oldValue) => (sql, param));
     }
 
     protected virtual async Task<List<TOutput>> QueryAsync<TOutput>(
-        IDbConnection connection,
+        IDbConnection db,
         string sql,
         object? param = null,
-        IDbTransaction? transaction = null,
+        IDbTransaction? tx = null,
         int? commandTimeout = null,
         CommandType? commandType = null
     )
@@ -150,10 +146,9 @@ public abstract partial class DatabaseMethodsBase : IDatabaseMethods
                 param == null ? "{}" : JsonSerializer.Serialize(param)
             );
 
-            SetLastSql(connection, sql, param);
+            SetLastSql(db, sql, param);
             return (
-                await connection
-                    .QueryAsync<TOutput>(sql, param, transaction, commandTimeout, commandType)
+                await db.QueryAsync<TOutput>(sql, param, tx, commandTimeout, commandType)
                     .ConfigureAwait(false)
             ).AsList();
         }
@@ -172,10 +167,10 @@ public abstract partial class DatabaseMethodsBase : IDatabaseMethods
     }
 
     protected virtual async Task<TOutput?> ExecuteScalarAsync<TOutput>(
-        IDbConnection connection,
+        IDbConnection db,
         string sql,
         object? param = null,
-        IDbTransaction? transaction = null,
+        IDbTransaction? tx = null,
         int? commandTimeout = null,
         CommandType? commandType = null
     )
@@ -190,11 +185,11 @@ public abstract partial class DatabaseMethodsBase : IDatabaseMethods
                 param == null ? "{}" : JsonSerializer.Serialize(param)
             );
 
-            SetLastSql(connection, sql, param);
-            return await connection.ExecuteScalarAsync<TOutput>(
+            SetLastSql(db, sql, param);
+            return await db.ExecuteScalarAsync<TOutput>(
                 sql,
                 param,
-                transaction,
+                tx,
                 commandTimeout,
                 commandType
             );
@@ -214,10 +209,10 @@ public abstract partial class DatabaseMethodsBase : IDatabaseMethods
     }
 
     protected virtual async Task<int> ExecuteAsync(
-        IDbConnection connection,
+        IDbConnection db,
         string sql,
         object? param = null,
-        IDbTransaction? transaction = null,
+        IDbTransaction? tx = null,
         int? commandTimeout = null,
         CommandType? commandType = null
     )
@@ -232,14 +227,8 @@ public abstract partial class DatabaseMethodsBase : IDatabaseMethods
                 param == null ? "{}" : JsonSerializer.Serialize(param)
             );
 
-            SetLastSql(connection, sql, param);
-            return await connection.ExecuteAsync(
-                sql,
-                param,
-                transaction,
-                commandTimeout,
-                commandType
-            );
+            SetLastSql(db, sql, param);
+            return await db.ExecuteAsync(sql, param, tx, commandTimeout, commandType);
         }
         catch (Exception ex)
         {
@@ -405,6 +394,16 @@ public abstract partial class DatabaseMethodsBase : IDatabaseMethods
     protected virtual string ToLikeString(string text, string allowedSpecialChars = "-_.*")
     {
         return text.ToAlphaNumeric(allowedSpecialChars).Replace("*", "%"); //.Replace("?", "_");
+    }
+
+    public virtual string GetSchemaQualifiedIdentifierName(string? schemaName, string tableName)
+    {
+        schemaName = NormalizeSchemaName(schemaName);
+        tableName = NormalizeName(tableName);
+
+        return SupportsSchemas && !string.IsNullOrWhiteSpace(schemaName)
+            ? $"{schemaName.ToQuotedIdentifier(QuoteChars)}.{tableName.ToQuotedIdentifier(QuoteChars)}"
+            : tableName.ToQuotedIdentifier(QuoteChars);
     }
 
     /// <summary>

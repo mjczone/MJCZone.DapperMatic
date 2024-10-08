@@ -41,8 +41,8 @@ public abstract class SqlServerDatabaseMethodsests<TDatabaseFixture>(
 {
     public override async Task<IDbConnection> OpenConnectionAsync()
     {
-        var connection = new SqlConnection(fixture.ConnectionString);
-        await connection.OpenAsync();
-        return connection;
+        var db = new SqlConnection(fixture.ConnectionString);
+        await db.OpenAsync();
+        return db;
     }
 }
