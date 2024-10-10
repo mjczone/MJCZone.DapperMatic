@@ -1,6 +1,6 @@
 # Employees Test Database
 
-    Adapted from the repository hosted at <https://github.com/cristiscu/employees-test-database>.
+Adapted from the repository hosted at <https://github.com/cristiscu/employees-test-database>.
 
 ***Employees*** (or ***EmployeesQX***, to avoid a name conflict with other samples) is a very simple database to be used for testing in relational database systems. It is inspired from similar small databases included in Oracle, MySQL or other database systems over the years.
 
