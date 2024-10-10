@@ -15,7 +15,7 @@ public abstract partial class DatabaseMethodsTests
         using var db = await OpenConnectionAsync();
         await InitFreshSchemaAsync(db, schemaName);
 
-        var tableName = "testWithUc";
+        var tableName = "testWithUc" + DateTime.Now.Ticks;
         var columnName = "testColumn";
         var columnName2 = "testColumn2";
         var uniqueConstraintName = "testUc";
@@ -42,15 +42,15 @@ public abstract partial class DatabaseMethodsTests
                     isNullable: false
                 )
             ],
-            uniqueConstraints: new[]
-            {
+            uniqueConstraints:
+            [
                 new DxUniqueConstraint(
                     schemaName,
                     tableName,
                     uniqueConstraintName2,
                     [new DxOrderedColumn(columnName2)]
                 )
-            }
+            ]
         );
 
         output.WriteLine("Unique Constraint Exists: {0}.{1}", tableName, uniqueConstraintName);

@@ -6,31 +6,6 @@ namespace DapperMatic.Providers.SqlServer;
 
 public partial class SqlServerMethods
 {
-    public override async Task<bool> DoesTableExistAsync(
-        IDbConnection db,
-        string? schemaName,
-        string tableName,
-        IDbTransaction? tx = null,
-        CancellationToken cancellationToken = default
-    )
-    {
-        (schemaName, tableName, _) = NormalizeNames(schemaName, tableName);
-
-        var sql =
-            $@"
-            SELECT COUNT(*)
-            FROM INFORMATION_SCHEMA.TABLES
-            WHERE TABLE_TYPE='BASE TABLE' 
-            AND TABLE_SCHEMA = @schemaName
-            AND TABLE_NAME = @tableName            
-            ";
-
-        var result = await ExecuteScalarAsync<int>(db, sql, new { schemaName, tableName }, tx: tx)
-            .ConfigureAwait(false);
-
-        return result > 0;
-    }
-
     public override async Task<bool> CreateTableIfNotExistsAsync(
         IDbConnection db,
         string? schemaName,
@@ -172,35 +147,6 @@ public partial class SqlServerMethods
         }
 
         return true;
-    }
-
-    public override async Task<List<string>> GetTableNamesAsync(
-        IDbConnection db,
-        string? schemaName,
-        string? tableNameFilter = null,
-        IDbTransaction? tx = null,
-        CancellationToken cancellationToken = default
-    )
-    {
-        schemaName = NormalizeSchemaName(schemaName);
-
-        var where = string.IsNullOrWhiteSpace(tableNameFilter)
-            ? null
-            : ToLikeString(tableNameFilter);
-
-        return await QueryAsync<string>(
-                db,
-                $@"
-                SELECT TABLE_NAME
-                FROM INFORMATION_SCHEMA.TABLES
-                WHERE TABLE_TYPE='BASE TABLE' 
-                AND TABLE_SCHEMA = @schemaName
-                {(string.IsNullOrWhiteSpace(where) ? null : " AND TABLE_NAME LIKE @where")}
-                ORDER BY TABLE_NAME",
-                new { schemaName, where },
-                tx: tx
-            )
-            .ConfigureAwait(false);
     }
 
     public override async Task<List<DxTable>> GetTablesAsync(
@@ -666,50 +612,96 @@ public partial class SqlServerMethods
         return tables;
     }
 
-    public override async Task<bool> RenameTableIfExistsAsync(
+    protected override async Task<List<DxIndex>> GetIndexesInternalAsync(
         IDbConnection db,
-        string? schemaName,
-        string tableName,
-        string newTableName,
-        IDbTransaction? tx = null,
-        CancellationToken cancellationToken = default
+        string? schemaNameFilter,
+        string? tableNameFilter,
+        string? indexNameFilter,
+        IDbTransaction? tx,
+        CancellationToken cancellationToken
     )
     {
-        if (string.IsNullOrWhiteSpace(tableName))
-        {
-            throw new ArgumentException("Table name is required.", nameof(tableName));
-        }
+        var whereSchemaLike = string.IsNullOrWhiteSpace(schemaNameFilter)
+            ? null
+            : ToLikeString(schemaNameFilter);
+        var whereTableLike = string.IsNullOrWhiteSpace(tableNameFilter)
+            ? null
+            : ToLikeString(tableNameFilter);
+        var whereIndexLike = string.IsNullOrWhiteSpace(indexNameFilter)
+            ? null
+            : ToLikeString(indexNameFilter);
 
-        if (string.IsNullOrWhiteSpace(newTableName))
-        {
-            throw new ArgumentException("New table name is required.", nameof(newTableName));
-        }
+        var sql =
+            @$"SELECT 
+                    SCHEMA_NAME(t.schema_id) as schema_name,
+                    t.name as table_name,
+                    ind.name as index_name,
+                    col.name as column_name,
+                    ind.is_unique as is_unique,
+                    ic.key_ordinal as key_ordinal,
+                    ic.is_descending_key as is_descending_key
+                FROM sys.indexes ind
+                    INNER JOIN sys.tables t ON ind.object_id = t.object_id 
+                    INNER JOIN sys.index_columns ic ON  ind.object_id = ic.object_id and ind.index_id = ic.index_id
+                    INNER JOIN sys.columns col ON ic.object_id = col.object_id and ic.column_id = col.column_id 
+                WHERE 
+                    ind.is_primary_key = 0 AND ind.is_unique_constraint = 0 AND t.is_ms_shipped = 0
+                    {(string.IsNullOrWhiteSpace(whereSchemaLike) ? "" : " AND SCHEMA_NAME(t.schema_id) LIKE @whereSchemaLike")}
+                    {(string.IsNullOrWhiteSpace(whereTableLike) ? "" : " AND t.name LIKE @whereTableLike")}
+                    {(string.IsNullOrWhiteSpace(whereIndexLike) ? "" : " AND ind.name LIKE @whereIndexLike")}
+                ORDER BY schema_name, table_name, index_name, key_ordinal";
 
-        if (
-            !await DoesTableExistAsync(db, schemaName, tableName, tx, cancellationToken)
-                .ConfigureAwait(false)
-        )
-        {
-            return false;
-        }
-
-        (schemaName, tableName, _) = NormalizeNames(schemaName, tableName);
-
-        var schemaQualifiedTableName = GetSchemaQualifiedIdentifierName(schemaName, tableName);
-
-        await ExecuteAsync(
+        var results = await QueryAsync<(
+            string schema_name,
+            string table_name,
+            string index_name,
+            string column_name,
+            int is_unique,
+            string key_ordinal,
+            int is_descending_key
+        )>(
                 db,
-                $@"EXEC sp_rename '{schemaQualifiedTableName}', '{newTableName}'",
+                sql,
                 new
                 {
-                    schemaName,
-                    tableName,
-                    newTableName
+                    whereSchemaLike,
+                    whereTableLike,
+                    whereIndexLike
                 },
-                tx: tx
+                tx
             )
             .ConfigureAwait(false);
 
-        return true;
+        var grouped = results.GroupBy(
+            r => (r.schema_name, r.table_name, r.index_name),
+            r => (r.is_unique, r.column_name, r.key_ordinal, r.is_descending_key)
+        );
+
+        var indexes = new List<DxIndex>();
+        foreach (var group in grouped)
+        {
+            var (schema_name, table_name, index_name) = group.Key;
+            var (is_unique, column_name, key_ordinal, is_descending_key) = group.First();
+            var index = new DxIndex(
+                schema_name,
+                table_name,
+                index_name,
+                group
+                    .Select(g =>
+                    {
+                        return new DxOrderedColumn(
+                            g.column_name,
+                            g.is_descending_key == 1
+                                ? DxColumnOrder.Descending
+                                : DxColumnOrder.Ascending
+                        );
+                    })
+                    .ToArray(),
+                is_unique == 1
+            );
+            indexes.Add(index);
+        }
+
+        return indexes;
     }
 }

@@ -319,21 +319,9 @@ public abstract partial class DatabaseMethodsBase : IDatabaseForeignKeyConstrain
         )
             return false;
 
-        (schemaName, tableName, constraintName) = NormalizeNames(
-            schemaName,
-            tableName,
-            constraintName
-        );
+        var sql = SqlDropForeignKeyConstraint(schemaName, tableName, constraintName);
 
-        var schemaQualifiedTableName = GetSchemaQualifiedIdentifierName(schemaName, tableName);
-
-        await ExecuteAsync(
-                db,
-                $@"ALTER TABLE {schemaQualifiedTableName} 
-                    DROP CONSTRAINT {constraintName}",
-                tx: tx
-            )
-            .ConfigureAwait(false);
+        await ExecuteAsync(db, sql, tx: tx).ConfigureAwait(false);
 
         return true;
     }

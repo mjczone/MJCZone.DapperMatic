@@ -20,7 +20,7 @@ public partial interface IDatabaseSchemaMethods
         CancellationToken cancellationToken = default
     );
 
-    Task<IEnumerable<string>> GetSchemaNamesAsync(
+    Task<List<string>> GetSchemaNamesAsync(
         IDbConnection db,
         string? schemaNameFilter = null,
         IDbTransaction? tx = null,

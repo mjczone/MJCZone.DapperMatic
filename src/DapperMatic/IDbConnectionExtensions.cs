@@ -106,7 +106,7 @@ public static partial class IDbConnectionExtensions
             .ConfigureAwait(false);
     }
 
-    public static async Task<IEnumerable<string>> GetSchemaNamesAsync(
+    public static async Task<List<string>> GetSchemaNamesAsync(
         this IDbConnection db,
         string? schemaNameFilter = null,
         IDbTransaction? tx = null,

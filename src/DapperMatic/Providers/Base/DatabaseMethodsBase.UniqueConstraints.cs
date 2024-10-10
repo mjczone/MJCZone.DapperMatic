@@ -96,13 +96,6 @@ public abstract partial class DatabaseMethodsBase : IDatabaseUniqueConstraintMet
         )
             return false;
 
-        (schemaName, tableName, constraintName) = NormalizeNames(
-            schemaName,
-            tableName,
-            constraintName
-        );
-
-        var schemaQualifiedTableName = GetSchemaQualifiedIdentifierName(schemaName, tableName);
         var supportsOrderedKeysInConstraints = await SupportsOrderedKeysInConstraintsAsync(
                 db,
                 tx,
@@ -110,12 +103,13 @@ public abstract partial class DatabaseMethodsBase : IDatabaseUniqueConstraintMet
             )
             .ConfigureAwait(false);
 
-        var sql =
-            @$"
-            ALTER TABLE {schemaQualifiedTableName}
-                ADD CONSTRAINT {constraintName} 
-                    UNIQUE ({string.Join(", ", columns.Select(c => c.ToString(supportsOrderedKeysInConstraints)))})
-        ";
+        var sql = SqlAlterTableAddUniqueConstraint(
+            schemaName,
+            tableName,
+            constraintName,
+            columns,
+            supportsOrderedKeysInConstraints
+        );
 
         await ExecuteAsync(db, sql, tx: tx).ConfigureAwait(false);
 
@@ -268,21 +262,9 @@ public abstract partial class DatabaseMethodsBase : IDatabaseUniqueConstraintMet
         )
             return false;
 
-        (schemaName, tableName, constraintName) = NormalizeNames(
-            schemaName,
-            tableName,
-            constraintName
-        );
+        var sql = SqlDropUniqueConstraint(schemaName, tableName, constraintName);
 
-        var schemaQualifiedTableName = GetSchemaQualifiedIdentifierName(schemaName, tableName);
-
-        await ExecuteAsync(
-                db,
-                $@"ALTER TABLE {schemaQualifiedTableName} 
-                    DROP CONSTRAINT {constraintName}",
-                tx: tx
-            )
-            .ConfigureAwait(false);
+        await ExecuteAsync(db, sql, tx: tx).ConfigureAwait(false);
 
         return true;
     }
@@ -305,15 +287,14 @@ public abstract partial class DatabaseMethodsBase : IDatabaseUniqueConstraintMet
                 cancellationToken
             )
             .ConfigureAwait(false);
-        return constraintName != null
-            && await DropUniqueConstraintIfExistsAsync(
-                    db,
-                    schemaName,
-                    tableName,
-                    constraintName,
-                    tx,
-                    cancellationToken
-                )
-                .ConfigureAwait(false);
+
+        if (string.IsNullOrWhiteSpace(constraintName))
+            return false;
+
+        var sql = SqlDropUniqueConstraint(schemaName, tableName, constraintName);
+
+        await ExecuteAsync(db, sql, tx: tx).ConfigureAwait(false);
+
+        return true;
     }
 }

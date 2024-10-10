@@ -2,32 +2,11 @@ using System.Data;
 using System.Data.Common;
 using System.Text;
 using DapperMatic.Models;
-using Microsoft.Extensions.Logging;
 
 namespace DapperMatic.Providers.Sqlite;
 
 public partial class SqliteMethods
 {
-    public override async Task<bool> DoesTableExistAsync(
-        IDbConnection db,
-        string? schemaName,
-        string tableName,
-        IDbTransaction? tx = null,
-        CancellationToken cancellationToken = default
-    )
-    {
-        (_, tableName, _) = NormalizeNames(schemaName, tableName, null);
-
-        return 0
-            < await ExecuteScalarAsync<int>(
-                    db,
-                    "SELECT COUNT(*) FROM sqlite_master WHERE type = 'table' AND name = @tableName",
-                    new { tableName },
-                    tx
-                )
-                .ConfigureAwait(false);
-    }
-
     public override async Task<bool> CreateTableIfNotExistsAsync(
         IDbConnection db,
         string? schemaName,
@@ -163,30 +142,6 @@ public partial class SqliteMethods
         return true;
     }
 
-    public override async Task<List<string>> GetTableNamesAsync(
-        IDbConnection db,
-        string? schemaName,
-        string? tableNameFilter = null,
-        IDbTransaction? tx = null,
-        CancellationToken cancellationToken = default
-    )
-    {
-        var where = string.IsNullOrWhiteSpace(tableNameFilter)
-            ? null
-            : ToLikeString(tableNameFilter);
-
-        var sql = new StringBuilder();
-        sql.AppendLine(
-            "SELECT name FROM sqlite_master WHERE type = 'table' AND name NOT LIKE 'sqlite_%'"
-        );
-        if (!string.IsNullOrWhiteSpace(where))
-            sql.AppendLine(" AND name LIKE @where");
-        sql.AppendLine("ORDER BY name");
-
-        return await QueryAsync<string>(db, sql.ToString(), new { where }, tx: tx)
-            .ConfigureAwait(false);
-    }
-
     public override async Task<List<DxTable>> GetTablesAsync(
         IDbConnection db,
         string? schemaName,
@@ -226,21 +181,12 @@ public partial class SqliteMethods
             tables.Add(table);
         }
 
-        // attach indexes
-        var whereStatement =
-            (tables.Count > 0 && tables.Count < 15) ? " AND m.name IN @tableNames" : "";
-        var whereParams = new
-        {
-            tableNames = (tables.Count > 0 && tables.Count < 15)
-                ? tables.Select(t => t.TableName).ToArray()
-                : []
-        };
-
+        // attach indexes to tables
         var indexes = await GetIndexesInternalAsync(
                 db,
                 schemaName,
-                whereStatement,
-                whereParams,
+                tableNameFilter,
+                null,
                 tx,
                 cancellationToken
             )
@@ -297,10 +243,8 @@ public partial class SqliteMethods
     )
     {
         if (
-            !(
-                await DoesTableExistAsync(db, schemaName, tableName, tx, cancellationToken)
-                    .ConfigureAwait(false)
-            )
+            !await DoesTableExistAsync(db, schemaName, tableName, tx, cancellationToken)
+                .ConfigureAwait(false)
         )
             return false;
 
@@ -324,9 +268,129 @@ public partial class SqliteMethods
 
         await DropTableIfExistsAsync(db, schemaName, tableName, tx, cancellationToken)
             .ConfigureAwait(false);
+
         await ExecuteAsync(db, createTableSql, tx: tx).ConfigureAwait(false);
+        
         return true;
     }
+
+    protected override async Task<List<DxIndex>> GetIndexesInternalAsync(
+        IDbConnection db,
+        string? schemaName,
+        string? tableNameFilter,
+        string? indexNameFilter,
+        IDbTransaction? tx,
+        CancellationToken cancellationToken
+    )
+    {
+        var whereTableLike = string.IsNullOrWhiteSpace(tableNameFilter)
+            ? null
+            : ToLikeString(tableNameFilter);
+        var whereIndexLike = string.IsNullOrWhiteSpace(indexNameFilter)
+            ? null
+            : ToLikeString(indexNameFilter);
+
+        var sql =
+            $@"
+                SELECT DISTINCT 
+                    m.name AS table_name, 
+                    il.name AS index_name,
+                    il.""unique"" AS is_unique,	
+                    ii.name AS column_name,
+                    ii.DESC AS is_descending
+                FROM sqlite_schema AS m,
+                    pragma_index_list(m.name) AS il,
+                    pragma_index_xinfo(il.name) AS ii
+                WHERE m.type='table' 
+                    and ii.name IS NOT NULL 
+                    AND il.origin = 'c'
+                    {(string.IsNullOrWhiteSpace(whereTableLike) ? "" : " AND m.name LIKE @whereTableLike")}
+                    {(string.IsNullOrWhiteSpace(whereIndexLike) ? "" : " AND il.name LIKE @whereIndexLike")}                
+                ORDER BY m.name, il.name, ii.seqno";
+
+        var results = await QueryAsync<(
+            string table_name,
+            string index_name,
+            bool is_unique,
+            string column_name,
+            bool is_descending
+        )>(db, sql, new { whereTableLike, whereIndexLike }, tx: tx)
+            .ConfigureAwait(false);
+
+        var indexes = new List<DxIndex>();
+
+        foreach (
+            var group in results.GroupBy(r => new
+            {
+                r.table_name,
+                r.index_name,
+                r.is_unique
+            })
+        )
+        {
+            var index = new DxIndex
+            {
+                SchemaName = null,
+                TableName = group.Key.table_name,
+                IndexName = group.Key.index_name,
+                IsUnique = group.Key.is_unique,
+                Columns = group
+                    .Select(r => new DxOrderedColumn(
+                        r.column_name,
+                        r.is_descending ? DxColumnOrder.Descending : DxColumnOrder.Ascending
+                    ))
+                    .ToArray()
+            };
+            indexes.Add(index);
+        }
+
+        return indexes;
+    }
+
+    // private async Task<List<string>> GetCreateIndexSqlStatementsForTable(
+    //     IDbConnection db,
+    //     string? schemaName,
+    //     string tableName,
+    //     IDbTransaction? tx = null,
+    //     CancellationToken cancellationToken = default
+    // )
+    // {
+    //     var getSqlCreateIndexStatements =
+    //         @"
+    //             SELECT DISTINCT
+    //                 m.sql
+    //             FROM sqlite_schema AS m,
+    //                 pragma_index_list(m.name) AS il,
+    //                 pragma_index_xinfo(il.name) AS ii
+    //             WHERE m.type='table'
+    //                 AND ii.name IS NOT NULL
+    //                 AND il.origin = 'c'
+    //                 AND m.name = @tableName
+    //                 AND m.sql IS NOT NULL
+    //              ORDER BY m.name, il.name, ii.seqno
+    //     ";
+    //     return (
+    //         await QueryAsync<string>(db, getSqlCreateIndexStatements, new { tableName }, tx: tx)
+    //             .ConfigureAwait(false)
+    //     )
+    //         .Select(sql =>
+    //         {
+    //             return sql.Contains("IF NOT EXISTS", StringComparison.OrdinalIgnoreCase)
+    //                 ? sql
+    //                 : sql.Replace(
+    //                         "CREATE INDEX",
+    //                         "CREATE INDEX IF NOT EXISTS",
+    //                         StringComparison.OrdinalIgnoreCase
+    //                     )
+    //                     .Replace(
+    //                         "CREATE UNIQUE INDEX",
+    //                         "CREATE UNIQUE INDEX IF NOT EXISTS",
+    //                         StringComparison.OrdinalIgnoreCase
+    //                     )
+    //                     .Trim();
+    //         })
+    //         .ToList();
+    // }
 
     private async Task<bool> AlterTableUsingRecreateTableStrategyAsync(
         IDbConnection db,

@@ -110,19 +110,7 @@ public abstract partial class DatabaseMethodsBase : IDatabaseCheckConstraintMeth
         )
             return false;
 
-        (schemaName, tableName, constraintName) = NormalizeNames(
-            schemaName,
-            tableName,
-            constraintName
-        );
-
-        var schemaQualifiedTableName = GetSchemaQualifiedIdentifierName(schemaName, tableName);
-
-        var sql =
-            @$"
-            ALTER TABLE {schemaQualifiedTableName}
-                ADD CONSTRAINT {constraintName} CHECK ({expression})
-        ";
+        var sql = SqlAlterTableAddCheckConstraint(schemaName, tableName, constraintName, expression);
 
         await ExecuteAsync(db, sql, tx: tx).ConfigureAwait(false);
 
@@ -286,14 +274,11 @@ public abstract partial class DatabaseMethodsBase : IDatabaseCheckConstraintMeth
         if (string.IsNullOrWhiteSpace(constraintName))
             return false;
 
-        return await DropCheckConstraintIfExistsAsync(
-            db,
-            schemaName,
-            tableName,
-            constraintName,
-            tx,
-            cancellationToken
-        );
+        var sql = SqlDropCheckConstraint(schemaName, tableName, constraintName);
+        
+        await ExecuteAsync(db, sql, tx: tx).ConfigureAwait(false);
+
+        return true;
     }
 
     public virtual async Task<bool> DropCheckConstraintIfExistsAsync(
@@ -327,19 +312,7 @@ public abstract partial class DatabaseMethodsBase : IDatabaseCheckConstraintMeth
         )
             return false;
 
-        (schemaName, tableName, constraintName) = NormalizeNames(
-            schemaName,
-            tableName,
-            constraintName
-        );
-
-        var schemaQualifiedTableName = GetSchemaQualifiedIdentifierName(schemaName, tableName);
-
-        var sql =
-            @$"
-            ALTER TABLE {schemaQualifiedTableName}
-                DROP CONSTRAINT {constraintName}
-        ";
+        var sql = SqlDropCheckConstraint(schemaName, tableName, constraintName);
 
         await ExecuteAsync(db, sql, tx: tx).ConfigureAwait(false);
 

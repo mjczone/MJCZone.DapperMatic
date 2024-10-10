@@ -5,6 +5,12 @@ namespace DapperMatic.Providers.PostgreSql;
 public partial class PostgreSqlMethods : DatabaseMethodsBase, IDatabaseMethods
 {
     public override DbProviderType ProviderType => DbProviderType.PostgreSql;
+    private static string _defaultSchema = "public";
+    protected override string DefaultSchema => _defaultSchema;
+    public static void SetDefaultSchema(string schema)
+    {
+        _defaultSchema = schema;
+    }
 
     public override Task<bool> SupportsOrderedKeysInConstraintsAsync(
         IDbConnection db,

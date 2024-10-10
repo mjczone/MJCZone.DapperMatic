@@ -153,30 +153,96 @@ public abstract partial class DatabaseMethodsBase : IDatabaseColumnMethods
         CancellationToken cancellationToken = default
     )
     {
-        if (
-            !await DoesColumnExistAsync(
-                    db,
-                    schemaName,
-                    tableName,
-                    columnName,
-                    tx,
-                    cancellationToken
-                )
-                .ConfigureAwait(false)
-        )
+        var table = await GetTableAsync(db, schemaName, tableName, tx, cancellationToken)
+            .ConfigureAwait(false);
+
+        if (table == null)
             return false;
 
         (schemaName, tableName, columnName) = NormalizeNames(schemaName, tableName, columnName);
 
-        var schemaQualifiedTableName = GetSchemaQualifiedIdentifierName(schemaName, tableName);
+        var column = table.Columns.FirstOrDefault(c =>
+            c.ColumnName.Equals(columnName, StringComparison.OrdinalIgnoreCase)
+        );
 
-        // drop column
-        await ExecuteAsync(
+        if (column == null)
+            return false;
+
+        // drop any related constraints
+        if (column.IsPrimaryKey)
+        {
+            await DropPrimaryKeyConstraintIfExistsAsync(
+                    db,
+                    schemaName,
+                    tableName,
+                    tx,
+                    cancellationToken
+                )
+                .ConfigureAwait(false);
+        }
+
+        if (column.IsForeignKey)
+        {
+            await DropForeignKeyConstraintOnColumnIfExistsAsync(
+                    db,
+                    schemaName,
+                    tableName,
+                    column.ColumnName,
+                    tx,
+                    cancellationToken
+                )
+                .ConfigureAwait(false);
+        }
+
+        if (column.IsUnique)
+        {
+            await DropUniqueConstraintOnColumnIfExistsAsync(
+                    db,
+                    schemaName,
+                    tableName,
+                    column.ColumnName,
+                    tx,
+                    cancellationToken
+                )
+                .ConfigureAwait(false);
+        }
+
+        if (column.IsIndexed)
+        {
+            await DropIndexesOnColumnIfExistsAsync(
+                    db,
+                    schemaName,
+                    tableName,
+                    column.ColumnName,
+                    tx,
+                    cancellationToken
+                )
+                .ConfigureAwait(false);
+        }
+
+        await DropCheckConstraintOnColumnIfExistsAsync(
                 db,
-                $@"ALTER TABLE {schemaQualifiedTableName} DROP COLUMN {columnName}",
-                tx: tx
+                schemaName,
+                tableName,
+                columnName,
+                tx,
+                cancellationToken
             )
             .ConfigureAwait(false);
+
+        await DropDefaultConstraintOnColumnIfExistsAsync(
+                db,
+                schemaName,
+                tableName,
+                columnName,
+                tx,
+                cancellationToken
+            )
+            .ConfigureAwait(false);
+
+        var sql = SqlDropColumn(schemaName, tableName, columnName);
+
+        await ExecuteAsync(db, sql, tx: tx).ConfigureAwait(false);
 
         return true;
     }

@@ -13,8 +13,10 @@ public abstract partial class DatabaseMethodsBase : IDatabaseViewMethods
         CancellationToken cancellationToken = default
     )
     {
-        return await GetViewAsync(db, schemaName, viewName, tx, cancellationToken)
-                .ConfigureAwait(false) != null;
+        return (
+                await GetViewNamesAsync(db, schemaName, viewName, tx, cancellationToken)
+                    .ConfigureAwait(false)
+            ).Count == 1;
     }
 
     public virtual async Task<bool> CreateViewIfNotExistsAsync(
@@ -58,12 +60,9 @@ public abstract partial class DatabaseMethodsBase : IDatabaseViewMethods
         )
             return false;
 
-        (schemaName, viewName, _) = NormalizeNames(schemaName, viewName);
+        var sql = SqlCreateView(schemaName, viewName, definition);
 
-        var schemaQualifiedTableName = GetSchemaQualifiedIdentifierName(schemaName, viewName);
-
-        await ExecuteAsync(db, $@"CREATE VIEW {schemaQualifiedTableName} AS {definition}", tx: tx)
-            .ConfigureAwait(false);
+        await ExecuteAsync(db, sql, tx: tx).ConfigureAwait(false);
 
         return true;
     }
@@ -95,21 +94,26 @@ public abstract partial class DatabaseMethodsBase : IDatabaseViewMethods
         CancellationToken cancellationToken = default
     )
     {
-        return (
-            await GetViewsAsync(db, schemaName, viewNameFilter, tx, cancellationToken)
-                .ConfigureAwait(false)
-        )
-            .Select(x => x.ViewName)
-            .ToList();
+        var (sql, parameters) = SqlGetViewNames(schemaName, viewNameFilter);
+        return await QueryAsync<string>(db, sql, parameters, tx: tx).ConfigureAwait(false);
     }
 
-    public abstract Task<List<DxView>> GetViewsAsync(
+    public virtual async Task<List<DxView>> GetViewsAsync(
         IDbConnection db,
         string? schemaName,
         string? viewNameFilter = null,
         IDbTransaction? tx = null,
         CancellationToken cancellationToken = default
-    );
+    )
+    {
+        var (sql, parameters) = SqlGetViews(schemaName, viewNameFilter);
+        var views = await QueryAsync<DxView>(db, sql, parameters, tx: tx).ConfigureAwait(false);
+        foreach (var view in views)
+        {
+            view.Definition = NormalizeViewDefinition(view.Definition);
+        }
+        return views;
+    }
 
     public virtual async Task<bool> DropViewIfExistsAsync(
         IDbConnection db,
@@ -125,12 +129,9 @@ public abstract partial class DatabaseMethodsBase : IDatabaseViewMethods
         )
             return false;
 
-        (schemaName, viewName, _) = NormalizeNames(schemaName, viewName);
+        var sql = SqlDropView(schemaName, viewName);
 
-        var schemaQualifiedTableName = GetSchemaQualifiedIdentifierName(schemaName, viewName);
-
-        await ExecuteAsync(db, $@"DROP VIEW {schemaQualifiedTableName}", tx: tx)
-            .ConfigureAwait(false);
+        await ExecuteAsync(db, sql, tx: tx).ConfigureAwait(false);
 
         return true;
     }

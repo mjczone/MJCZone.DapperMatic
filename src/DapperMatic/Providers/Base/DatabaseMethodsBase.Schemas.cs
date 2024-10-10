@@ -12,6 +12,9 @@ public abstract partial class DatabaseMethodsBase : IDatabaseSchemaMethods
         CancellationToken cancellationToken = default
     )
     {
+        if (!SupportsSchemas)
+            return false;
+
         if (string.IsNullOrWhiteSpace(schemaName))
             throw new ArgumentException("Schema name is required.", nameof(schemaName));
 
@@ -28,27 +31,35 @@ public abstract partial class DatabaseMethodsBase : IDatabaseSchemaMethods
         CancellationToken cancellationToken = default
     )
     {
+        if (!SupportsSchemas)
+            return false;
+
         if (string.IsNullOrWhiteSpace(schemaName))
             throw new ArgumentException("Schema name is required.", nameof(schemaName));
 
         if (await DoesSchemaExistAsync(db, schemaName, tx, cancellationToken).ConfigureAwait(false))
             return false;
 
-        schemaName = NormalizeSchemaName(schemaName);
-
-        var sql = $"CREATE SCHEMA {schemaName}";
+        var sql = SqlCreateSchema(schemaName);
 
         await ExecuteAsync(db, sql, tx: tx).ConfigureAwait(false);
 
         return true;
     }
 
-    public abstract Task<IEnumerable<string>> GetSchemaNamesAsync(
+    public virtual async Task<List<string>> GetSchemaNamesAsync(
         IDbConnection db,
         string? schemaNameFilter = null,
         IDbTransaction? tx = null,
         CancellationToken cancellationToken = default
-    );
+    ) {
+        if (!SupportsSchemas)
+            return [];
+
+        var (sql, parameters) = SqlGetSchemaNames(schemaNameFilter);
+
+        return await QueryAsync<string>(db, sql, parameters, tx: tx).ConfigureAwait(false);
+    }
 
     public virtual async Task<bool> DropSchemaIfExistsAsync(
         IDbConnection db,
@@ -57,6 +68,9 @@ public abstract partial class DatabaseMethodsBase : IDatabaseSchemaMethods
         CancellationToken cancellationToken = default
     )
     {
+        if (!SupportsSchemas)
+            return false;
+
         if (string.IsNullOrWhiteSpace(schemaName))
             throw new ArgumentException("Schema name is required.", nameof(schemaName));
 
@@ -65,9 +79,7 @@ public abstract partial class DatabaseMethodsBase : IDatabaseSchemaMethods
         )
             return false;
 
-        schemaName = NormalizeSchemaName(schemaName);
-
-        var sql = $"DROP SCHEMA {schemaName}";
+        var sql = SqlDropSchema(schemaName);
 
         await ExecuteAsync(db, sql, tx: tx).ConfigureAwait(false);
 

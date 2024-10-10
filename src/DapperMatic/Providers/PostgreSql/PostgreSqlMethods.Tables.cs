@@ -7,32 +7,6 @@ namespace DapperMatic.Providers.PostgreSql;
 // see: https://www.postgresql.org/docs/15/catalogs.html
 public partial class PostgreSqlMethods
 {
-    public override async Task<bool> DoesTableExistAsync(
-        IDbConnection db,
-        string? schemaName,
-        string tableName,
-        IDbTransaction? tx = null,
-        CancellationToken cancellationToken = default
-    )
-    {
-        (schemaName, tableName, _) = NormalizeNames(schemaName, tableName);
-
-        var sql =
-            @$"
-            SELECT COUNT(*) 
-            FROM pg_class 
-                JOIN pg_catalog.pg_namespace n ON n.oid = pg_class.relnamespace 
-            WHERE 
-                relkind = 'r'
-                AND lower(nspname) = @schemaName
-                AND lower(relname) = @tableName";
-
-        var result = await ExecuteScalarAsync<int>(db, sql, new { schemaName, tableName }, tx: tx)
-            .ConfigureAwait(false);
-
-        return result > 0;
-    }
-
     public override async Task<bool> CreateTableIfNotExistsAsync(
         IDbConnection db,
         string? schemaName,
@@ -193,34 +167,6 @@ public partial class PostgreSqlMethods
         return true;
     }
 
-    public override async Task<List<string>> GetTableNamesAsync(
-        IDbConnection db,
-        string? schemaName,
-        string? tableNameFilter = null,
-        IDbTransaction? tx = null,
-        CancellationToken cancellationToken = default
-    )
-    {
-        schemaName = NormalizeSchemaName(schemaName);
-
-        var where = string.IsNullOrWhiteSpace(tableNameFilter)
-            ? null
-            : ToLikeString(tableNameFilter);
-
-        return await QueryAsync<string>(
-                db,
-                $@"
-                SELECT TABLE_NAME
-                FROM INFORMATION_SCHEMA.TABLES
-                WHERE TABLE_TYPE='BASE TABLE' AND lower(TABLE_SCHEMA) = @schemaName
-                {(string.IsNullOrWhiteSpace(where) ? null : " AND lower(TABLE_NAME) LIKE @where")}
-                ORDER BY TABLE_NAME",
-                new { schemaName, where },
-                tx: tx
-            )
-            .ConfigureAwait(false);
-    }
-
     public override async Task<List<DxTable>> GetTablesAsync(
         IDbConnection db,
         string? schemaName,
@@ -261,6 +207,7 @@ public partial class PostgreSqlMethods
             where
                 schemas.nspname not like 'pg_%' and schemas.nspname != 'information_schema' and columns.attnum > 0 and not columns.attisdropped
                 AND lower(schemas.nspname) = @schemaName
+                AND tables.relname NOT IN ('spatial_ref_sys', 'geometry_columns', 'geography_columns', 'raster_columns', 'raster_overviews')
                 {(string.IsNullOrWhiteSpace(where) ? null : " AND lower(tables.relname) LIKE @where")}
             order by schema_name, table_name, column_ordinal;
         ";
@@ -693,34 +640,7 @@ public partial class PostgreSqlMethods
         return tables;
     }
 
-    public override async Task<bool> DropTableIfExistsAsync(
-        IDbConnection db,
-        string? schemaName,
-        string tableName,
-        IDbTransaction? tx = null,
-        CancellationToken cancellationToken = default
-    )
-    {
-        if (
-            !(
-                await DoesTableExistAsync(db, schemaName, tableName, tx, cancellationToken)
-                    .ConfigureAwait(false)
-            )
-        )
-            return false;
-
-        (schemaName, tableName, _) = NormalizeNames(schemaName, tableName);
-
-        var schemaQualifiedTableName = GetSchemaQualifiedIdentifierName(schemaName, tableName);
-
-        // drop table
-        await ExecuteAsync(db, $@"DROP TABLE IF EXISTS {schemaQualifiedTableName} CASCADE", tx: tx)
-            .ConfigureAwait(false);
-
-        return true;
-    }
-
-    private async Task<List<DxIndex>> GetIndexesInternalAsync(
+    protected override async Task<List<DxIndex>> GetIndexesInternalAsync(
         IDbConnection db,
         string? schemaNameFilter,
         string? tableNameFilter,
@@ -766,11 +686,9 @@ public partial class PostgreSqlMethods
                     and schemas.nspname != 'information_schema'
                     and i.indislive
                     and not i.indisprimary
-                    
                     {(string.IsNullOrWhiteSpace(whereSchemaLike) ? "" : " AND lower(schemas.nspname) LIKE @whereSchemaLike")}
                     {(string.IsNullOrWhiteSpace(whereTableLike) ? "" : " AND lower(tables.relname) LIKE @whereTableLike")}
                     {(string.IsNullOrWhiteSpace(whereIndexLike) ? "" : " AND lower(indexes.relname) LIKE @whereIndexLike")}
-
                     -- postgresql creates an index for primary key and unique constraints, so we don't need to include them in the results
                     and indexes.relname not in (select x.conname from pg_catalog.pg_constraint x 
                                 join pg_catalog.pg_namespace AS x2 ON x.connamespace = x2.oid

@@ -1,8 +1,0 @@
-namespace DapperMatic.Providers.SqlServer;
-
-public partial class SqlServerMethods
-{
-    /*
-        No need to override base methods here
-     */
-}

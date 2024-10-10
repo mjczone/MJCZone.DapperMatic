@@ -5,6 +5,7 @@ namespace DapperMatic.Providers.MySql;
 public partial class MySqlMethods : DatabaseMethodsBase, IDatabaseMethods
 {
     public override DbProviderType ProviderType => DbProviderType.MySql;
+    protected override string DefaultSchema => "";
 
     public override async Task<bool> SupportsCheckConstraintsAsync(
         IDbConnection db,

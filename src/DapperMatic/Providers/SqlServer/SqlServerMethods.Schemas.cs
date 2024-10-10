@@ -6,36 +6,6 @@ namespace DapperMatic.Providers.SqlServer;
 
 public partial class SqlServerMethods
 {
-    private static string _defaultSchema = "dbo";
-
-    public static void SetDefaultSchema(string schema)
-    {
-        _defaultSchema = schema;
-    }
-
-    protected override string DefaultSchema => _defaultSchema;
-
-    public override async Task<IEnumerable<string>> GetSchemaNamesAsync(
-        IDbConnection db,
-        string? schemaNameFilter = null,
-        IDbTransaction? tx = null,
-        CancellationToken cancellationToken = default
-    )
-    {
-        var where = string.IsNullOrWhiteSpace(schemaNameFilter)
-            ? ""
-            : ToLikeString(schemaNameFilter);
-
-        var sql =
-            $@"
-            SELECT SCHEMA_NAME
-            FROM INFORMATION_SCHEMA.SCHEMATA
-            {(string.IsNullOrWhiteSpace(where) ? "" : $"WHERE SCHEMA_NAME LIKE @where")}
-            ORDER BY SCHEMA_NAME";
-
-        return await QueryAsync<string>(db, sql, new { where }, tx: tx).ConfigureAwait(false);
-    }
-
     public override async Task<bool> DropSchemaIfExistsAsync(
         IDbConnection db,
         string schemaName,

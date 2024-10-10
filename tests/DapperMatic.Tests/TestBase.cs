@@ -23,9 +23,24 @@ public abstract class TestBase : IDisposable
 
     protected async Task InitFreshSchemaAsync(IDbConnection db, string? schemaName)
     {
-        if (db.SupportsSchemas() && !string.IsNullOrWhiteSpace(schemaName))
+        if (db.SupportsSchemas())
         {
-            await db.DropSchemaIfExistsAsync(schemaName);
+            foreach (var view in await db.GetViewsAsync(schemaName))
+            {
+                try
+                {
+                    await db.DropViewIfExistsAsync(schemaName, view.ViewName);
+                }
+                catch (Exception ex) { }
+            }
+            foreach (var table in await db.GetTablesAsync(schemaName))
+            {
+                await db.DropTableIfExistsAsync(schemaName, table.TableName);
+            }
+            // await db.DropSchemaIfExistsAsync(schemaName);
+        }
+        if (!string.IsNullOrEmpty(schemaName))
+        {
             await db.CreateSchemaIfNotExistsAsync(schemaName);
         }
     }

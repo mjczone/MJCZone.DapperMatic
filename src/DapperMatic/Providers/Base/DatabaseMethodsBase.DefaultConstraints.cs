@@ -98,21 +98,13 @@ public abstract partial class DatabaseMethodsBase : IDatabaseDefaultConstraintMe
         )
             return false;
 
-        (schemaName, tableName, constraintName) = NormalizeNames(
+        var sql = SqlAlterTableAddDefaultConstraint(
             schemaName,
             tableName,
-            constraintName
+            columnName,
+            constraintName,
+            expression
         );
-
-        columnName = NormalizeName(columnName);
-
-        var schemaQualifiedTableName = GetSchemaQualifiedIdentifierName(schemaName, tableName);
-
-        var sql =
-            @$"
-            ALTER TABLE {schemaQualifiedTableName}
-                ADD CONSTRAINT {constraintName} DEFAULT {expression} FOR {columnName}
-        ";
 
         await ExecuteAsync(db, sql, tx: tx).ConfigureAwait(false);
 
@@ -269,17 +261,20 @@ public abstract partial class DatabaseMethodsBase : IDatabaseDefaultConstraintMe
             tx,
             cancellationToken
         );
+
         if (string.IsNullOrWhiteSpace(constraintName))
             return false;
 
-        return await DropDefaultConstraintIfExistsAsync(
-            db,
+        var sql = SqlDropDefaultConstraint(
             schemaName,
             tableName,
-            constraintName,
-            tx,
-            cancellationToken
+            columnName,
+            constraintName
         );
+
+        await ExecuteAsync(db, sql, tx: tx).ConfigureAwait(false);
+
+        return true;
     }
 
     public virtual async Task<bool> DropDefaultConstraintIfExistsAsync(
@@ -291,36 +286,27 @@ public abstract partial class DatabaseMethodsBase : IDatabaseDefaultConstraintMe
         CancellationToken cancellationToken = default
     )
     {
-        if (
-            !(
-                await DoesDefaultConstraintExistAsync(
-                        db,
-                        schemaName,
-                        tableName,
-                        constraintName,
-                        tx,
-                        cancellationToken
-                    )
-                    .ConfigureAwait(false)
+        var defaultConstraint = await GetDefaultConstraintAsync(
+                db,
+                schemaName,
+                tableName,
+                constraintName,
+                tx,
+                cancellationToken
             )
-        )
+            .ConfigureAwait(false);
+
+        if (string.IsNullOrWhiteSpace(defaultConstraint?.ColumnName))
             return false;
 
-        (schemaName, tableName, constraintName) = NormalizeNames(
+        var sql = SqlDropDefaultConstraint(
             schemaName,
             tableName,
+            defaultConstraint.ColumnName,
             constraintName
         );
 
-        var schemaQualifiedTableName = GetSchemaQualifiedIdentifierName(schemaName, tableName);
-
-        await ExecuteAsync(
-                db,
-                $@"ALTER TABLE {schemaQualifiedTableName} 
-                    DROP CONSTRAINT {constraintName}",
-                tx: tx
-            )
-            .ConfigureAwait(false);
+        await ExecuteAsync(db, sql, tx: tx).ConfigureAwait(false);
 
         return true;
     }

@@ -1,8 +1,6 @@
 using System.Data;
 using System.Text;
-using System.Transactions;
 using DapperMatic.Models;
-using Microsoft.Extensions.Logging;
 
 namespace DapperMatic.Providers.SqlServer;
 
@@ -103,108 +101,6 @@ public partial class SqlServerMethods
                 .ConfigureAwait(false);
         }
 
-        return true;
-    }
-
-    public override async Task<bool> DropColumnIfExistsAsync(
-        IDbConnection db,
-        string? schemaName,
-        string tableName,
-        string columnName,
-        IDbTransaction? tx = null,
-        CancellationToken cancellationToken = default
-    )
-    {
-        var table = await GetTableAsync(db, schemaName, tableName, tx, cancellationToken)
-            .ConfigureAwait(false);
-        if (table == null)
-            return false;
-
-        var column = table.Columns.FirstOrDefault(c =>
-            c.ColumnName.Equals(columnName, StringComparison.OrdinalIgnoreCase)
-        );
-        if (column == null)
-            return false;
-
-        // drop any related constraints
-        if (column.IsPrimaryKey)
-        {
-            await DropPrimaryKeyConstraintIfExistsAsync(
-                    db,
-                    schemaName,
-                    tableName,
-                    tx,
-                    cancellationToken
-                )
-                .ConfigureAwait(false);
-        }
-
-        if (column.IsForeignKey)
-        {
-            await DropForeignKeyConstraintOnColumnIfExistsAsync(
-                    db,
-                    schemaName,
-                    tableName,
-                    column.ColumnName,
-                    tx,
-                    cancellationToken
-                )
-                .ConfigureAwait(false);
-        }
-
-        if (column.IsUnique)
-        {
-            await DropUniqueConstraintOnColumnIfExistsAsync(
-                    db,
-                    schemaName,
-                    tableName,
-                    column.ColumnName,
-                    tx,
-                    cancellationToken
-                )
-                .ConfigureAwait(false);
-        }
-
-        if (column.IsIndexed)
-        {
-            await DropIndexesOnColumnIfExistsAsync(
-                    db,
-                    schemaName,
-                    tableName,
-                    column.ColumnName,
-                    tx,
-                    cancellationToken
-                )
-                .ConfigureAwait(false);
-        }
-
-        await DropCheckConstraintOnColumnIfExistsAsync(
-                db,
-                schemaName,
-                tableName,
-                columnName,
-                tx,
-                cancellationToken
-            )
-            .ConfigureAwait(false);
-
-        await DropDefaultConstraintOnColumnIfExistsAsync(
-                db,
-                schemaName,
-                tableName,
-                columnName,
-                tx,
-                cancellationToken
-            )
-            .ConfigureAwait(false);
-
-        (schemaName, tableName, columnName) = NormalizeNames(schemaName, tableName, columnName);
-
-        var sql = new StringBuilder();
-        sql.Append(
-            $"ALTER TABLE {GetSchemaQualifiedIdentifierName(schemaName, tableName)} DROP COLUMN {columnName}"
-        );
-        await ExecuteAsync(db, sql.ToString(), tx).ConfigureAwait(false);
         return true;
     }
 

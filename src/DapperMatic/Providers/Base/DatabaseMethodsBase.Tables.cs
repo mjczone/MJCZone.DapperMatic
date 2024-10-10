@@ -13,7 +13,12 @@ public abstract partial class DatabaseMethodsBase : IDatabaseTableMethods
         CancellationToken cancellationToken = default
     )
     {
-        return await GetTableAsync(db, schemaName, tableName, tx, cancellationToken) != null;
+        var (sql, parameters) = SqlDoesTableExist(schemaName, tableName);
+
+        var result = await ExecuteScalarAsync<int>(db, sql, parameters, tx: tx)
+            .ConfigureAwait(false);
+
+        return result > 0;
     }
 
     public virtual async Task<bool> CreateTableIfNotExistsAsync(
@@ -79,12 +84,8 @@ public abstract partial class DatabaseMethodsBase : IDatabaseTableMethods
         CancellationToken cancellationToken = default
     )
     {
-        return (
-            await GetTablesAsync(db, schemaName, tableNameFilter, tx, cancellationToken)
-                .ConfigureAwait(false)
-        )
-            .Select(x => x.TableName)
-            .ToList();
+        var (sql, parameters) = SqlGetTableNames(schemaName, tableNameFilter);
+        return await QueryAsync<string>(db, sql, parameters, tx: tx).ConfigureAwait(false);
     }
 
     public abstract Task<List<DxTable>> GetTablesAsync(
@@ -103,21 +104,95 @@ public abstract partial class DatabaseMethodsBase : IDatabaseTableMethods
         CancellationToken cancellationToken = default
     )
     {
-        if (
-            !(
-                await DoesTableExistAsync(db, schemaName, tableName, tx, cancellationToken)
-                    .ConfigureAwait(false)
-            )
-        )
+        var table = await GetTableAsync(db, schemaName, tableName, tx, cancellationToken);
+
+        if (string.IsNullOrWhiteSpace(table?.TableName))
             return false;
 
-        (schemaName, tableName, _) = NormalizeNames(schemaName, tableName);
+        schemaName = table.SchemaName;
+        tableName = table.TableName;
 
-        var schemaQualifiedTableName = GetSchemaQualifiedIdentifierName(schemaName, tableName);
+        // drop all related objects
+        foreach (var index in table.Indexes)
+        {
+            await DropIndexIfExistsAsync(
+                    db,
+                    schemaName,
+                    tableName,
+                    index.IndexName,
+                    tx,
+                    cancellationToken
+                )
+                .ConfigureAwait(false);
+        }
 
-        // drop table
-        await ExecuteAsync(db, $@"DROP TABLE {schemaQualifiedTableName}", tx: tx)
-            .ConfigureAwait(false);
+        foreach (var fk in table.ForeignKeyConstraints)
+        {
+            await DropForeignKeyConstraintIfExistsAsync(
+                    db,
+                    schemaName,
+                    tableName,
+                    fk.ConstraintName,
+                    tx,
+                    cancellationToken
+                )
+                .ConfigureAwait(false);
+        }
+
+        foreach (var uc in table.UniqueConstraints)
+        {
+            await DropUniqueConstraintIfExistsAsync(
+                    db,
+                    schemaName,
+                    tableName,
+                    uc.ConstraintName,
+                    tx,
+                    cancellationToken
+                )
+                .ConfigureAwait(false);
+        }
+
+        foreach (var dc in table.DefaultConstraints)
+        {
+            await DropDefaultConstraintIfExistsAsync(
+                    db,
+                    schemaName,
+                    tableName,
+                    dc.ConstraintName,
+                    tx,
+                    cancellationToken
+                )
+                .ConfigureAwait(false);
+        }
+
+        foreach (var cc in table.CheckConstraints)
+        {
+            await DropCheckConstraintIfExistsAsync(
+                    db,
+                    schemaName,
+                    tableName,
+                    cc.ConstraintName,
+                    tx,
+                    cancellationToken
+                )
+                .ConfigureAwait(false);
+        }
+
+        // USUALLY, this is done by the database provider, and
+        // it's not necessary to do it here.
+        // await DropPrimaryKeyConstraintIfExistsAsync(
+        //         db,
+        //         schemaName,
+        //         tableName,
+        //         tx,
+        //         cancellationToken
+        //     )
+        //     .ConfigureAwait(false);
+
+
+        var sql = SqlDropTable(schemaName, tableName);
+
+        await ExecuteAsync(db, sql, tx: tx).ConfigureAwait(false);
 
         return true;
     }
@@ -131,24 +206,25 @@ public abstract partial class DatabaseMethodsBase : IDatabaseTableMethods
         CancellationToken cancellationToken = default
     )
     {
+        if (string.IsNullOrWhiteSpace(tableName))
+        {
+            throw new ArgumentException("Table name is required.", nameof(tableName));
+        }
+
+        if (string.IsNullOrWhiteSpace(newTableName))
+        {
+            throw new ArgumentException("New table name is required.", nameof(newTableName));
+        }
+
         if (
-            !(
-                await DoesTableExistAsync(db, schemaName, tableName, tx, cancellationToken)
-                    .ConfigureAwait(false)
-            )
+            !await DoesTableExistAsync(db, schemaName, tableName, tx, cancellationToken)
+                .ConfigureAwait(false)
         )
             return false;
 
-        (schemaName, tableName, _) = NormalizeNames(schemaName, tableName);
+        var sql = SqlRenameTable(schemaName, tableName, newTableName);
 
-        var schemaQualifiedTableName = GetSchemaQualifiedIdentifierName(schemaName, tableName);
-
-        await ExecuteAsync(
-                db,
-                $@"ALTER TABLE {schemaQualifiedTableName} RENAME TO {newTableName}",
-                tx: tx
-            )
-            .ConfigureAwait(false);
+        await ExecuteAsync(db, sql, tx: tx).ConfigureAwait(false);
 
         return true;
     }
@@ -161,21 +237,30 @@ public abstract partial class DatabaseMethodsBase : IDatabaseTableMethods
         CancellationToken cancellationToken = default
     )
     {
+        if (string.IsNullOrWhiteSpace(tableName))
+        {
+            throw new ArgumentException("Table name is required.", nameof(tableName));
+        }
+
         if (
-            !(
-                await DoesTableExistAsync(db, schemaName, tableName, tx, cancellationToken)
-                    .ConfigureAwait(false)
-            )
+            !await DoesTableExistAsync(db, schemaName, tableName, tx, cancellationToken)
+                .ConfigureAwait(false)
         )
             return false;
 
-        (schemaName, tableName, _) = NormalizeNames(schemaName, tableName);
+        var sql = SqlTruncateTable(schemaName, tableName);
 
-        var schemaQualifiedTableName = GetSchemaQualifiedIdentifierName(schemaName, tableName);
-
-        await ExecuteAsync(db, $@"TRUNCATE TABLE {schemaQualifiedTableName}", tx: tx)
-            .ConfigureAwait(false);
+        await ExecuteAsync(db, sql, tx: tx).ConfigureAwait(false);
 
         return true;
     }
+
+    protected abstract Task<List<DxIndex>> GetIndexesInternalAsync(
+        IDbConnection db,
+        string? schemaName,
+        string? tableNameFilter,
+        string? indexNameFilter,
+        IDbTransaction? tx,
+        CancellationToken cancellationToken
+    );
 }

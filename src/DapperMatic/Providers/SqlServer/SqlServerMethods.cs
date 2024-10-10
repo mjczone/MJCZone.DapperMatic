@@ -5,6 +5,12 @@ namespace DapperMatic.Providers.SqlServer;
 public partial class SqlServerMethods : DatabaseMethodsBase, IDatabaseMethods
 {
     public override DbProviderType ProviderType => DbProviderType.SqlServer;
+    private static string _defaultSchema = "dbo";
+    protected override string DefaultSchema => _defaultSchema;
+    public static void SetDefaultSchema(string schema)
+    {
+        _defaultSchema = schema;
+    }
 
     internal SqlServerMethods() { }
 

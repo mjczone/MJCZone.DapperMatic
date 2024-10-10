@@ -110,5 +110,7 @@ public abstract partial class DatabaseMethodsTests
             Assert.Null(checkConstraint);
         else
             Assert.NotNull(checkConstraint);
+
+        await db.DropTableIfExistsAsync(schemaName, testTableName);
     }
 }

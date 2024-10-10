@@ -84,14 +84,9 @@ public abstract partial class DatabaseMethodsBase : IDatabaseIndexMethods
             return false;
         }
 
-        (schemaName, tableName, indexName) = NormalizeNames(schemaName, tableName, indexName);
+        var sql = SqlCreateIndex(schemaName, tableName, indexName, columns, isUnique);
 
-        var schemaQualifiedTableName = GetSchemaQualifiedIdentifierName(schemaName, tableName);
-
-        var createIndexSql =
-            $"CREATE {(isUnique ? "UNIQUE INDEX" : "INDEX")} {indexName} ON {schemaQualifiedTableName} ({string.Join(", ", columns.Select(c => c.ToString()))})";
-
-        await ExecuteAsync(db, createIndexSql, tx: tx).ConfigureAwait(false);
+        await ExecuteAsync(db, sql, tx: tx).ConfigureAwait(false);
 
         return true;
     }
@@ -120,14 +115,29 @@ public abstract partial class DatabaseMethodsBase : IDatabaseIndexMethods
         return indexes.SingleOrDefault();
     }
 
-    public abstract Task<List<DxIndex>> GetIndexesAsync(
+    public virtual async Task<List<DxIndex>> GetIndexesAsync(
         IDbConnection db,
         string? schemaName,
         string tableName,
         string? indexNameFilter = null,
         IDbTransaction? tx = null,
         CancellationToken cancellationToken = default
-    );
+    )
+    {
+        if (string.IsNullOrWhiteSpace(tableName))
+            throw new ArgumentException("Table name is required.", nameof(tableName));
+
+        (schemaName, tableName, _) = NormalizeNames(schemaName, tableName);
+
+        return await GetIndexesInternalAsync(
+            db,
+            schemaName,
+            tableName,
+            string.IsNullOrWhiteSpace(indexNameFilter) ? null : indexNameFilter,
+            tx,
+            cancellationToken
+        );
+    }
 
     public virtual async Task<List<string>> GetIndexNamesOnColumnAsync(
         IDbConnection db,
@@ -240,15 +250,8 @@ public abstract partial class DatabaseMethodsBase : IDatabaseIndexMethods
 
         foreach (var indexName in indexNames)
         {
-            await DropIndexIfExistsAsync(
-                    db,
-                    schemaName,
-                    tableName,
-                    indexName,
-                    tx,
-                    cancellationToken
-                )
-                .ConfigureAwait(false);
+            var sql = SqlDropIndex(schemaName, tableName, indexName);
+            await ExecuteAsync(db, sql, tx: tx).ConfigureAwait(false);
         }
 
         return true;

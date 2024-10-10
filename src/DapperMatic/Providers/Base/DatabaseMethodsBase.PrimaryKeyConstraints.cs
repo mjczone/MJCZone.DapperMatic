@@ -66,13 +66,6 @@ public abstract partial class DatabaseMethodsBase : IDatabasePrimaryKeyConstrain
         )
             return false;
 
-        (schemaName, tableName, constraintName) = NormalizeNames(
-            schemaName,
-            tableName,
-            constraintName
-        );
-
-        var schemaQualifiedTableName = GetSchemaQualifiedIdentifierName(schemaName, tableName);
         var supportsOrderedKeysInConstraints = await SupportsOrderedKeysInConstraintsAsync(
                 db,
                 tx,
@@ -80,12 +73,13 @@ public abstract partial class DatabaseMethodsBase : IDatabasePrimaryKeyConstrain
             )
             .ConfigureAwait(false);
 
-        var sql =
-            @$"
-            ALTER TABLE {schemaQualifiedTableName}
-                ADD CONSTRAINT {constraintName} 
-                    PRIMARY KEY ({string.Join(", ", columns.Select(c => c.ToString(supportsOrderedKeysInConstraints)))})
-        ";
+        var sql = SqlAlterTableAddPrimaryKeyConstraint(
+            schemaName,
+            tableName,
+            constraintName,
+            columns,
+            supportsOrderedKeysInConstraints
+        );
 
         await ExecuteAsync(db, sql, tx: tx).ConfigureAwait(false);
 
@@ -102,6 +96,7 @@ public abstract partial class DatabaseMethodsBase : IDatabasePrimaryKeyConstrain
     {
         var table = await GetTableAsync(db, schemaName, tableName, tx, cancellationToken)
             .ConfigureAwait(false);
+            
         if (table?.PrimaryKeyConstraint is null)
             return null;
 
@@ -123,20 +118,13 @@ public abstract partial class DatabaseMethodsBase : IDatabasePrimaryKeyConstrain
             tx,
             cancellationToken
         );
-        if (primaryKeyConstraint is null)
+
+        if (string.IsNullOrWhiteSpace(primaryKeyConstraint?.ConstraintName))
             return false;
 
-        (schemaName, tableName, _) = NormalizeNames(schemaName, tableName);
+        var sql = SqlDropPrimaryKeyConstraint(schemaName, tableName, primaryKeyConstraint.ConstraintName);
 
-        var schemaQualifiedTableName = GetSchemaQualifiedIdentifierName(schemaName, tableName);
-
-        await ExecuteAsync(
-                db,
-                $@"ALTER TABLE {schemaQualifiedTableName} 
-                    DROP CONSTRAINT {primaryKeyConstraint.ConstraintName}",
-                tx: tx
-            )
-            .ConfigureAwait(false);
+        await ExecuteAsync(db, sql, tx: tx).ConfigureAwait(false);
 
         return true;
     }
