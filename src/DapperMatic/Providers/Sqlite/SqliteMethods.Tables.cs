@@ -7,140 +7,140 @@ namespace DapperMatic.Providers.Sqlite;
 
 public partial class SqliteMethods
 {
-    public override async Task<bool> CreateTableIfNotExistsAsync(
-        IDbConnection db,
-        string? schemaName,
-        string tableName,
-        DxColumn[]? columns = null,
-        DxPrimaryKeyConstraint? primaryKey = null,
-        DxCheckConstraint[]? checkConstraints = null,
-        DxDefaultConstraint[]? defaultConstraints = null,
-        DxUniqueConstraint[]? uniqueConstraints = null,
-        DxForeignKeyConstraint[]? foreignKeyConstraints = null,
-        DxIndex[]? indexes = null,
-        IDbTransaction? tx = null,
-        CancellationToken cancellationToken = default
-    )
-    {
-        if (
-            await DoesTableExistAsync(db, schemaName, tableName, tx, cancellationToken)
-                .ConfigureAwait(false)
-        )
-            return false;
+    // public override async Task<bool> CreateTableIfNotExistsAsync(
+    //     IDbConnection db,
+    //     string? schemaName,
+    //     string tableName,
+    //     DxColumn[] columns,
+    //     DxPrimaryKeyConstraint? primaryKey = null,
+    //     DxCheckConstraint[]? checkConstraints = null,
+    //     DxDefaultConstraint[]? defaultConstraints = null,
+    //     DxUniqueConstraint[]? uniqueConstraints = null,
+    //     DxForeignKeyConstraint[]? foreignKeyConstraints = null,
+    //     DxIndex[]? indexes = null,
+    //     IDbTransaction? tx = null,
+    //     CancellationToken cancellationToken = default
+    // )
+    // {
+    //     if (
+    //         await DoesTableExistAsync(db, schemaName, tableName, tx, cancellationToken)
+    //             .ConfigureAwait(false)
+    //     )
+    //         return false;
 
-        (_, tableName, _) = NormalizeNames(schemaName, tableName, null);
+    //     (_, tableName, _) = NormalizeNames(schemaName, tableName, null);
 
-        var fillWithAdditionalIndexesToCreate = new List<DxIndex>();
+    //     var fillWithAdditionalIndexesToCreate = new List<DxIndex>();
 
-        var sql = new StringBuilder();
+    //     var sql = new StringBuilder();
 
-        sql.AppendLine($"CREATE TABLE {tableName} (");
-        var columnDefinitionClauses = new List<string>();
-        for (var i = 0; i < columns?.Length; i++)
-        {
-            var column = columns[i];
+    //     sql.AppendLine($"CREATE TABLE {tableName} (");
+    //     var columnDefinitionClauses = new List<string>();
+    //     for (var i = 0; i < columns?.Length; i++)
+    //     {
+    //         var column = columns[i];
 
-            var colSql = BuildColumnDefinitionSql(
-                tableName,
-                column.ColumnName,
-                column.DotnetType,
-                column.ProviderDataType,
-                column.Length,
-                column.Precision,
-                column.Scale,
-                column.CheckExpression,
-                column.DefaultExpression,
-                column.IsNullable,
-                column.IsPrimaryKey,
-                column.IsAutoIncrement,
-                column.IsUnique,
-                column.IsIndexed,
-                column.IsForeignKey,
-                column.ReferencedTableName,
-                column.ReferencedColumnName,
-                column.OnDelete,
-                column.OnUpdate,
-                primaryKey,
-                checkConstraints,
-                defaultConstraints,
-                uniqueConstraints,
-                foreignKeyConstraints,
-                indexes,
-                fillWithAdditionalIndexesToCreate
-            );
+    //         var colSql = BuildColumnDefinitionSql(
+    //             tableName,
+    //             column.ColumnName,
+    //             column.DotnetType,
+    //             column.ProviderDataType,
+    //             column.Length,
+    //             column.Precision,
+    //             column.Scale,
+    //             column.CheckExpression,
+    //             column.DefaultExpression,
+    //             column.IsNullable,
+    //             column.IsPrimaryKey,
+    //             column.IsAutoIncrement,
+    //             column.IsUnique,
+    //             column.IsIndexed,
+    //             column.IsForeignKey,
+    //             column.ReferencedTableName,
+    //             column.ReferencedColumnName,
+    //             column.OnDelete,
+    //             column.OnUpdate,
+    //             primaryKey,
+    //             checkConstraints,
+    //             defaultConstraints,
+    //             uniqueConstraints,
+    //             foreignKeyConstraints,
+    //             indexes,
+    //             fillWithAdditionalIndexesToCreate
+    //         );
 
-            columnDefinitionClauses.Add(colSql.ToString());
-        }
-        sql.AppendLine(string.Join(", ", columnDefinitionClauses));
+    //         columnDefinitionClauses.Add(colSql.ToString());
+    //     }
+    //     sql.AppendLine(string.Join(", ", columnDefinitionClauses));
 
-        // add single column primary key constraints as column definitions; and,
-        // add multi column primary key constraints here
-        if (primaryKey != null && primaryKey.Columns.Length > 1)
-        {
-            var pkColumns = primaryKey.Columns.Select(c => c.ToString());
-            var pkColumnNames = primaryKey.Columns.Select(c => c.ColumnName);
-            sql.AppendLine(
-                $", CONSTRAINT {ProviderUtils.GeneratePrimaryKeyConstraintName(tableName, [.. pkColumnNames])} PRIMARY KEY ({string.Join(", ", pkColumns)})"
-            );
-        }
+    //     // add single column primary key constraints as column definitions; and,
+    //     // add multi column primary key constraints here
+    //     if (primaryKey != null && primaryKey.Columns.Length > 1)
+    //     {
+    //         var pkColumns = primaryKey.Columns.Select(c => c.ToString());
+    //         var pkColumnNames = primaryKey.Columns.Select(c => c.ColumnName);
+    //         sql.AppendLine(
+    //             $", CONSTRAINT {ProviderUtils.GeneratePrimaryKeyConstraintName(tableName, [.. pkColumnNames])} PRIMARY KEY ({string.Join(", ", pkColumns)})"
+    //         );
+    //     }
 
-        // add check constraints
-        if (checkConstraints != null && checkConstraints.Length > 0)
-        {
-            foreach (
-                var constraint in checkConstraints.Where(c =>
-                    !string.IsNullOrWhiteSpace(c.Expression)
-                )
-            )
-            {
-                sql.AppendLine(
-                    $", CONSTRAINT {NormalizeName(constraint.ConstraintName)} CHECK ({constraint.Expression})"
-                );
-            }
-        }
+    //     // add check constraints
+    //     if (checkConstraints != null && checkConstraints.Length > 0)
+    //     {
+    //         foreach (
+    //             var constraint in checkConstraints.Where(c =>
+    //                 !string.IsNullOrWhiteSpace(c.Expression)
+    //             )
+    //         )
+    //         {
+    //             sql.AppendLine(
+    //                 $", CONSTRAINT {NormalizeName(constraint.ConstraintName)} CHECK ({constraint.Expression})"
+    //             );
+    //         }
+    //     }
 
-        // add foreign key constraints
-        if (foreignKeyConstraints != null && foreignKeyConstraints.Length > 0)
-        {
-            foreach (var constraint in foreignKeyConstraints)
-            {
-                var fkColumns = constraint.SourceColumns.Select(c => c.ToString());
-                var fkReferencedColumns = constraint.ReferencedColumns.Select(c => c.ToString());
-                sql.AppendLine(
-                    $", CONSTRAINT {NormalizeName(constraint.ConstraintName)} FOREIGN KEY ({string.Join(", ", fkColumns)}) REFERENCES {NormalizeName(constraint.ReferencedTableName)} ({string.Join(", ", fkReferencedColumns)})"
-                );
-                sql.AppendLine($" ON DELETE {constraint.OnDelete.ToSql()}");
-                sql.AppendLine($" ON UPDATE {constraint.OnUpdate.ToSql()}");
-            }
-        }
+    //     // add unique constraints
+    //     if (uniqueConstraints != null && uniqueConstraints.Length > 0)
+    //     {
+    //         foreach (var constraint in uniqueConstraints)
+    //         {
+    //             var uniqueColumns = constraint.Columns.Select(c => c.ToString());
+    //             sql.AppendLine(
+    //                 $", CONSTRAINT {NormalizeName(constraint.ConstraintName)} UNIQUE ({string.Join(", ", uniqueColumns)})"
+    //             );
+    //         }
+    //     }
 
-        // add unique constraints
-        if (uniqueConstraints != null && uniqueConstraints.Length > 0)
-        {
-            foreach (var constraint in uniqueConstraints)
-            {
-                var uniqueColumns = constraint.Columns.Select(c => c.ToString());
-                sql.AppendLine(
-                    $", CONSTRAINT {NormalizeName(constraint.ConstraintName)} UNIQUE ({string.Join(", ", uniqueColumns)})"
-                );
-            }
-        }
+    //     // add foreign key constraints
+    //     if (foreignKeyConstraints != null && foreignKeyConstraints.Length > 0)
+    //     {
+    //         foreach (var constraint in foreignKeyConstraints)
+    //         {
+    //             var fkColumns = constraint.SourceColumns.Select(c => c.ToString());
+    //             var fkReferencedColumns = constraint.ReferencedColumns.Select(c => c.ToString());
+    //             sql.AppendLine(
+    //                 $", CONSTRAINT {NormalizeName(constraint.ConstraintName)} FOREIGN KEY ({string.Join(", ", fkColumns)}) REFERENCES {NormalizeName(constraint.ReferencedTableName)} ({string.Join(", ", fkReferencedColumns)})"
+    //             );
+    //             sql.AppendLine($" ON DELETE {constraint.OnDelete.ToSql()}");
+    //             sql.AppendLine($" ON UPDATE {constraint.OnUpdate.ToSql()}");
+    //         }
+    //     }
 
-        sql.AppendLine(")");
-        var createTableSql = sql.ToString();
+    //     sql.AppendLine(")");
+    //     var createTableSql = sql.ToString();
 
-        await ExecuteAsync(db, createTableSql, tx: tx).ConfigureAwait(false);
+    //     await ExecuteAsync(db, createTableSql, tx: tx).ConfigureAwait(false);
 
-        var combinedIndexes = (indexes ?? []).Union(fillWithAdditionalIndexesToCreate).ToList();
+    //     var combinedIndexes = (indexes ?? []).Union(fillWithAdditionalIndexesToCreate).ToList();
 
-        foreach (var index in combinedIndexes)
-        {
-            await CreateIndexIfNotExistsAsync(db, index, tx, cancellationToken)
-                .ConfigureAwait(false);
-        }
+    //     foreach (var index in combinedIndexes)
+    //     {
+    //         await CreateIndexIfNotExistsAsync(db, index, tx, cancellationToken)
+    //             .ConfigureAwait(false);
+    //     }
 
-        return true;
-    }
+    //     return true;
+    // }
 
     public override async Task<List<DxTable>> GetTablesAsync(
         IDbConnection db,
@@ -270,7 +270,7 @@ public partial class SqliteMethods
             .ConfigureAwait(false);
 
         await ExecuteAsync(db, createTableSql, tx: tx).ConfigureAwait(false);
-        
+
         return true;
     }
 

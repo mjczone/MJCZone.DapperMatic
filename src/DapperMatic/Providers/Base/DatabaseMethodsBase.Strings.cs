@@ -1,4 +1,5 @@
 using System.Data;
+using System.Text;
 using DapperMatic.Models;
 
 namespace DapperMatic.Providers;
@@ -98,9 +99,330 @@ public abstract partial class DatabaseMethodsBase
     {
         return @$"TRUNCATE TABLE {GetSchemaQualifiedIdentifierName(schemaName, tableName)}";
     }
+
+    /// <summary>
+    /// Anything inside of tableConstraints does NOT get added to the column definition.
+    /// Anything added to the column definition should be added to the tableConstraints object.
+    /// </summary>
+    /// <param name="existingTable">The existing table WITHOUT the column being added</param>
+    /// <param name="column">The new column</param>
+    /// <param name="tableConstraints">Table constraints that will get added after the column definitions clauses in the CREATE TABLE or ALTER TABLE commands.</param>
+    /// <returns></returns>
+    protected virtual string SqlInlineColumnDefinition(
+        DxTable existingTable,
+        DxColumn column,
+        DxTable tableConstraints
+    )
+    {
+        var (schemaName, tableName, columnName) = NormalizeNames(
+            existingTable.SchemaName,
+            existingTable.TableName,
+            column.ColumnName
+        );
+
+        var columnType = string.IsNullOrWhiteSpace(column.ProviderDataType)
+            ? GetSqlTypeFromDotnetType(
+                column.DotnetType,
+                column.Length,
+                column.Precision,
+                column.Scale
+            )
+            : column.ProviderDataType;
+
+        var sql = new StringBuilder();
+        sql.Append($"{columnName} {columnType}");
+
+        sql.Append(column.IsNullable ? " NULL" : " NOT NULL");
+
+        // Only add the primary key here if the primary key is a single column key
+        // and doesn't already exist in the existing table constraints
+        var tpkc = tableConstraints.PrimaryKeyConstraint;
+        if (
+            column.IsPrimaryKey
+            && (
+                tpkc == null
+                || (
+                    tpkc.Columns.Count() == 1
+                    && tpkc.Columns[0]
+                        .ColumnName.Equals(column.ColumnName, StringComparison.OrdinalIgnoreCase)
+                )
+            )
+        )
+        {
+            var pkConstraintName = ProviderUtils.GeneratePrimaryKeyConstraintName(
+                tableName,
+                columnName
+            );
+            sql.Append(
+                $" {SqlInlinePrimaryKeyColumnConstraint(pkConstraintName, column.IsAutoIncrement)}"
+            );
+
+            // since we added the PK inline, we're going to remove it from the table constraints
+            tableConstraints.PrimaryKeyConstraint = null;
+        }
+        else if (column.IsPrimaryKey)
+        {
+            // TO CATCH DEBUG STATEMENTS: Primary key will be added as a table constraint
+            sql.Append("");
+        }
+
+        if (
+            !string.IsNullOrWhiteSpace(column.DefaultExpression)
+            && tableConstraints.DefaultConstraints.All(dc =>
+                !dc.ColumnName.Equals(column.ColumnName, StringComparison.OrdinalIgnoreCase)
+            )
+        )
+        {
+            var defConstraintName = ProviderUtils.GenerateDefaultConstraintName(
+                tableName,
+                columnName
+            );
+            sql.Append(
+                $" {SqlInlineDefaultColumnConstraint(defConstraintName, column.DefaultExpression)}"
+            );
+        }
+        else
+        {
+            // DEFAULT EXPRESSIONS ARE A LITTLE DIFFERENT
+            // In our case, we're always going to add them via the column definition, BECAUSE
+            // SQLite ONLY allows default expressions to be added via the column definition.
+            // Other providers also allow it, so let's just do them all here
+            var defaultConstraint = tableConstraints.DefaultConstraints.FirstOrDefault(dc =>
+                dc.ColumnName.Equals(column.ColumnName, StringComparison.OrdinalIgnoreCase)
+            );
+            if (defaultConstraint != null)
+            {
+                sql.Append(
+                    $" {SqlInlineDefaultColumnConstraint(defaultConstraint.ConstraintName, defaultConstraint.Expression)}"
+                );
+            }
+        }
+
+        if (
+            !string.IsNullOrWhiteSpace(column.CheckExpression)
+            && tableConstraints.CheckConstraints.All(ck =>
+                string.IsNullOrWhiteSpace(ck.ColumnName)
+                || !ck.ColumnName.Equals(column.ColumnName, StringComparison.OrdinalIgnoreCase)
+            )
+        )
+        {
+            var ckConstraintName = ProviderUtils.GenerateCheckConstraintName(tableName, columnName);
+            sql.Append(
+                $" {SqlInlineCheckColumnConstraint(ckConstraintName, column.CheckExpression)}"
+            );
+        }
+
+        if (
+            column.IsUnique
+            && !column.IsIndexed
+            && tableConstraints.UniqueConstraints.All(uc =>
+                !uc.Columns.Any(c =>
+                    c.ColumnName.Equals(column.ColumnName, StringComparison.OrdinalIgnoreCase)
+                )
+            )
+        )
+        {
+            var ucConstraintName = ProviderUtils.GenerateUniqueConstraintName(
+                tableName,
+                columnName
+            );
+            sql.Append($" {SqlInlineUniqueColumnConstraint(ucConstraintName)}");
+        }
+
+        if (
+            column.IsForeignKey
+            && !string.IsNullOrWhiteSpace(column.ReferencedTableName)
+            && !string.IsNullOrWhiteSpace(column.ReferencedColumnName)
+            && tableConstraints.ForeignKeyConstraints.All(fk =>
+                !fk.SourceColumns.Any(c =>
+                    c.ColumnName.Equals(column.ColumnName, StringComparison.OrdinalIgnoreCase)
+                )
+            )
+        )
+        {
+            var fkConstraintName = ProviderUtils.GenerateForeignKeyConstraintName(
+                NormalizeName(tableName),
+                NormalizeName(columnName),
+                NormalizeName(column.ReferencedTableName),
+                NormalizeName(column.ReferencedColumnName)
+            );
+
+            sql.Append(
+                $" {SqlInlineForeignKeyColumnConstraint(
+                schemaName,
+                fkConstraintName,
+                column.ReferencedTableName,
+                new DxOrderedColumn(column.ReferencedColumnName),
+                column.OnDelete,
+                column.OnUpdate)}"
+            );
+        }
+
+        if (
+            column.IsIndexed
+            && tableConstraints.Indexes.All(i =>
+                !i.Columns.Any(c =>
+                    c.ColumnName.Equals(column.ColumnName, StringComparison.OrdinalIgnoreCase)
+                )
+            )
+        )
+        {
+            var indexName = ProviderUtils.GenerateIndexName(tableName, columnName);
+            tableConstraints.Indexes.Add(
+                new DxIndex(
+                    schemaName,
+                    tableName,
+                    indexName,
+                    [new DxOrderedColumn(columnName)],
+                    column.IsUnique
+                )
+            );
+        }
+
+        return sql.ToString();
+    }
+
+    protected virtual string SqlInlinePrimaryKeyColumnConstraint(
+        string constraintName,
+        bool isAutoIncrement
+    )
+    {
+        return $"CONSTRAINT {NormalizeName(constraintName)} PRIMARY KEY {(isAutoIncrement ? SqlInlinePrimaryKeyAutoIncrementColumnConstraint() : "")}".Trim();
+    }
+
+    protected virtual string SqlInlinePrimaryKeyAutoIncrementColumnConstraint()
+    {
+        return "IDENTITY(1,1)";
+    }
+
+    protected virtual string SqlInlineDefaultColumnConstraint(
+        string constraintName,
+        string defaultExpression
+    )
+    {
+        defaultExpression = defaultExpression.Trim();
+        var addParentheses =
+            defaultExpression.Contains(' ')
+            && !(defaultExpression.StartsWith("(") && defaultExpression.EndsWith(")"))
+            && !(defaultExpression.StartsWith("\"") && defaultExpression.EndsWith("\""))
+            && !(defaultExpression.StartsWith("'") && defaultExpression.EndsWith("'"));
+
+        return $"CONSTRAINT {NormalizeName(constraintName)} DEFAULT {(addParentheses ? $"({defaultExpression})" : defaultExpression)}";
+    }
+
+    protected virtual string SqlInlineCheckColumnConstraint(
+        string constraintName,
+        string checkExpression
+    )
+    {
+        return $"CONSTRAINT {NormalizeName(constraintName)} CHECK ({checkExpression})";
+    }
+
+    protected virtual string SqlInlineUniqueColumnConstraint(string constraintName)
+    {
+        return $"CONSTRAINT {NormalizeName(constraintName)} UNIQUE";
+    }
+
+    protected virtual string SqlInlineForeignKeyColumnConstraint(
+        string? schemaName,
+        string constraintName,
+        string referencedTableName,
+        DxOrderedColumn referencedColumn,
+        DxForeignKeyAction? onDelete = null,
+        DxForeignKeyAction? onUpdate = null
+    )
+    {
+        return @$"CONSTRAINT {NormalizeName(constraintName)} REFERENCES {GetSchemaQualifiedIdentifierName(schemaName, referencedTableName)} ({NormalizeName(referencedColumn.ColumnName)})"
+            + (onDelete.HasValue ? $" ON DELETE {onDelete.Value.ToSql()}" : "")
+            + (onUpdate.HasValue ? $" ON UPDATE {onUpdate.Value.ToSql()}" : "");
+    }
+
+    protected virtual string SqlInlinePrimaryKeyTableConstraint(
+        DxTable table,
+        DxPrimaryKeyConstraint primaryKeyConstraint
+    )
+    {
+        var pkColumns = primaryKeyConstraint.Columns.Select(c => c.ToString());
+        var pkColumnNames = primaryKeyConstraint.Columns.Select(c => c.ColumnName);
+        var pkConstrainName = !string.IsNullOrWhiteSpace(primaryKeyConstraint.ConstraintName)
+            ? primaryKeyConstraint.ConstraintName
+            : ProviderUtils.GeneratePrimaryKeyConstraintName(
+                table.TableName,
+                pkColumnNames.ToArray()
+            );
+        return $"CONSTRAINT {NormalizeName(pkConstrainName)} PRIMARY KEY ({string.Join(", ", pkColumnNames)})".Trim();
+    }
+
+    protected virtual string SqlInlineCheckTableConstraint(DxTable table, DxCheckConstraint check)
+    {
+        var ckConstraintName = !string.IsNullOrWhiteSpace(check.ConstraintName)
+            ? check.ConstraintName
+            : (
+                string.IsNullOrWhiteSpace(check.ColumnName)
+                    ? ProviderUtils.GenerateCheckConstraintName(
+                        table.TableName,
+                        DateTime.Now.Ticks.ToString()
+                    )
+                    : ProviderUtils.GenerateCheckConstraintName(table.TableName, check.ColumnName)
+            );
+
+        return $"CONSTRAINT {NormalizeName(ckConstraintName)} CHECK ({check.Expression})";
+    }
+
+    // protected virtual string SqlInlineDefaultTableConstraint(DxTable table, DxDefaultConstraint def)
+    // {
+    //     var defaultExpression = def.Expression.Trim();
+    //     var addParentheses =
+    //         defaultExpression.Contains(' ')
+    //         && !(defaultExpression.StartsWith("(") && defaultExpression.EndsWith(")"))
+    //         && !(defaultExpression.StartsWith("\"") && defaultExpression.EndsWith("\""))
+    //         && !(defaultExpression.StartsWith("'") && defaultExpression.EndsWith("'"));
+
+    //     var constraintName = !string.IsNullOrWhiteSpace(def.ConstraintName)
+    //         ? def.ConstraintName
+    //         : ProviderUtils.GenerateDefaultConstraintName(table.TableName, def.ColumnName);
+
+    //     return $"CONSTRAINT {NormalizeName(constraintName)} DEFAULT {(addParentheses ? $"({defaultExpression})" : defaultExpression)}";
+    // }
+
+    protected virtual string SqlInlineUniqueTableConstraint(
+        DxTable table,
+        DxUniqueConstraint uc,
+        bool supportsOrderedKeysInConstraints
+    )
+    {
+        var ucConstraintName = !string.IsNullOrWhiteSpace(uc.ConstraintName)
+            ? uc.ConstraintName
+            : ProviderUtils.GenerateUniqueConstraintName(
+                table.TableName,
+                uc.Columns.Select(c => NormalizeName(c.ColumnName)).ToArray()
+            );
+
+        var uniqueColumns = uc.Columns.Select(c =>
+            supportsOrderedKeysInConstraints
+                ? new DxOrderedColumn(NormalizeName(c.ColumnName), c.Order).ToString()
+                : new DxOrderedColumn(NormalizeName(c.ColumnName)).ToString()
+        );
+        return $"CONSTRAINT {NormalizeName(ucConstraintName)} UNIQUE ({string.Join(", ", uniqueColumns)})";
+    }
+
+    protected virtual string SqlInlineForeignKeyTableConstraint(
+        DxTable table,
+        DxForeignKeyConstraint fk
+    )
+    {
+        return @$"
+            CONSTRAINT {NormalizeName(fk.ConstraintName)} 
+                FOREIGN KEY ({string.Join(", ", fk.SourceColumns.Select(c => NormalizeName(c.ColumnName)))}) 
+                    REFERENCES {GetSchemaQualifiedIdentifierName(table.SchemaName, fk.ReferencedTableName)} ({string.Join(", ", fk.ReferencedColumns.Select(c => NormalizeName(c.ColumnName)))})
+                        ON DELETE {fk.OnDelete.ToSql()}
+                        ON UPDATE {fk.OnUpdate.ToSql()}".Trim();
+    }
+
     #endregion // Table Strings
 
     #region Column Strings
+
     protected virtual string SqlInlineAddDefaultConstraint(
         string? schemaName,
         string tableName,
@@ -222,14 +544,13 @@ public abstract partial class DatabaseMethodsBase
         bool supportsOrderedKeysInConstraints
     )
     {
-        return @$"ALTER TABLE {GetSchemaQualifiedIdentifierName(schemaName, tableName)} 
-                    ADD CONSTRAINT {NormalizeName(constraintName)} 
-                        UNIQUE ({string.Join(", ", columns.Select(c => {
-                            var columnName = NormalizeName(c.ColumnName);
-                            return c.Order == DxColumnOrder.Ascending
-                                ? columnName
-                                : $"{columnName} DESC";
-                        }))})";
+        var uniqueColumns = columns.Select(c =>
+            supportsOrderedKeysInConstraints
+                ? new DxOrderedColumn(NormalizeName(c.ColumnName), c.Order).ToString()
+                : new DxOrderedColumn(NormalizeName(c.ColumnName)).ToString()
+        );
+        return @$"ALTER TABLE {GetSchemaQualifiedIdentifierName(schemaName, tableName)}
+                    ADD CONSTRAINT {NormalizeName(constraintName)} UNIQUE ({string.Join(", ", uniqueColumns)})";
     }
 
     protected virtual string SqlDropUniqueConstraint(

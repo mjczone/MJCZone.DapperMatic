@@ -67,6 +67,14 @@ public class DxColumn
     public required string TableName { get; init; }
     public required string ColumnName { get; init; }
     public required Type DotnetType { get; init; }
+
+    /// <summary>
+    /// The FULL native provider data type. This is the data type that the provider uses to
+    /// store the data (e.g. "INTEGER", "DECIMAL(14,3)", "VARCHAR(255)", "TEXT", "BLOB", etc.)
+    /// </summary>
+    /// <remarks>
+    /// The provider data type should include the length, precision, and scale if applicable.
+    /// </remarks>
     public string? ProviderDataType { get; set; }
     public int? Length { get; set; }
     public int? Precision { get; set; }

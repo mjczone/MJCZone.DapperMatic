@@ -24,7 +24,7 @@ public partial interface IDatabaseColumnMethods
         int? scale = null,
         string? checkExpression = null,
         string? defaultExpression = null,
-        bool isNullable = false,
+        bool isNullable = true,
         bool isPrimaryKey = false,
         bool isAutoIncrement = false,
         bool isUnique = false,

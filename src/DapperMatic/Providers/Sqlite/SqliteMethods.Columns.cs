@@ -15,33 +15,26 @@ public partial class SqliteMethods
     /// </summary>
     public override async Task<bool> CreateColumnIfNotExistsAsync(
         IDbConnection db,
-        string? schemaName,
-        string tableName,
-        string columnName,
-        Type dotnetType,
-        string? providerDataType = null,
-        int? length = null,
-        int? precision = null,
-        int? scale = null,
-        string? checkExpression = null,
-        string? defaultExpression = null,
-        bool isNullable = false,
-        bool isPrimaryKey = false,
-        bool isAutoIncrement = false,
-        bool isUnique = false,
-        bool isIndexed = false,
-        bool isForeignKey = false,
-        string? referencedTableName = null,
-        string? referencedColumnName = null,
-        DxForeignKeyAction? onDelete = null,
-        DxForeignKeyAction? onUpdate = null,
+        DxColumn column,
         IDbTransaction? tx = null,
         CancellationToken cancellationToken = default
     )
     {
+        if (string.IsNullOrWhiteSpace(column.TableName))
+            throw new ArgumentException("Table name is required", nameof(column.TableName));
+
+        if (string.IsNullOrWhiteSpace(column.ColumnName))
+            throw new ArgumentException("Column name is required", nameof(column.ColumnName));
+
+        var (_, tableName, columnName) = NormalizeNames(
+            column.SchemaName,
+            column.TableName,
+            column.ColumnName
+        );
+
         return await AlterTableUsingRecreateTableStrategyAsync(
                 db,
-                schemaName,
+                DefaultSchema,
                 tableName,
                 table =>
                 {
@@ -51,30 +44,7 @@ public partial class SqliteMethods
                 },
                 table =>
                 {
-                    table.Columns.Add(
-                        new DxColumn(
-                            schemaName,
-                            tableName,
-                            columnName,
-                            dotnetType,
-                            providerDataType,
-                            length,
-                            precision,
-                            scale,
-                            checkExpression,
-                            defaultExpression,
-                            isNullable,
-                            isPrimaryKey,
-                            isAutoIncrement,
-                            isUnique,
-                            isIndexed,
-                            isForeignKey,
-                            referencedTableName,
-                            referencedColumnName,
-                            onDelete,
-                            onUpdate
-                        )
-                    );
+                    table.Columns.Add(column);
                     return table;
                 },
                 tx: tx,
@@ -83,101 +53,176 @@ public partial class SqliteMethods
             .ConfigureAwait(false);
     }
 
-    public async Task<bool> CreateColumnIfNotExistsAsyncAlternate(
-        IDbConnection db,
-        string? schemaName,
-        string tableName,
-        string columnName,
-        Type dotnetType,
-        string? providerDataType = null,
-        int? length = null,
-        int? precision = null,
-        int? scale = null,
-        string? checkExpression = null,
-        string? defaultExpression = null,
-        bool isNullable = false,
-        bool isPrimaryKey = false,
-        bool isAutoIncrement = false,
-        bool isUnique = false,
-        bool isIndexed = false,
-        bool isForeignKey = false,
-        string? referencedTableName = null,
-        string? referencedColumnName = null,
-        DxForeignKeyAction? onDelete = null,
-        DxForeignKeyAction? onUpdate = null,
-        IDbTransaction? tx = null,
-        CancellationToken cancellationToken = default
-    )
-    {
-        var table = await GetTableAsync(db, schemaName, tableName, tx, cancellationToken)
-            .ConfigureAwait(false);
-        if (table == null)
-            return false;
+    /// <summary>
+    /// The restrictions on creating a column in a SQLite database are too many.
+    /// Unfortunately, we have to re-create the table in SQLite to avoid these limitations.
+    /// See: https://www.sqlite.org/lang_altertable.html
+    /// </summary>
+    // public override async Task<bool> CreateColumnIfNotExistsAsync(
+    //     IDbConnection db,
+    //     string? schemaName,
+    //     string tableName,
+    //     string columnName,
+    //     Type dotnetType,
+    //     string? providerDataType = null,
+    //     int? length = null,
+    //     int? precision = null,
+    //     int? scale = null,
+    //     string? checkExpression = null,
+    //     string? defaultExpression = null,
+    //     bool isNullable = true,
+    //     bool isPrimaryKey = false,
+    //     bool isAutoIncrement = false,
+    //     bool isUnique = false,
+    //     bool isIndexed = false,
+    //     bool isForeignKey = false,
+    //     string? referencedTableName = null,
+    //     string? referencedColumnName = null,
+    //     DxForeignKeyAction? onDelete = null,
+    //     DxForeignKeyAction? onUpdate = null,
+    //     IDbTransaction? tx = null,
+    //     CancellationToken cancellationToken = default
+    // )
+    // {
+    //     return await AlterTableUsingRecreateTableStrategyAsync(
+    //             db,
+    //             schemaName,
+    //             tableName,
+    //             table =>
+    //             {
+    //                 return table.Columns.All(x =>
+    //                     !x.ColumnName.Equals(columnName, StringComparison.OrdinalIgnoreCase)
+    //                 );
+    //             },
+    //             table =>
+    //             {
+    //                 table.Columns.Add(
+    //                     new DxColumn(
+    //                         schemaName,
+    //                         tableName,
+    //                         columnName,
+    //                         dotnetType,
+    //                         providerDataType,
+    //                         length,
+    //                         precision,
+    //                         scale,
+    //                         checkExpression,
+    //                         defaultExpression,
+    //                         isNullable,
+    //                         isPrimaryKey,
+    //                         isAutoIncrement,
+    //                         isUnique,
+    //                         isIndexed,
+    //                         isForeignKey,
+    //                         referencedTableName,
+    //                         referencedColumnName,
+    //                         onDelete,
+    //                         onUpdate
+    //                     )
+    //                 );
+    //                 return table;
+    //             },
+    //             tx: tx,
+    //             cancellationToken: cancellationToken
+    //         )
+    //         .ConfigureAwait(false);
+    // }
 
-        if (
-            table.Columns.Any(c =>
-                c.ColumnName.Equals(columnName, StringComparison.OrdinalIgnoreCase)
-            )
-        )
-            return false;
+    // public async Task<bool> CreateColumnIfNotExistsAsyncAlternate(
+    //     IDbConnection db,
+    //     string? schemaName,
+    //     string tableName,
+    //     string columnName,
+    //     Type dotnetType,
+    //     string? providerDataType = null,
+    //     int? length = null,
+    //     int? precision = null,
+    //     int? scale = null,
+    //     string? checkExpression = null,
+    //     string? defaultExpression = null,
+    //     bool isNullable = true,
+    //     bool isPrimaryKey = false,
+    //     bool isAutoIncrement = false,
+    //     bool isUnique = false,
+    //     bool isIndexed = false,
+    //     bool isForeignKey = false,
+    //     string? referencedTableName = null,
+    //     string? referencedColumnName = null,
+    //     DxForeignKeyAction? onDelete = null,
+    //     DxForeignKeyAction? onUpdate = null,
+    //     IDbTransaction? tx = null,
+    //     CancellationToken cancellationToken = default
+    // )
+    // {
+    //     var table = await GetTableAsync(db, schemaName, tableName, tx, cancellationToken)
+    //         .ConfigureAwait(false);
+    //     if (table == null)
+    //         return false;
 
-        (schemaName, tableName, columnName) = NormalizeNames(schemaName, tableName, columnName);
+    //     if (
+    //         table.Columns.Any(c =>
+    //             c.ColumnName.Equals(columnName, StringComparison.OrdinalIgnoreCase)
+    //         )
+    //     )
+    //         return false;
 
-        var additionalIndexes = new List<DxIndex>();
+    //     (schemaName, tableName, columnName) = NormalizeNames(schemaName, tableName, columnName);
 
-        var sql = new StringBuilder();
+    //     var additionalIndexes = new List<DxIndex>();
 
-        sql.AppendLine($"ALTER TABLE {tableName} (");
-        sql.Append($"  ADD COLUMN ");
+    //     var sql = new StringBuilder();
 
-        var colSql = BuildColumnDefinitionSql(
-            tableName,
-            columnName,
-            dotnetType,
-            providerDataType,
-            length,
-            precision,
-            scale,
-            checkExpression,
-            defaultExpression,
-            isNullable,
-            isPrimaryKey,
-            isAutoIncrement,
-            isUnique,
-            isIndexed,
-            isForeignKey,
-            referencedTableName,
-            referencedColumnName,
-            onDelete,
-            onUpdate,
-            table.PrimaryKeyConstraint,
-            table.CheckConstraints?.ToArray(),
-            table.DefaultConstraints?.ToArray(),
-            table.UniqueConstraints?.ToArray(),
-            table.ForeignKeyConstraints?.ToArray(),
-            table.Indexes?.ToArray(),
-            additionalIndexes
-        );
+    //     sql.AppendLine($"ALTER TABLE {tableName} (");
+    //     sql.Append($"  ADD COLUMN ");
 
-        sql.Append(colSql.ToString());
+    //     var colSql = BuildColumnDefinitionSql(
+    //         tableName,
+    //         columnName,
+    //         dotnetType,
+    //         providerDataType,
+    //         length,
+    //         precision,
+    //         scale,
+    //         checkExpression,
+    //         defaultExpression,
+    //         isNullable,
+    //         isPrimaryKey,
+    //         isAutoIncrement,
+    //         isUnique,
+    //         isIndexed,
+    //         isForeignKey,
+    //         referencedTableName,
+    //         referencedColumnName,
+    //         onDelete,
+    //         onUpdate,
+    //         table.PrimaryKeyConstraint,
+    //         table.CheckConstraints?.ToArray(),
+    //         table.DefaultConstraints?.ToArray(),
+    //         table.UniqueConstraints?.ToArray(),
+    //         table.ForeignKeyConstraints?.ToArray(),
+    //         table.Indexes?.ToArray(),
+    //         additionalIndexes
+    //     );
 
-        sql.AppendLine(")");
-        var alterTableSql = sql.ToString();
-        await ExecuteAsync(db, alterTableSql, tx: tx).ConfigureAwait(false);
+    //     sql.Append(colSql.ToString());
 
-        foreach (var index in additionalIndexes)
-        {
-            await CreateIndexIfNotExistsAsync(
-                    db,
-                    index,
-                    tx: tx,
-                    cancellationToken: cancellationToken
-                )
-                .ConfigureAwait(false);
-        }
+    //     sql.AppendLine(")");
+    //     var alterTableSql = sql.ToString();
+    //     await ExecuteAsync(db, alterTableSql, tx: tx).ConfigureAwait(false);
 
-        return true;
-    }
+    //     foreach (var index in additionalIndexes)
+    //     {
+    //         await CreateIndexIfNotExistsAsync(
+    //                 db,
+    //                 index,
+    //                 tx: tx,
+    //                 cancellationToken: cancellationToken
+    //             )
+    //             .ConfigureAwait(false);
+    //     }
+
+    //     return true;
+    // }
 
     public override async Task<bool> DropColumnIfExistsAsync(
         IDbConnection db,
@@ -221,7 +266,7 @@ public partial class SqliteMethods
         int? scale = null,
         string? checkExpression = null,
         string? defaultExpression = null,
-        bool isNullable = false,
+        bool isNullable = true,
         bool isPrimaryKey = false,
         bool isAutoIncrement = false,
         bool isUnique = false,
@@ -287,44 +332,6 @@ public partial class SqliteMethods
                 columnSql.Append(" AUTOINCREMENT");
         }
 
-        // only add unique constraints here if column is not part of an existing unique constraint
-        if (
-            isUnique
-            && !isIndexed
-            && (existingUniqueConstraints ?? []).All(uc =>
-                !uc.Columns.Any(c =>
-                    c.ColumnName.Equals(columnName, StringComparison.OrdinalIgnoreCase)
-                )
-            )
-        )
-        {
-            columnSql.Append(
-                $" CONSTRAINT {ProviderUtils.GenerateUniqueConstraintName(tableName, columnName)} UNIQUE"
-            );
-        }
-
-        // only add indexes here if column is not part of an existing existing index
-        if (
-            isIndexed
-            && (existingIndexes ?? []).All(uc =>
-                uc.Columns.Length > 1
-                || !uc.Columns.Any(c =>
-                    c.ColumnName.Equals(columnName, StringComparison.OrdinalIgnoreCase)
-                )
-            )
-        )
-        {
-            populateNewIndexes?.Add(
-                new DxIndex(
-                    null,
-                    tableName,
-                    ProviderUtils.GenerateIndexName(tableName, columnName),
-                    [new DxOrderedColumn(columnName)],
-                    isUnique
-                )
-            );
-        }
-
         // only add default constraint here if column doesn't already have a default constraint
         if (!string.IsNullOrWhiteSpace(defaultExpression))
         {
@@ -366,6 +373,22 @@ public partial class SqliteMethods
             );
         }
 
+        // only add unique constraints here if column is not part of an existing unique constraint
+        if (
+            isUnique
+            && !isIndexed
+            && (existingUniqueConstraints ?? []).All(uc =>
+                !uc.Columns.Any(c =>
+                    c.ColumnName.Equals(columnName, StringComparison.OrdinalIgnoreCase)
+                )
+            )
+        )
+        {
+            columnSql.Append(
+                $" CONSTRAINT {ProviderUtils.GenerateUniqueConstraintName(tableName, columnName)} UNIQUE"
+            );
+        }
+
         // only add foreign key constraints here if separate foreign key constraints are not defined
         if (
             isForeignKey
@@ -397,6 +420,28 @@ public partial class SqliteMethods
             );
 
             columnSql.Append($" {foreignKeyConstraintSql}");
+        }
+
+        // only add indexes here if column is not part of an existing existing index
+        if (
+            isIndexed
+            && (existingIndexes ?? []).All(uc =>
+                uc.Columns.Length > 1
+                || !uc.Columns.Any(c =>
+                    c.ColumnName.Equals(columnName, StringComparison.OrdinalIgnoreCase)
+                )
+            )
+        )
+        {
+            populateNewIndexes?.Add(
+                new DxIndex(
+                    null,
+                    tableName,
+                    ProviderUtils.GenerateIndexName(tableName, columnName),
+                    [new DxOrderedColumn(columnName)],
+                    isUnique
+                )
+            );
         }
 
         return columnSql.ToString();

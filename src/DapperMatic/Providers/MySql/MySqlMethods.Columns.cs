@@ -21,7 +21,7 @@ public partial class MySqlMethods
         int? scale = null,
         string? checkExpression = null,
         string? defaultExpression = null,
-        bool isNullable = false,
+        bool isNullable = true,
         bool isPrimaryKey = false,
         bool isAutoIncrement = false,
         bool isUnique = false,
@@ -36,10 +36,10 @@ public partial class MySqlMethods
     )
     {
         if (string.IsNullOrWhiteSpace(tableName))
-            throw new ArgumentException("Table name cannot be null or empty", nameof(tableName));
+            throw new ArgumentException("Table name is required", nameof(tableName));
 
         if (string.IsNullOrWhiteSpace(columnName))
-            throw new ArgumentException("Column name cannot be null or empty", nameof(columnName));
+            throw new ArgumentException("Column name is required", nameof(columnName));
 
         var table = await GetTableAsync(db, schemaName, tableName, tx, cancellationToken)
             .ConfigureAwait(false);
@@ -167,7 +167,7 @@ public partial class MySqlMethods
         int? scale = null,
         string? checkExpression = null,
         string? defaultExpression = null,
-        bool isNullable = false,
+        bool isNullable = true,
         bool isPrimaryKey = false,
         bool isAutoIncrement = false,
         bool isUnique = false,

@@ -24,7 +24,7 @@ public partial interface IDatabaseTableMethods
         IDbConnection db,
         string? schemaName,
         string tableName,
-        DxColumn[]? columns = null,
+        DxColumn[] columns,
         DxPrimaryKeyConstraint? primaryKey = null,
         DxCheckConstraint[]? checkConstraints = null,
         DxDefaultConstraint[]? defaultConstraints = null,

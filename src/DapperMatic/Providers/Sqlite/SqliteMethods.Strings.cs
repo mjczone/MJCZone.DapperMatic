@@ -6,6 +6,12 @@ public partial class SqliteMethods
     #endregion // Schema Strings
 
     #region Table Strings
+
+    protected override string SqlInlinePrimaryKeyAutoIncrementColumnConstraint()
+    {
+        return "AUTOINCREMENT";
+    }
+
     protected override (string sql, object parameters) SqlDoesTableExist(
         string? schemaName,
         string tableName

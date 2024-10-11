@@ -138,7 +138,7 @@ bool created = await db.CreateTableIfNotExistsAsync("app", /* DxTable */ table);
     created = await db.CreateTableIfNotExistsAsync(
         "app",
         "app_employees",
-        // DxColumn[]? columns = null,
+        // DxColumn[] columns,
         columns,
         // DxPrimaryKeyConstraint? primaryKey = null,
         primaryKey,

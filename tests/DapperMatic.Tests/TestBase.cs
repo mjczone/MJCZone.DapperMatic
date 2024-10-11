@@ -31,7 +31,7 @@ public abstract class TestBase : IDisposable
                 {
                     await db.DropViewIfExistsAsync(schemaName, view.ViewName);
                 }
-                catch (Exception ex) { }
+                catch { }
             }
             foreach (var table in await db.GetTablesAsync(schemaName))
             {

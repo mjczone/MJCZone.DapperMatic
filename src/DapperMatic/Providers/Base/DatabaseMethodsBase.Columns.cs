@@ -1,4 +1,5 @@
 using System.Data;
+using System.Text;
 using DapperMatic.Models;
 
 namespace DapperMatic.Providers;
@@ -27,35 +28,115 @@ public abstract partial class DatabaseMethodsBase : IDatabaseColumnMethods
         CancellationToken cancellationToken = default
     )
     {
-        return await CreateColumnIfNotExistsAsync(
+        if (string.IsNullOrWhiteSpace(column.TableName))
+            throw new ArgumentException("Table name is required", nameof(column.TableName));
+
+        if (string.IsNullOrWhiteSpace(column.ColumnName))
+            throw new ArgumentException("Column name is required", nameof(column.ColumnName));
+
+        var table = await GetTableAsync(
                 db,
                 column.SchemaName,
                 column.TableName,
-                column.ColumnName,
-                column.DotnetType,
-                column.ProviderDataType,
-                column.Length,
-                column.Precision,
-                column.Scale,
-                column.CheckExpression,
-                column.DefaultExpression,
-                column.IsNullable,
-                column.IsPrimaryKey,
-                column.IsAutoIncrement,
-                column.IsUnique,
-                column.IsIndexed,
-                column.IsForeignKey,
-                column.ReferencedTableName,
-                column.ReferencedColumnName,
-                column.OnDelete,
-                column.OnUpdate,
                 tx,
                 cancellationToken
             )
             .ConfigureAwait(false);
+
+        if (string.IsNullOrWhiteSpace(table?.TableName))
+            return false;
+
+        if (
+            table.Columns.Any(c =>
+                c.ColumnName.Equals(column.ColumnName, StringComparison.OrdinalIgnoreCase)
+            )
+        )
+            return false;
+
+        var tableConstraints = new DxTable(table.SchemaName, table.TableName);
+
+        // attach the existing primary key constraint if it exists to ensure that it doesn't get recreated
+        if (table.PrimaryKeyConstraint != null)
+            tableConstraints.PrimaryKeyConstraint = table.PrimaryKeyConstraint;
+
+        var columnDefinitionSql = SqlInlineColumnDefinition(table, column, tableConstraints);
+
+        var sql = new StringBuilder();
+        sql.Append(
+            $"ALTER TABLE {GetSchemaQualifiedIdentifierName(column.SchemaName, column.TableName)} ADD {columnDefinitionSql}"
+        );
+
+        await ExecuteAsync(db, sql.ToString(), tx).ConfigureAwait(false);
+
+        // ONLY add the primary key constraint if it didn't exist before and if it wasn't
+        // already added as part of the column definition (in which case that tableConstraints.PrimaryKeyConstraint will be null)
+        // will be null.
+        if (tableConstraints.PrimaryKeyConstraint != null)
+        {
+            await CreatePrimaryKeyConstraintIfNotExistsAsync(
+                    db,
+                    tableConstraints.PrimaryKeyConstraint,
+                    tx: tx,
+                    cancellationToken: cancellationToken
+                )
+                .ConfigureAwait(false);
+        }
+
+        foreach (var checkConstraint in tableConstraints.CheckConstraints)
+        {
+            await CreateCheckConstraintIfNotExistsAsync(
+                db,
+                checkConstraint,
+                tx: tx,
+                cancellationToken: cancellationToken
+            );
+        }
+
+        foreach (var defaultConstraint in tableConstraints.DefaultConstraints)
+        {
+            await CreateDefaultConstraintIfNotExistsAsync(
+                db,
+                defaultConstraint,
+                tx: tx,
+                cancellationToken: cancellationToken
+            );
+        }
+
+        foreach (var uniqueConstraint in tableConstraints.UniqueConstraints)
+        {
+            await CreateUniqueConstraintIfNotExistsAsync(
+                db,
+                uniqueConstraint,
+                tx: tx,
+                cancellationToken: cancellationToken
+            );
+        }
+
+        foreach (var foreignKeyConstraint in tableConstraints.ForeignKeyConstraints)
+        {
+            await CreateForeignKeyConstraintIfNotExistsAsync(
+                db,
+                foreignKeyConstraint,
+                tx: tx,
+                cancellationToken: cancellationToken
+            );
+        }
+
+        foreach (var index in tableConstraints.Indexes)
+        {
+            await CreateIndexIfNotExistsAsync(
+                    db,
+                    index,
+                    tx: tx,
+                    cancellationToken: cancellationToken
+                )
+                .ConfigureAwait(false);
+        }
+
+        return true;
     }
 
-    public abstract Task<bool> CreateColumnIfNotExistsAsync(
+    public virtual async Task<bool> CreateColumnIfNotExistsAsync(
         IDbConnection db,
         string? schemaName,
         string tableName,
@@ -67,7 +148,7 @@ public abstract partial class DatabaseMethodsBase : IDatabaseColumnMethods
         int? scale = null,
         string? checkExpression = null,
         string? defaultExpression = null,
-        bool isNullable = false,
+        bool isNullable = true,
         bool isPrimaryKey = false,
         bool isAutoIncrement = false,
         bool isUnique = false,
@@ -79,7 +160,37 @@ public abstract partial class DatabaseMethodsBase : IDatabaseColumnMethods
         DxForeignKeyAction? onUpdate = null,
         IDbTransaction? tx = null,
         CancellationToken cancellationToken = default
-    );
+    )
+    {
+        return await CreateColumnIfNotExistsAsync(
+                db,
+                new DxColumn(
+                    schemaName,
+                    tableName,
+                    columnName,
+                    dotnetType,
+                    providerDataType,
+                    length,
+                    precision,
+                    scale,
+                    checkExpression,
+                    defaultExpression,
+                    isNullable,
+                    isPrimaryKey,
+                    isAutoIncrement,
+                    isUnique,
+                    isIndexed,
+                    isForeignKey,
+                    referencedTableName,
+                    referencedColumnName,
+                    onDelete,
+                    onUpdate
+                ),
+                tx,
+                cancellationToken
+            )
+            .ConfigureAwait(false);
+    }
 
     public virtual async Task<DxColumn?> GetColumnAsync(
         IDbConnection db,

@@ -23,11 +23,11 @@ public class DxCheckConstraint : DxConstraint
     {
         SchemaName = schemaName;
         TableName = string.IsNullOrWhiteSpace(tableName)
-            ? throw new ArgumentException("Table name cannot be null or empty")
+            ? throw new ArgumentException("Table name is required")
             : tableName;
         ColumnName = columnName;
         Expression = string.IsNullOrWhiteSpace(expression)
-            ? throw new ArgumentException("Expression cannot be null or empty")
+            ? throw new ArgumentException("Expression is required")
             : expression;
     }
 

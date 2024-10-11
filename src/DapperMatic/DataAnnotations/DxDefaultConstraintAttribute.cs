@@ -13,7 +13,7 @@ public class DxDefaultConstraintAttribute : Attribute
     public DxDefaultConstraintAttribute(string expression)
     {
         if (string.IsNullOrWhiteSpace(expression))
-            throw new ArgumentException("Expression cannot be null or empty", nameof(expression));
+            throw new ArgumentException("Expression is required", nameof(expression));
 
         Expression = expression;
     }
@@ -21,13 +21,10 @@ public class DxDefaultConstraintAttribute : Attribute
     public DxDefaultConstraintAttribute(string constraintName, string expression)
     {
         if (string.IsNullOrWhiteSpace(constraintName))
-            throw new ArgumentException(
-                "Constraint name cannot be null or empty",
-                nameof(constraintName)
-            );
+            throw new ArgumentException("Constraint name is required", nameof(constraintName));
 
         if (string.IsNullOrWhiteSpace(expression))
-            throw new ArgumentException("Expression cannot be null or empty", nameof(expression));
+            throw new ArgumentException("Expression is required", nameof(expression));
 
         ConstraintName = constraintName;
         Expression = expression;

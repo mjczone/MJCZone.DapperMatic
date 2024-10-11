@@ -48,10 +48,7 @@ public abstract partial class DatabaseMethodsBase : IDatabaseViewMethods
     {
         if (string.IsNullOrEmpty(definition))
         {
-            throw new ArgumentException(
-                "View definition cannot be null or empty.",
-                nameof(definition)
-            );
+            throw new ArgumentException("View definition is required.", nameof(definition));
         }
 
         if (
@@ -77,7 +74,7 @@ public abstract partial class DatabaseMethodsBase : IDatabaseViewMethods
     {
         if (string.IsNullOrEmpty(viewName))
         {
-            throw new ArgumentException("View name cannot be null or empty.", nameof(viewName));
+            throw new ArgumentException("View name is required.", nameof(viewName));
         }
 
         return (
