@@ -447,7 +447,7 @@ public partial class SqliteMethods
     )
     {
         var tableName = existingTable.TableName;
-        var tempTableName = $"{tableName}_temp";
+        var tempTableName = $"{tableName}_tmp_{Guid.NewGuid():N}";
         // updatedTable.TableName = newTableName;
 
         // get the create index sql statements for the existing table
