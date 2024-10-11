@@ -25,11 +25,7 @@ public static class DxForeignKeyActionExtensions
 
     public static DxForeignKeyAction ToForeignKeyAction(this string behavior)
     {
-        return (behavior ?? "")
-            .Replace(" ", "")
-            .Replace("_", "")
-            .Replace("-", "")
-            .ToUpperInvariant() switch
+        return (behavior ?? "").ToAlpha().ToUpperInvariant() switch
         {
             "NOACTION" => DxForeignKeyAction.NoAction,
             "CASCADE" => DxForeignKeyAction.Cascade,

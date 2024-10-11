@@ -46,17 +46,46 @@ internal static class ExtensionMethods
         return sb.ToString().Trim('_');
     }
 
+    public static bool IsAlphaNumeric(this char c)
+    {
+        return (c >= 'A' && c <= 'Z') || (c >= 'a' && c <= 'z') || (c >= '0' && c <= '9');
+    }
+
+    public static bool IsAlpha(this char c)
+    {
+        return (c >= 'A' && c <= 'Z') || (c >= 'a' && c <= 'z');
+    }
+
     public static string ToAlphaNumeric(this string text, string additionalAllowedCharacters = "")
     {
+        // using Regex
         // var rgx = new Regex("[^a-zA-Z0-9_.]");
         // return rgx.Replace(text, "");
-        char[] allowed = additionalAllowedCharacters.ToCharArray();
-        char[] arr = text.Where(c =>
-                char.IsLetterOrDigit(c) || char.IsWhiteSpace(c) || allowed.Contains(c)
-            )
-            .ToArray();
 
-        return new string(arr);
+        // using IsLetterOrDigit (faster, BUT allows non-ASCII letters and digits)
+        // char[] allowed = additionalAllowedCharacters.ToCharArray();
+        // char[] arr = text.Where(c =>
+        //         char.IsLetterOrDigit(c) || char.IsWhiteSpace(c) || allowed.Contains(c)
+        //     )
+        //     .ToArray();
+        // return new string(arr);
+
+        return String.Concat(
+            Array.FindAll(
+                text.ToCharArray(),
+                c => c.IsAlphaNumeric() || additionalAllowedCharacters.Contains(c)
+            )
+        );
+    }
+
+    public static string ToAlpha(this string text, string additionalAllowedCharacters = "")
+    {
+        return String.Concat(
+            Array.FindAll(
+                text.ToCharArray(),
+                c => c.IsAlpha() || additionalAllowedCharacters.Contains(c)
+            )
+        );
     }
 
     /// <summary>
