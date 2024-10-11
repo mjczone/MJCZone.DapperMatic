@@ -1,3 +1,5 @@
+using DapperMatic.Models;
+
 namespace DapperMatic.Providers.MySql;
 
 public partial class MySqlMethods
@@ -6,6 +8,83 @@ public partial class MySqlMethods
     #endregion // Schema Strings
 
     #region Table Strings
+
+    // MySQL requires the AUTO_INCREMENT keyword to appear in the column definition, also
+    // MySQL DOES NOT ALLOW a named constraint in the column definition, so we HAVE to create
+    // the primary key constraint in the table constraints section
+    protected override string SqlInlinePrimaryKeyColumnConstraint(
+        string constraintName,
+        bool isAutoIncrement,
+        out bool useTableConstraint
+    )
+    {
+        useTableConstraint = true;
+        return isAutoIncrement ? "AUTO_INCREMENT" : "";
+
+        // the following code doesn't work because MySQL doesn't allow named constraints in the column definition
+        // return $"CONSTRAINT {NormalizeName(constraintName)} {(isAutoIncrement ? $"{SqlInlinePrimaryKeyAutoIncrementColumnConstraint()} " : "")}PRIMARY KEY".Trim();
+    }
+
+    protected override string SqlInlinePrimaryKeyAutoIncrementColumnConstraint()
+    {
+        return "AUTO_INCREMENT";
+    }
+
+    // MySQL doesn't allow default constraints to be named, so we just set the default without a name
+    protected override string SqlInlineDefaultColumnConstraint(
+        string constraintName,
+        string defaultExpression
+    )
+    {
+        defaultExpression = defaultExpression.Trim();
+        var addParentheses =
+            defaultExpression.Contains(' ')
+            && !(defaultExpression.StartsWith("(") && defaultExpression.EndsWith(")"))
+            && !(defaultExpression.StartsWith("\"") && defaultExpression.EndsWith("\""))
+            && !(defaultExpression.StartsWith("'") && defaultExpression.EndsWith("'"));
+
+        return $"DEFAULT {(addParentheses ? $"({defaultExpression})" : defaultExpression)}";
+    }
+
+    // MySQL DOES NOT ALLOW a named constraint in the column definition, so we HAVE to create
+    // the check constraint in the table constraints section
+    protected override string SqlInlineCheckColumnConstraint(
+        string constraintName,
+        string checkExpression,
+        out bool useTableConstraint
+    )
+    {
+        useTableConstraint = true;
+        return "";
+    }
+
+    // MySQL DOES NOT ALLOW a named constraint in the column definition, so we HAVE to create
+    // the unique constraint in the table constraints section
+    protected override string SqlInlineUniqueColumnConstraint(
+        string constraintName,
+        out bool useTableConstraint
+    )
+    {
+        useTableConstraint = true;
+        return "";
+    }
+
+    // MySQL DOES NOT ALLOW a named constraint in the column definition, so we HAVE to create
+    // the foreign key constraint in the table constraints section
+    protected override string SqlInlineForeignKeyColumnConstraint(
+        string? schemaName,
+        string constraintName,
+        string referencedTableName,
+        DxOrderedColumn referencedColumn,
+        DxForeignKeyAction? onDelete,
+        DxForeignKeyAction? onUpdate,
+        out bool useTableConstraint
+    )
+    {
+        useTableConstraint = true;
+        return "";
+    }
+
     protected override (string sql, object parameters) SqlDoesTableExist(
         string? schemaName,
         string tableName

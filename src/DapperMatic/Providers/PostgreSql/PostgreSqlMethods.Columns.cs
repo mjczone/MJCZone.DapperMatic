@@ -281,13 +281,14 @@ public partial class PostgreSqlMethods
                 NormalizeName(referencedColumnName)
             );
 
-            var foreignKeyConstraintSql = SqlInlineAddForeignKeyConstraint(
+            var foreignKeyConstraintSql = SqlInlineForeignKeyColumnConstraint(
                 schemaName,
                 foreignKeyConstraintName,
                 referencedTableName,
                 new DxOrderedColumn(referencedColumnName),
                 onDelete,
-                onUpdate
+                onUpdate,
+                out _
             );
 
             columnSql.Append($" {foreignKeyConstraintSql}");

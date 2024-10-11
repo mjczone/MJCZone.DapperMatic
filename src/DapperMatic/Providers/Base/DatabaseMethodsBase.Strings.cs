@@ -1,6 +1,7 @@
 using System.Data;
 using System.Text;
 using DapperMatic.Models;
+using Microsoft.VisualBasic;
 
 namespace DapperMatic.Providers;
 
@@ -153,18 +154,35 @@ public abstract partial class DatabaseMethodsBase
                 tableName,
                 columnName
             );
-            sql.Append(
-                $" {SqlInlinePrimaryKeyColumnConstraint(pkConstraintName, column.IsAutoIncrement)}"
+            var pkInlineSql = SqlInlinePrimaryKeyColumnConstraint(
+                pkConstraintName,
+                column.IsAutoIncrement,
+                out var useTableConstraint
             );
+            if (!string.IsNullOrWhiteSpace(pkInlineSql))
+                sql.Append($" {pkInlineSql}");
 
-            // since we added the PK inline, we're going to remove it from the table constraints
-            tableConstraints.PrimaryKeyConstraint = null;
+            if (useTableConstraint)
+            {
+                tableConstraints.PrimaryKeyConstraint = new DxPrimaryKeyConstraint(
+                    schemaName,
+                    tableName,
+                    pkConstraintName,
+                    [new DxOrderedColumn(columnName)]
+                );
+            }
+            else
+            { // since we added the PK inline, we're going to remove it from the table constraints
+                tableConstraints.PrimaryKeyConstraint = null;
+            }
         }
+#if DEBUG
         else if (column.IsPrimaryKey)
         {
-            // TO CATCH DEBUG STATEMENTS: Primary key will be added as a table constraint
+            // PROVIDED FOR BREAKPOINT PURPOSES WHILE DEBUGGING: Primary key will be added as a table constraint
             sql.Append("");
         }
+#endif
 
         if (
             !string.IsNullOrWhiteSpace(column.DefaultExpression)
@@ -184,7 +202,7 @@ public abstract partial class DatabaseMethodsBase
         else
         {
             // DEFAULT EXPRESSIONS ARE A LITTLE DIFFERENT
-            // In our case, we're always going to add them via the column definition, BECAUSE
+            // In our case, we're always going to add them via the column definition.
             // SQLite ONLY allows default expressions to be added via the column definition.
             // Other providers also allow it, so let's just do them all here
             var defaultConstraint = tableConstraints.DefaultConstraints.FirstOrDefault(dc =>
@@ -207,9 +225,27 @@ public abstract partial class DatabaseMethodsBase
         )
         {
             var ckConstraintName = ProviderUtils.GenerateCheckConstraintName(tableName, columnName);
-            sql.Append(
-                $" {SqlInlineCheckColumnConstraint(ckConstraintName, column.CheckExpression)}"
+            var ckInlineSql = SqlInlineCheckColumnConstraint(
+                ckConstraintName,
+                column.CheckExpression,
+                out var useTableConstraint
             );
+
+            if (!string.IsNullOrWhiteSpace(ckInlineSql))
+                sql.Append($" {ckInlineSql}");
+
+            if (useTableConstraint)
+            {
+                tableConstraints.CheckConstraints.Add(
+                    new DxCheckConstraint(
+                        schemaName,
+                        tableName,
+                        columnName,
+                        ckConstraintName,
+                        column.CheckExpression
+                    )
+                );
+            }
         }
 
         if (
@@ -226,7 +262,25 @@ public abstract partial class DatabaseMethodsBase
                 tableName,
                 columnName
             );
-            sql.Append($" {SqlInlineUniqueColumnConstraint(ucConstraintName)}");
+            var ucInlineSql = SqlInlineUniqueColumnConstraint(
+                ucConstraintName,
+                out var useTableConstraint
+            );
+
+            if (!string.IsNullOrWhiteSpace(ucInlineSql))
+                sql.Append($" {ucInlineSql}");
+
+            if (useTableConstraint)
+            {
+                tableConstraints.UniqueConstraints.Add(
+                    new DxUniqueConstraint(
+                        schemaName,
+                        tableName,
+                        ucConstraintName,
+                        [new DxOrderedColumn(columnName)]
+                    )
+                );
+            }
         }
 
         if (
@@ -241,21 +295,39 @@ public abstract partial class DatabaseMethodsBase
         )
         {
             var fkConstraintName = ProviderUtils.GenerateForeignKeyConstraintName(
-                NormalizeName(tableName),
-                NormalizeName(columnName),
+                tableName,
+                columnName,
                 NormalizeName(column.ReferencedTableName),
                 NormalizeName(column.ReferencedColumnName)
             );
-
-            sql.Append(
-                $" {SqlInlineForeignKeyColumnConstraint(
+            var fkInlineSql = SqlInlineForeignKeyColumnConstraint(
                 schemaName,
                 fkConstraintName,
                 column.ReferencedTableName,
                 new DxOrderedColumn(column.ReferencedColumnName),
                 column.OnDelete,
-                column.OnUpdate)}"
+                column.OnUpdate,
+                out var useTableConstraint
             );
+
+            if (!string.IsNullOrWhiteSpace(fkInlineSql))
+                sql.Append($" {fkInlineSql}");
+
+            if (useTableConstraint)
+            {
+                tableConstraints.ForeignKeyConstraints.Add(
+                    new DxForeignKeyConstraint(
+                        schemaName,
+                        tableName,
+                        fkConstraintName,
+                        [new DxOrderedColumn(columnName)],
+                        column.ReferencedTableName,
+                        [new DxOrderedColumn(column.ReferencedColumnName)],
+                        column.OnDelete ?? DxForeignKeyAction.NoAction,
+                        column.OnUpdate ?? DxForeignKeyAction.NoAction
+                    )
+                );
+            }
         }
 
         if (
@@ -284,9 +356,11 @@ public abstract partial class DatabaseMethodsBase
 
     protected virtual string SqlInlinePrimaryKeyColumnConstraint(
         string constraintName,
-        bool isAutoIncrement
+        bool isAutoIncrement,
+        out bool useTableConstraint
     )
     {
+        useTableConstraint = false;
         return $"CONSTRAINT {NormalizeName(constraintName)} PRIMARY KEY {(isAutoIncrement ? SqlInlinePrimaryKeyAutoIncrementColumnConstraint() : "")}".Trim();
     }
 
@@ -312,14 +386,20 @@ public abstract partial class DatabaseMethodsBase
 
     protected virtual string SqlInlineCheckColumnConstraint(
         string constraintName,
-        string checkExpression
+        string checkExpression,
+        out bool useTableConstraint
     )
     {
+        useTableConstraint = false;
         return $"CONSTRAINT {NormalizeName(constraintName)} CHECK ({checkExpression})";
     }
 
-    protected virtual string SqlInlineUniqueColumnConstraint(string constraintName)
+    protected virtual string SqlInlineUniqueColumnConstraint(
+        string constraintName,
+        out bool useTableConstraint
+    )
     {
+        useTableConstraint = false;
         return $"CONSTRAINT {NormalizeName(constraintName)} UNIQUE";
     }
 
@@ -328,10 +408,12 @@ public abstract partial class DatabaseMethodsBase
         string constraintName,
         string referencedTableName,
         DxOrderedColumn referencedColumn,
-        DxForeignKeyAction? onDelete = null,
-        DxForeignKeyAction? onUpdate = null
+        DxForeignKeyAction? onDelete,
+        DxForeignKeyAction? onUpdate,
+        out bool useTableConstraint
     )
     {
+        useTableConstraint = false;
         return @$"CONSTRAINT {NormalizeName(constraintName)} REFERENCES {GetSchemaQualifiedIdentifierName(schemaName, referencedTableName)} ({NormalizeName(referencedColumn.ColumnName)})"
             + (onDelete.HasValue ? $" ON DELETE {onDelete.Value.ToSql()}" : "")
             + (onUpdate.HasValue ? $" ON UPDATE {onUpdate.Value.ToSql()}" : "");
@@ -422,32 +504,6 @@ public abstract partial class DatabaseMethodsBase
     #endregion // Table Strings
 
     #region Column Strings
-
-    protected virtual string SqlInlineAddDefaultConstraint(
-        string? schemaName,
-        string tableName,
-        string columnName,
-        string constraintName,
-        string expression
-    )
-    {
-        return @$"CONSTRAINT {NormalizeName(constraintName)} DEFAULT {expression}";
-    }
-
-    protected virtual string SqlInlineAddForeignKeyConstraint(
-        string? schemaName,
-        string constraintName,
-        string referencedTableName,
-        DxOrderedColumn referencedColumn,
-        DxForeignKeyAction? onDelete = null,
-        DxForeignKeyAction? onUpdate = null
-    )
-    {
-        return @$"CONSTRAINT {NormalizeName(constraintName)} REFERENCES {GetSchemaQualifiedIdentifierName(schemaName, referencedTableName)} ({NormalizeName(referencedColumn.ColumnName)})"
-            + (onDelete.HasValue ? $" ON DELETE {onDelete.Value.ToSql()}" : "")
-            + (onUpdate.HasValue ? $" ON UPDATE {onUpdate.Value.ToSql()}" : "");
-    }
-
     protected virtual string SqlDropColumn(string? schemaName, string tableName, string columnName)
     {
         return @$"ALTER TABLE {GetSchemaQualifiedIdentifierName(schemaName, tableName)} DROP COLUMN {NormalizeName(columnName)}";
