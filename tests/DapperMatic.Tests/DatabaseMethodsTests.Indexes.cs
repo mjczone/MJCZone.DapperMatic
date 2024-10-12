@@ -59,11 +59,11 @@ public abstract partial class DatabaseMethodsTests
             await db.DropTableIfExistsAsync(schemaName, tableName);
             await db.CreateTableIfNotExistsAsync(schemaName, tableName, columns: [.. columns]);
 
-            output.WriteLine("Index Exists: {0}.{1}", tableName, indexName);
+            Output.WriteLine("Index Exists: {0}.{1}", tableName, indexName);
             var exists = await db.DoesIndexExistAsync(schemaName, tableName, indexName);
             Assert.False(exists);
 
-            output.WriteLine("Creating unique index: {0}.{1}", tableName, indexName);
+            Output.WriteLine("Creating unique index: {0}.{1}", tableName, indexName);
             await db.CreateIndexIfNotExistsAsync(
                 schemaName,
                 tableName,
@@ -72,7 +72,7 @@ public abstract partial class DatabaseMethodsTests
                 isUnique: true
             );
 
-            output.WriteLine(
+            Output.WriteLine(
                 "Creating multiple column unique index: {0}.{1}_multi",
                 tableName,
                 indexName + "_multi"
@@ -88,7 +88,7 @@ public abstract partial class DatabaseMethodsTests
                 isUnique: true
             );
 
-            output.WriteLine(
+            Output.WriteLine(
                 "Creating multiple column non unique index: {0}.{1}_multi2",
                 tableName,
                 indexName
@@ -103,7 +103,7 @@ public abstract partial class DatabaseMethodsTests
                 ]
             );
 
-            output.WriteLine("Index Exists: {0}.{1}", tableName, indexName);
+            Output.WriteLine("Index Exists: {0}.{1}", tableName, indexName);
             exists = await db.DoesIndexExistAsync(schemaName, tableName, indexName);
             Assert.True(exists);
             exists = await db.DoesIndexExistAsync(schemaName, tableName, indexName + "_multi");
@@ -161,10 +161,10 @@ public abstract partial class DatabaseMethodsTests
             );
             Assert.NotEmpty(indexesOnColumn);
 
-            output.WriteLine("Dropping indexName: {0}.{1}", tableName, indexName);
+            Output.WriteLine("Dropping indexName: {0}.{1}", tableName, indexName);
             await db.DropIndexIfExistsAsync(schemaName, tableName, indexName);
 
-            output.WriteLine("Index Exists: {0}.{1}", tableName, indexName);
+            Output.WriteLine("Index Exists: {0}.{1}", tableName, indexName);
             exists = await db.DoesIndexExistAsync(schemaName, tableName, indexName);
             Assert.False(exists);
 
@@ -173,7 +173,7 @@ public abstract partial class DatabaseMethodsTests
         finally
         {
             var sql = db.GetLastSql();
-            output.WriteLine("Last sql: {0}", sql);
+            Output.WriteLine("Last sql: {0}", sql);
         }
     }
 }

@@ -33,22 +33,22 @@ public abstract partial class DatabaseMethodsTests
                 )
             ]
         );
-        output.WriteLine("Primary Key Exists: {0}.{1}", tableName, primaryKeyName);
+        Output.WriteLine("Primary Key Exists: {0}.{1}", tableName, primaryKeyName);
         var exists = await db.DoesPrimaryKeyConstraintExistAsync(schemaName, tableName);
         Assert.False(exists);
-        output.WriteLine("Creating primary key: {0}.{1}", tableName, primaryKeyName);
+        Output.WriteLine("Creating primary key: {0}.{1}", tableName, primaryKeyName);
         await db.CreatePrimaryKeyConstraintIfNotExistsAsync(
             schemaName,
             tableName,
             primaryKeyName,
             [new DxOrderedColumn(columnName)]
         );
-        output.WriteLine("Primary Key Exists: {0}.{1}", tableName, primaryKeyName);
+        Output.WriteLine("Primary Key Exists: {0}.{1}", tableName, primaryKeyName);
         exists = await db.DoesPrimaryKeyConstraintExistAsync(schemaName, tableName);
         Assert.True(exists);
-        output.WriteLine("Dropping primary key: {0}.{1}", tableName, primaryKeyName);
+        Output.WriteLine("Dropping primary key: {0}.{1}", tableName, primaryKeyName);
         await db.DropPrimaryKeyConstraintIfExistsAsync(schemaName, tableName);
-        output.WriteLine("Primary Key Exists: {0}.{1}", tableName, primaryKeyName);
+        Output.WriteLine("Primary Key Exists: {0}.{1}", tableName, primaryKeyName);
         exists = await db.DoesPrimaryKeyConstraintExistAsync(schemaName, tableName);
         Assert.False(exists);
         await db.DropTableIfExistsAsync(schemaName, tableName);

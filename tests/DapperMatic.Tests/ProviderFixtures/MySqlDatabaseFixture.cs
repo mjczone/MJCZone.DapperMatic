@@ -18,6 +18,11 @@ public class MySql_57_DatabaseFixture : MySqlDatabaseFixture
 {
     public MySql_57_DatabaseFixture()
         : base("mysql:5.7") { }
+
+    public override bool IgnoreSqlType(string sqlType)
+    {
+        return sqlType.Equals("geomcollection", StringComparison.OrdinalIgnoreCase) || base.IgnoreSqlType(sqlType);
+    }
 }
 
 public class MariaDb_11_2_DatabaseFixture : MySqlDatabaseFixture

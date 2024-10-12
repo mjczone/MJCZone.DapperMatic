@@ -52,4 +52,9 @@ public abstract class MySqlDatabaseMethodsTests<TDatabaseFixture>(
         await db.OpenAsync();
         return db;
     }
+
+    public override bool IgnoreSqlType(string sqlType)
+    {
+        return fixture.IgnoreSqlType(sqlType);
+    }
 }

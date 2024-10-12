@@ -48,7 +48,7 @@ public abstract partial class DatabaseMethodsTests
 
         await db.DropColumnIfExistsAsync(schemaName, tableName, columnName);
 
-        output.WriteLine("Column Exists: {0}.{1}", tableName, columnName);
+        Output.WriteLine("Column Exists: {0}.{1}", tableName, columnName);
         var exists = await db.DoesColumnExistAsync(schemaName, tableName, columnName);
         Assert.False(exists);
 
@@ -76,14 +76,14 @@ public abstract partial class DatabaseMethodsTests
             ]
         );
 
-        output.WriteLine("Column Exists: {0}.{1}", tableName, columnName);
+        Output.WriteLine("Column Exists: {0}.{1}", tableName, columnName);
         exists = await db.DoesColumnExistAsync(schemaName, tableName, columnName);
         Assert.True(exists);
 
-        output.WriteLine("Dropping columnName: {0}.{1}", tableName, columnName);
+        Output.WriteLine("Dropping columnName: {0}.{1}", tableName, columnName);
         await db.DropColumnIfExistsAsync(schemaName, tableName, columnName);
 
-        output.WriteLine("Column Exists: {0}.{1}", tableName, columnName);
+        Output.WriteLine("Column Exists: {0}.{1}", tableName, columnName);
         exists = await db.DoesColumnExistAsync(schemaName, tableName, columnName);
         Assert.False(exists);
 
@@ -241,7 +241,7 @@ public abstract partial class DatabaseMethodsTests
             }
             catch (Exception ex)
             {
-                output.WriteLine("Error validating column {0}: {1}", col.ColumnName, ex.Message);
+                Output.WriteLine("Error validating column {0}: {1}", col.ColumnName, ex.Message);
                 column = await db.GetColumnAsync(schemaName, tableName2, col.ColumnName);
             }
 
@@ -274,7 +274,7 @@ public abstract partial class DatabaseMethodsTests
         }
 
         var actualColumns = await db.GetColumnsAsync(schemaName, tableName2);
-        output.WriteLine(JsonConvert.SerializeObject(actualColumns, Formatting.Indented));
+        Output.WriteLine(JsonConvert.SerializeObject(actualColumns, Formatting.Indented));
         var columnNames = await db.GetColumnNamesAsync(schemaName, tableName2);
         var expectedColumnNames = addColumns
             .OrderBy(c => c.ColumnName.ToLowerInvariant())
@@ -284,15 +284,15 @@ public abstract partial class DatabaseMethodsTests
             .OrderBy(s => s.ToLowerInvariant())
             .Select(s => s.ToLowerInvariant())
             .ToArray();
-        output.WriteLine("Expected columns: {0}", string.Join(", ", expectedColumnNames));
-        output.WriteLine("Actual columns: {0}", string.Join(", ", actualColumnNames));
-        output.WriteLine("Expected columns count: {0}", expectedColumnNames.Length);
-        output.WriteLine("Actual columns count: {0}", actualColumnNames.Length);
-        output.WriteLine(
+        Output.WriteLine("Expected columns: {0}", string.Join(", ", expectedColumnNames));
+        Output.WriteLine("Actual columns: {0}", string.Join(", ", actualColumnNames));
+        Output.WriteLine("Expected columns count: {0}", expectedColumnNames.Length);
+        Output.WriteLine("Actual columns count: {0}", actualColumnNames.Length);
+        Output.WriteLine(
             "Expected not in actual: {0}",
             string.Join(", ", expectedColumnNames.Except(actualColumnNames))
         );
-        output.WriteLine(
+        Output.WriteLine(
             "Actual not in expected: {0}",
             string.Join(", ", actualColumnNames.Except(expectedColumnNames))
         );

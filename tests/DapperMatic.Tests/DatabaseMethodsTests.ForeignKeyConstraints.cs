@@ -51,7 +51,7 @@ public abstract partial class DatabaseMethodsTests
             ]
         );
 
-        output.WriteLine("Foreign Key Exists: {0}.{1}", tableName, foreignKeyName);
+        Output.WriteLine("Foreign Key Exists: {0}.{1}", tableName, foreignKeyName);
         var exists = await db.DoesForeignKeyConstraintExistAsync(
             schemaName,
             tableName,
@@ -59,7 +59,7 @@ public abstract partial class DatabaseMethodsTests
         );
         Assert.False(exists);
 
-        output.WriteLine("Creating foreign key: {0}.{1}", tableName, foreignKeyName);
+        Output.WriteLine("Creating foreign key: {0}.{1}", tableName, foreignKeyName);
         var created = await db.CreateForeignKeyConstraintIfNotExistsAsync(
             schemaName,
             tableName,
@@ -71,7 +71,7 @@ public abstract partial class DatabaseMethodsTests
         );
         Assert.True(created);
 
-        output.WriteLine("Foreign Key Exists: {0}.{1}", tableName, foreignKeyName);
+        Output.WriteLine("Foreign Key Exists: {0}.{1}", tableName, foreignKeyName);
         exists = await db.DoesForeignKeyConstraintExistAsync(schemaName, tableName, foreignKeyName);
         Assert.True(exists);
         exists = await db.DoesForeignKeyConstraintExistOnColumnAsync(
@@ -81,14 +81,14 @@ public abstract partial class DatabaseMethodsTests
         );
         Assert.True(exists);
 
-        output.WriteLine("Get Foreign Key Names: {0}", tableName);
+        Output.WriteLine("Get Foreign Key Names: {0}", tableName);
         var fkNames = await db.GetForeignKeyConstraintNamesAsync(schemaName, tableName);
         Assert.Contains(
             fkNames,
             fk => fk.Equals(foreignKeyName, StringComparison.OrdinalIgnoreCase)
         );
 
-        output.WriteLine("Get Foreign Keys: {0}", tableName);
+        Output.WriteLine("Get Foreign Keys: {0}", tableName);
         var fks = await db.GetForeignKeyConstraintsAsync(schemaName, tableName);
         Assert.Contains(
             fks,
@@ -105,10 +105,10 @@ public abstract partial class DatabaseMethodsTests
                 && fk.OnDelete.Equals(DxForeignKeyAction.Cascade)
         );
 
-        output.WriteLine("Dropping foreign key: {0}", foreignKeyName);
+        Output.WriteLine("Dropping foreign key: {0}", foreignKeyName);
         await db.DropForeignKeyConstraintIfExistsAsync(schemaName, tableName, foreignKeyName);
 
-        output.WriteLine("Foreign Key Exists: {0}", foreignKeyName);
+        Output.WriteLine("Foreign Key Exists: {0}", foreignKeyName);
         exists = await db.DoesForeignKeyConstraintExistAsync(schemaName, tableName, foreignKeyName);
         Assert.False(exists);
         exists = await db.DoesForeignKeyConstraintExistOnColumnAsync(

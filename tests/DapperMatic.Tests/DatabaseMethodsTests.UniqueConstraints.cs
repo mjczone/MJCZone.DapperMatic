@@ -53,7 +53,7 @@ public abstract partial class DatabaseMethodsTests
             ]
         );
 
-        output.WriteLine("Unique Constraint Exists: {0}.{1}", tableName, uniqueConstraintName);
+        Output.WriteLine("Unique Constraint Exists: {0}.{1}", tableName, uniqueConstraintName);
         var exists = await db.DoesUniqueConstraintExistAsync(
             schemaName,
             tableName,
@@ -61,7 +61,7 @@ public abstract partial class DatabaseMethodsTests
         );
         Assert.False(exists);
 
-        output.WriteLine("Unique Constraint2 Exists: {0}.{1}", tableName, uniqueConstraintName2);
+        Output.WriteLine("Unique Constraint2 Exists: {0}.{1}", tableName, uniqueConstraintName2);
         exists = await db.DoesUniqueConstraintExistAsync(
             schemaName,
             tableName,
@@ -75,7 +75,7 @@ public abstract partial class DatabaseMethodsTests
         );
         Assert.True(exists);
 
-        output.WriteLine("Creating unique constraint: {0}.{1}", tableName, uniqueConstraintName);
+        Output.WriteLine("Creating unique constraint: {0}.{1}", tableName, uniqueConstraintName);
         await db.CreateUniqueConstraintIfNotExistsAsync(
             schemaName,
             tableName,
@@ -84,7 +84,7 @@ public abstract partial class DatabaseMethodsTests
         );
 
         // make sure the new constraint is there
-        output.WriteLine("Unique Constraint Exists: {0}.{1}", tableName, uniqueConstraintName);
+        Output.WriteLine("Unique Constraint Exists: {0}.{1}", tableName, uniqueConstraintName);
         exists = await db.DoesUniqueConstraintExistAsync(
             schemaName,
             tableName,
@@ -95,7 +95,7 @@ public abstract partial class DatabaseMethodsTests
         Assert.True(exists);
 
         // make sure the original constraint is still there
-        output.WriteLine("Unique Constraint Exists: {0}.{1}", tableName, uniqueConstraintName2);
+        Output.WriteLine("Unique Constraint Exists: {0}.{1}", tableName, uniqueConstraintName2);
         exists = await db.DoesUniqueConstraintExistAsync(
             schemaName,
             tableName,
@@ -109,7 +109,7 @@ public abstract partial class DatabaseMethodsTests
         );
         Assert.True(exists);
 
-        output.WriteLine("Get Unique Constraint Names: {0}", tableName);
+        Output.WriteLine("Get Unique Constraint Names: {0}", tableName);
         var uniqueConstraintNames = await db.GetUniqueConstraintNamesAsync(schemaName, tableName);
         Assert.Contains(
             uniqueConstraintName2,
@@ -133,10 +133,10 @@ public abstract partial class DatabaseMethodsTests
             uc => uc.ConstraintName.Equals(uniqueConstraintName, StringComparison.OrdinalIgnoreCase)
         );
 
-        output.WriteLine("Dropping unique constraint: {0}.{1}", tableName, uniqueConstraintName);
+        Output.WriteLine("Dropping unique constraint: {0}.{1}", tableName, uniqueConstraintName);
         await db.DropUniqueConstraintIfExistsAsync(schemaName, tableName, uniqueConstraintName);
 
-        output.WriteLine("Unique Constraint Exists: {0}.{1}", tableName, uniqueConstraintName);
+        Output.WriteLine("Unique Constraint Exists: {0}.{1}", tableName, uniqueConstraintName);
         exists = await db.DoesUniqueConstraintExistAsync(
             schemaName,
             tableName,

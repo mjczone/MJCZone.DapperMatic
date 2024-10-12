@@ -8,11 +8,11 @@ namespace DapperMatic.Tests;
 
 public abstract class TestBase : IDisposable
 {
-    protected readonly ITestOutputHelper output;
+    protected readonly ITestOutputHelper Output;
 
     protected TestBase(ITestOutputHelper output)
     {
-        this.output = output;
+        this.Output = output;
 
         var loggerFactory = LoggerFactory.Create(builder =>
         {
@@ -52,6 +52,8 @@ public abstract class TestBase : IDisposable
 
     protected void Log(string message)
     {
-        output.WriteLine(message);
+        Output.WriteLine(message);
     }
+
+    public virtual bool IgnoreSqlType(string sqlType) => false;
 }

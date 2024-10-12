@@ -113,6 +113,6 @@ public abstract partial class DatabaseMethodsTests
         exists = await db.DoesTableExistAsync(schemaName, newName);
         Assert.False(exists);
 
-        output.WriteLine($"Table names: {0}", string.Join(", ", tableNames));
+        Output.WriteLine($"Table names: {0}", string.Join(", ", tableNames));
     }
 }

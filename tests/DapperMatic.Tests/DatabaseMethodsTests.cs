@@ -62,7 +62,7 @@ public abstract partial class DatabaseMethodsTests : TestBase
         var version = await db.GetDatabaseVersionAsync();
         Assert.True(version.Major > 0);
 
-        output.WriteLine("Database version: {0}", version);
+        Output.WriteLine("Database version: {0}", version);
     }
 
     [Theory]
@@ -81,8 +81,8 @@ public abstract partial class DatabaseMethodsTests : TestBase
         Assert.NotEmpty(lastSql);
         Assert.NotNull(lastParams);
 
-        output.WriteLine("Last SQL: {0}", lastSql);
-        output.WriteLine("Last Parameters: {0}", JsonConvert.SerializeObject(lastParams));
+        Output.WriteLine("Last SQL: {0}", lastSql);
+        Output.WriteLine("Last Parameters: {0}", JsonConvert.SerializeObject(lastParams));
     }
 
     [Theory]
@@ -98,6 +98,6 @@ public abstract partial class DatabaseMethodsTests : TestBase
         var lastSql = db.GetLastSql();
         Assert.NotEmpty(lastSql);
 
-        output.WriteLine("Last SQL: {0}", lastSql);
+        Output.WriteLine("Last SQL: {0}", lastSql);
     }
 }

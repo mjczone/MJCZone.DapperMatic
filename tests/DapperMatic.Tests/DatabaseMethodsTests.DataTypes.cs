@@ -131,9 +131,7 @@ public abstract partial class DatabaseMethodsTests
                     // let's make sure the .NET type is a custom class
                     if (allSupportedTypes.Contains(type))
                     {
-                        fetchedProviderDataType = providerTypeMap.GetRecommendedDataTypeForSqlType(
-                            fetchedProviderDataTypeString
-                        );
+                        // this is mostly so that we can add a breakpoint to inspect what's going on
                         Assert.True(type.IsClass);
                     }
                     Assert.DoesNotContain(allSupportedTypes, t => t == type);
@@ -184,6 +182,12 @@ public abstract partial class DatabaseMethodsTests
                 Assert.NotNull(recommendedDotnetType);
 
                 var sqlType = providerDataType.SqlTypeFormat;
+
+                // some types are not supported in the same way by all providers
+                // e.g. geomcollection is not supported by MySQL v5.7 like it is in MySQL v8.0
+                if (IgnoreSqlType(sqlType))
+                    continue;
+
                 if (providerDataType.SupportsLength)
                 {
                     Assert.NotNull(providerDataType.SqlTypeWithLengthFormat);
