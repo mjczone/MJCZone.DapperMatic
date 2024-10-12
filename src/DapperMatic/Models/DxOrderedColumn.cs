@@ -23,5 +23,5 @@ public class DxOrderedColumn
     public override string ToString() => ToString(true);
 
     public string ToString(bool includeOrder) =>
-        $"{ColumnName}{(includeOrder ? (Order == DxColumnOrder.Descending ? " DESC" : "") : "")}";
+        $"{ColumnName}{(includeOrder ? Order == DxColumnOrder.Descending ? " DESC" : "" : "")}";
 }

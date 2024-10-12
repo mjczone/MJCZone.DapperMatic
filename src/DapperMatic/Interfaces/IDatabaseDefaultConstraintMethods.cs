@@ -3,7 +3,7 @@ using DapperMatic.Models;
 
 namespace DapperMatic.Interfaces;
 
-public partial interface IDatabaseDefaultConstraintMethods
+public interface IDatabaseDefaultConstraintMethods
 {
     Task<bool> CreateDefaultConstraintIfNotExistsAsync(
         IDbConnection db,

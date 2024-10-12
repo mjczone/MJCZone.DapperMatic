@@ -128,6 +128,7 @@ public partial class SqliteMethods
                                     StringComparison.OrdinalIgnoreCase
                                 )
                             );
+                            // ReSharper disable once InvertIf
                             if (sc is not null)
                             {
                                 sc.IsForeignKey = false;

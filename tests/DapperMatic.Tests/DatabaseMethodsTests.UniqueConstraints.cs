@@ -1,5 +1,4 @@
 using DapperMatic.Models;
-using Microsoft.Extensions.Logging;
 
 namespace DapperMatic.Tests;
 
@@ -175,7 +174,7 @@ public abstract partial class DatabaseMethodsTests
                     tableName,
                     uniqueConstraintName,
                     [
-                        new DxOrderedColumn(columnName2, DxColumnOrder.Ascending),
+                        new DxOrderedColumn(columnName2),
                         new DxOrderedColumn(columnName, DxColumnOrder.Descending)
                     ]
                 )

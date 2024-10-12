@@ -1,5 +1,4 @@
 using DapperMatic.Models;
-using Microsoft.Extensions.Logging;
 
 namespace DapperMatic.Tests;
 
@@ -33,7 +32,7 @@ public abstract partial class DatabaseMethodsTests
 
             var columns = new List<DxColumn>
             {
-                new DxColumn(
+                new(
                     schemaName,
                     tableName,
                     columnName,
@@ -98,7 +97,7 @@ public abstract partial class DatabaseMethodsTests
                 tableName,
                 indexName + "_multi2",
                 [
-                    new DxOrderedColumn(columnName + "_3", DxColumnOrder.Ascending),
+                    new DxOrderedColumn(columnName + "_3"),
                     new DxOrderedColumn(columnName + "_4", DxColumnOrder.Descending)
                 ]
             );

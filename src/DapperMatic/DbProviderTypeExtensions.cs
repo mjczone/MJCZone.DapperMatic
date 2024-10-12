@@ -5,18 +5,18 @@ namespace DapperMatic;
 
 public static class DbProviderTypeExtensions
 {
-    private static readonly ConcurrentDictionary<Type, DbProviderType> _providerTypes = new();
+    private static readonly ConcurrentDictionary<Type, DbProviderType> ProviderTypes = new();
 
     public static DbProviderType GetDbProviderType(this IDbConnection db)
     {
         var type = db.GetType();
-        if (_providerTypes.TryGetValue(type, out var dbType))
+        if (ProviderTypes.TryGetValue(type, out var dbType))
         {
             return dbType;
         }
 
         dbType = ToDbProviderType(type.FullName!);
-        _providerTypes.TryAdd(type, dbType);
+        ProviderTypes.TryAdd(type, dbType);
 
         return dbType;
     }

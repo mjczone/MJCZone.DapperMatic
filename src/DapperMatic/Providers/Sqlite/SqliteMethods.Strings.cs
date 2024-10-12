@@ -17,13 +17,13 @@ public partial class SqliteMethods
         string tableName
     )
     {
-        var sql =
-            @$"
-            SELECT COUNT(*)
-            FROM sqlite_master
-            WHERE 
-                type = 'table'
-                AND name = @tableName";
+        const string sql = """
+                           SELECT COUNT(*)
+                           FROM sqlite_master
+                           WHERE 
+                               type = 'table'
+                               AND name = @tableName
+                           """;
 
         return (
             sql,
@@ -43,14 +43,16 @@ public partial class SqliteMethods
         var where = string.IsNullOrWhiteSpace(tableNameFilter) ? "" : ToLikeString(tableNameFilter);
 
         var sql =
-            $@"
-                SELECT name
-                FROM sqlite_master
-                WHERE 
-                    type = 'table' 
-                    AND name NOT LIKE 'sqlite_%'
-                    {(string.IsNullOrWhiteSpace(where) ? null : " AND name LIKE @where")}
-                ORDER BY name";
+            $"""
+             
+                             SELECT name
+                             FROM sqlite_master
+                             WHERE 
+                                 type = 'table' 
+                                 AND name NOT LIKE 'sqlite_%'
+                                 {(string.IsNullOrWhiteSpace(where) ? null : " AND name LIKE @where")}
+                             ORDER BY name
+             """;
 
         return (sql, new { schemaName = NormalizeSchemaName(schemaName), where });
     }
@@ -77,7 +79,7 @@ public partial class SqliteMethods
     #region Index Strings
     protected override string SqlDropIndex(string? schemaName, string tableName, string indexName)
     {
-        return @$"DROP INDEX {GetSchemaQualifiedIdentifierName(schemaName, indexName)}";
+        return $"DROP INDEX {GetSchemaQualifiedIdentifierName(schemaName, indexName)}";
     }
     #endregion // Index Strings
 
@@ -85,22 +87,23 @@ public partial class SqliteMethods
 
     protected override (string sql, object parameters) SqlGetViewNames(
         string? schemaName,
-        string? viewNameFilter
-    )
+        string? viewNameFilter = null)
     {
         var where = string.IsNullOrWhiteSpace(viewNameFilter) ? "" : ToLikeString(viewNameFilter);
 
         var sql =
-            @$"
-                SELECT 
-                    m.name AS ViewName
-                FROM sqlite_master AS m
-                WHERE
-                    m.TYPE = 'view' 
-                    AND m.name NOT LIKE 'sqlite_%'
-                    {(string.IsNullOrWhiteSpace(where) ? "" : " AND m.name LIKE @where")}
-                ORDER BY
-                    m.name";
+            $"""
+             
+                             SELECT 
+                                 m.name AS ViewName
+                             FROM sqlite_master AS m
+                             WHERE
+                                 m.TYPE = 'view' 
+                                 AND m.name NOT LIKE 'sqlite_%'
+                                 {(string.IsNullOrWhiteSpace(where) ? "" : " AND m.name LIKE @where")}
+                             ORDER BY
+                                 m.name
+             """;
 
         return (sql, new { schemaName = NormalizeSchemaName(schemaName), where });
     }
@@ -113,23 +116,25 @@ public partial class SqliteMethods
         var where = string.IsNullOrWhiteSpace(viewNameFilter) ? "" : ToLikeString(viewNameFilter);
 
         var sql =
-            @$"
-                SELECT 
-                    NULL as SchemaName,
-                    m.name AS ViewName, 
-                    m.SQL AS Definition
-                FROM sqlite_master AS m
-                WHERE
-                    m.TYPE = 'view' 
-                    AND m.name NOT LIKE 'sqlite_%'
-                    {(string.IsNullOrWhiteSpace(where) ? "" : " AND m.name LIKE @where")}
-                ORDER BY
-                    m.name";
+            $"""
+             
+                             SELECT 
+                                 NULL as SchemaName,
+                                 m.name AS ViewName, 
+                                 m.SQL AS Definition
+                             FROM sqlite_master AS m
+                             WHERE
+                                 m.TYPE = 'view' 
+                                 AND m.name NOT LIKE 'sqlite_%'
+                                 {(string.IsNullOrWhiteSpace(where) ? "" : " AND m.name LIKE @where")}
+                             ORDER BY
+                                 m.name
+             """;
 
         return (sql, new { schemaName = NormalizeSchemaName(schemaName), where });
     }
 
-    static readonly char[] WhiteSpaceCharacters = [' ', '\t', '\n', '\r'];
+    private static readonly char[] WhiteSpaceCharacters = [' ', '\t', '\n', '\r'];
 
     protected override string NormalizeViewDefinition(string definition)
     {
@@ -139,17 +144,14 @@ public partial class SqliteMethods
         string? viewDefinition = null;
         for (var i = 0; i < definition.Length; i++)
         {
-            if (
-                i > 0
-                && definition[i] == 'A'
-                && definition[i + 1] == 'S'
-                && WhiteSpaceCharacters.Contains(definition[i - 1])
-                && WhiteSpaceCharacters.Contains(definition[i + 2])
-            )
-            {
-                viewDefinition = definition[(i + 3)..].Trim();
-                break;
-            }
+            if (i <= 0
+                || definition[i] != 'A'
+                || definition[i + 1] != 'S'
+                || !WhiteSpaceCharacters.Contains(definition[i - 1])
+                || !WhiteSpaceCharacters.Contains(definition[i + 2])) continue;
+            
+            viewDefinition = definition[(i + 3)..].Trim();
+            break;
         }
 
         if (string.IsNullOrWhiteSpace(viewDefinition))

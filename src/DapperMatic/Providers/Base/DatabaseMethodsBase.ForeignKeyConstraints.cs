@@ -1,10 +1,9 @@
 using System.Data;
-using DapperMatic.Interfaces;
 using DapperMatic.Models;
 
 namespace DapperMatic.Providers.Base;
 
-public abstract partial class DatabaseMethodsBase : IDatabaseForeignKeyConstraintMethods
+public abstract partial class DatabaseMethodsBase
 {
     public virtual async Task<bool> DoesForeignKeyConstraintExistAsync(
         IDbConnection db,
@@ -306,17 +305,15 @@ public abstract partial class DatabaseMethodsBase : IDatabaseForeignKeyConstrain
     )
     {
         if (
-            !(
-                await DoesForeignKeyConstraintExistAsync(
-                        db,
-                        schemaName,
-                        tableName,
-                        constraintName,
-                        tx,
-                        cancellationToken
-                    )
-                    .ConfigureAwait(false)
-            )
+            !await DoesForeignKeyConstraintExistAsync(
+                    db,
+                    schemaName,
+                    tableName,
+                    constraintName,
+                    tx,
+                    cancellationToken
+                )
+                .ConfigureAwait(false)
         )
             return false;
 

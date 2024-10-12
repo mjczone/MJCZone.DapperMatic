@@ -40,11 +40,9 @@ public class DxColumn
         DotnetType = dotnetType;
         ProviderDataType = providerDataType;
         Length =
-            (
-                dotnetType == typeof(string)
-                && string.IsNullOrWhiteSpace(providerDataType)
-                && !length.HasValue
-            )
+            dotnetType == typeof(string)
+            && string.IsNullOrWhiteSpace(providerDataType)
+            && !length.HasValue
                 ? 255 /* a sensible default */
                 : length;
         Precision = precision;

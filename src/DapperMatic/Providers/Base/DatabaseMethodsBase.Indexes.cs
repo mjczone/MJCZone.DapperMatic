@@ -1,10 +1,9 @@
 using System.Data;
-using DapperMatic.Interfaces;
 using DapperMatic.Models;
 
 namespace DapperMatic.Providers.Base;
 
-public abstract partial class DatabaseMethodsBase : IDatabaseIndexMethods
+public abstract partial class DatabaseMethodsBase
 {
     public virtual async Task<bool> DoesIndexExistAsync(
         IDbConnection db,

@@ -1,7 +1,8 @@
 // Purpose: Provides a type map for SQLite data types.
 namespace DapperMatic.Providers.Sqlite;
 
-public class SqliteProviderTypeMap : ProviderTypeMapBase<SqliteProviderTypeMap>
+// ReSharper disable once ClassNeverInstantiated.Global
+public sealed class SqliteProviderTypeMap : ProviderTypeMapBase<SqliteProviderTypeMap>
 {
     public SqliteProviderTypeMap()
     {
@@ -60,7 +61,7 @@ public class SqliteProviderTypeMap : ProviderTypeMapBase<SqliteProviderTypeMap>
             typeof(decimal),
             typeof(int),
             typeof(long),
-            typeof(short),
+            typeof(short)
         ];
         Type[] allBlobAffinityTypes = [typeof(byte[]), typeof(object)];
         Type[] allTextAffinityTypes =
@@ -68,7 +69,7 @@ public class SqliteProviderTypeMap : ProviderTypeMapBase<SqliteProviderTypeMap>
             .. CommonTypes,
             .. CommonDictionaryTypes,
             .. CommonEnumerableTypes,
-            typeof(object),
+            typeof(object)
         ];
         return
         [
@@ -140,7 +141,7 @@ public class SqliteProviderTypeMap : ProviderTypeMapBase<SqliteProviderTypeMap>
                 [typeof(DateTime), typeof(int), typeof(long)]
             ),
             // BINARY TYPES
-            new ProviderDataType("BLOB", typeof(byte[]), [typeof(byte[]), typeof(object)]),
+            new ProviderDataType("BLOB", typeof(byte[]), allBlobAffinityTypes)
         ];
     }
 }

@@ -1,11 +1,14 @@
 using System.Data;
+using System.Diagnostics.CodeAnalysis;
 using DapperMatic.Interfaces;
 using DapperMatic.Models;
 using DapperMatic.Providers;
 
 namespace DapperMatic;
 
-public static partial class IDbConnectionExtensions
+[SuppressMessage("ReSharper", "UnusedMember.Global")]
+[SuppressMessage("ReSharper", "UnusedMethodReturnValue.Global")]
+public static class DbConnectionExtensions
 {
     #region IDatabaseMethods
     public static string GetLastSql(this IDbConnection db)

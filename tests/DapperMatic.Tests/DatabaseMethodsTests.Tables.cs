@@ -1,6 +1,5 @@
 using Dapper;
 using DapperMatic.Models;
-using Microsoft.Extensions.Logging;
 
 namespace DapperMatic.Tests;
 
@@ -37,11 +36,10 @@ public abstract partial class DatabaseMethodsTests
                     tableName,
                     "id",
                     typeof(int),
-                    null,
                     isPrimaryKey: true,
                     isAutoIncrement: true
                 ),
-                new DxColumn(schemaName, tableName, "name", typeof(string), null, isUnique: true)
+                new DxColumn(schemaName, tableName, "name", typeof(string), isUnique: true)
             ]
         );
         var created = await db.CreateTableIfNotExistsAsync(table);

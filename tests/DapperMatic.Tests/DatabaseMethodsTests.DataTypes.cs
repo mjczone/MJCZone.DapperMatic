@@ -1,4 +1,5 @@
 using System.Collections.ObjectModel;
+using System.Data;
 using DapperMatic.Models;
 using DapperMatic.Providers;
 
@@ -30,7 +31,7 @@ public abstract partial class DatabaseMethodsTests
         Type[] allTestTypes = [.. allSupportedTypes, .. OtherTypes];
 
         // create columns starting from .NET types
-        foreach (Type type in allTestTypes)
+        foreach (var type in allTestTypes)
         {
             try
             {
@@ -252,7 +253,7 @@ public abstract partial class DatabaseMethodsTests
     }
 
     private async Task ValidateActualColumnAgainstProviderDataTypeUsedToCreateItAsync(
-        System.Data.IDbConnection db,
+        IDbConnection db,
         string? schemaName,
         string tableName,
         string columnName,
@@ -296,7 +297,7 @@ public abstract partial class DatabaseMethodsTests
         typeof(IEnumerable<Guid>),
         typeof(ICollection<Guid>),
         typeof(Collection<Guid>),
-        typeof(IList<Guid>),
+        typeof(IList<Guid>)
     ];
 
     protected static readonly Type[] CommonTypes =
@@ -320,23 +321,19 @@ public abstract partial class DatabaseMethodsTests
     protected static readonly Type[] CommonDictionaryTypes =
     [
         // dictionary types
-        .. (
-            CommonTypes
-                .Select(t => typeof(Dictionary<,>).MakeGenericType(t, typeof(string)))
-                .ToArray()
-        ),
-        .. (
-            CommonTypes
-                .Select(t => typeof(Dictionary<,>).MakeGenericType(t, typeof(object)))
-                .ToArray()
-        )
+        .. CommonTypes
+            .Select(t => typeof(Dictionary<,>).MakeGenericType(t, typeof(string)))
+            .ToArray(),
+        .. CommonTypes
+            .Select(t => typeof(Dictionary<,>).MakeGenericType(t, typeof(object)))
+            .ToArray()
     ];
 
     protected static readonly Type[] CommonEnumerableTypes =
     [
         // enumerable types
-        .. (CommonTypes.Select(t => typeof(List<>).MakeGenericType(t)).ToArray()),
-        .. (CommonTypes.Select(t => t.MakeArrayType()).ToArray())
+        .. CommonTypes.Select(t => typeof(List<>).MakeGenericType(t)).ToArray(),
+        .. CommonTypes.Select(t => t.MakeArrayType()).ToArray()
     ];
 }
 

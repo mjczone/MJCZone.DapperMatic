@@ -1,5 +1,3 @@
-using Microsoft.Extensions.Logging;
-
 namespace DapperMatic.Tests;
 
 public abstract partial class DatabaseMethodsTests

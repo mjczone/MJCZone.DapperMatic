@@ -1,8 +1,5 @@
 using System.Data;
-using System.Diagnostics;
-using System.Text;
 using DapperMatic.Models;
-using Microsoft.Extensions.Logging;
 
 namespace DapperMatic.Providers.Sqlite;
 

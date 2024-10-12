@@ -3,7 +3,7 @@ using DapperMatic.Models;
 
 namespace DapperMatic.Interfaces;
 
-public partial interface IDatabaseUniqueConstraintMethods
+public interface IDatabaseUniqueConstraintMethods
 {
     Task<bool> CreateUniqueConstraintIfNotExistsAsync(
         IDbConnection db,

@@ -1,5 +1,4 @@
 using System.Data;
-using System.Data.Common;
 using DapperMatic.Models;
 
 namespace DapperMatic.Providers.Sqlite;

@@ -1,12 +1,16 @@
 using System.Collections.Concurrent;
 using System.Data;
 using DapperMatic.Interfaces;
+using DapperMatic.Providers.MySql;
+using DapperMatic.Providers.PostgreSql;
+using DapperMatic.Providers.Sqlite;
+using DapperMatic.Providers.SqlServer;
 
 namespace DapperMatic.Providers;
 
 internal static class DatabaseMethodsFactory
 {
-    private static readonly ConcurrentDictionary<DbProviderType, IDatabaseMethods> _methodsCache =
+    private static readonly ConcurrentDictionary<DbProviderType, IDatabaseMethods> MethodsCache =
         new();
 
     public static IDatabaseMethods GetDatabaseMethods(IDbConnection db)
@@ -14,24 +18,24 @@ internal static class DatabaseMethodsFactory
         return GetDatabaseMethods(db.GetDbProviderType());
     }
 
-    public static IDatabaseMethods GetDatabaseMethods(DbProviderType providerType)
+    private static IDatabaseMethods GetDatabaseMethods(DbProviderType providerType)
     {
         // Try to get the DxTable from the cache
-        if (_methodsCache.TryGetValue(providerType, out var databaseMethods))
+        if (MethodsCache.TryGetValue(providerType, out var databaseMethods))
         {
             return databaseMethods;
         }
 
         databaseMethods = providerType switch
         {
-            DbProviderType.Sqlite => new Sqlite.SqliteMethods(),
-            DbProviderType.SqlServer => new SqlServer.SqlServerMethods(),
-            DbProviderType.MySql => new MySql.MySqlMethods(),
-            DbProviderType.PostgreSql => new PostgreSql.PostgreSqlMethods(),
+            DbProviderType.Sqlite => new SqliteMethods(),
+            DbProviderType.SqlServer => new SqlServerMethods(),
+            DbProviderType.MySql => new MySqlMethods(),
+            DbProviderType.PostgreSql => new PostgreSqlMethods(),
             _ => throw new NotSupportedException($"Provider {providerType} is not supported.")
         };
 
-        _methodsCache.TryAdd(providerType, databaseMethods);
+        MethodsCache.TryAdd(providerType, databaseMethods);
 
         return databaseMethods;
     }

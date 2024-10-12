@@ -1,5 +1,4 @@
 using System.Data;
-using System.Data.Common;
 using DapperMatic.Models;
 
 namespace DapperMatic.Providers.Sqlite;
@@ -43,10 +42,7 @@ public partial class SqliteMethods
                 db,
                 schemaName,
                 tableName,
-                table =>
-                {
-                    return table.PrimaryKeyConstraint is null;
-                },
+                table => table.PrimaryKeyConstraint is null,
                 table =>
                 {
                     table.PrimaryKeyConstraint = new DxPrimaryKeyConstraint(
@@ -91,10 +87,7 @@ public partial class SqliteMethods
                 db,
                 schemaName,
                 tableName,
-                table =>
-                {
-                    return table.PrimaryKeyConstraint is not null;
-                },
+                table => table.PrimaryKeyConstraint is not null,
                 table =>
                 {
                     table.PrimaryKeyConstraint = null;

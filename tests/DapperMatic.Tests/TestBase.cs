@@ -12,7 +12,7 @@ public abstract class TestBase : IDisposable
 
     protected TestBase(ITestOutputHelper output)
     {
-        this.Output = output;
+        Output = output;
 
         var loggerFactory = LoggerFactory.Create(builder =>
         {

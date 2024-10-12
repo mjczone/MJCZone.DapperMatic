@@ -11,7 +11,7 @@ public static class DxTableFactory
     private static ConcurrentDictionary<Type, DxTable> _cache = new();
     private static ConcurrentDictionary<Type, Dictionary<string, DxColumn>> _propertyCache = new();
 
-    private static Action<Type, DxTable>? _customMappingAction = null;
+    private static Action<Type, DxTable>? _customMappingAction;
 
     /// <summary>
     /// Configure ahead of time any custom configuration for mapping types to DxTable instances. Call this
@@ -115,10 +115,10 @@ public static class DxTableFactory
                 columnAttribute?.Scale,
                 string.IsNullOrWhiteSpace(columnAttribute?.CheckExpression)
                     ? null
-                    : columnAttribute?.CheckExpression,
+                    : columnAttribute.CheckExpression,
                 string.IsNullOrWhiteSpace(columnAttribute?.DefaultExpression)
                     ? null
-                    : columnAttribute?.DefaultExpression,
+                    : columnAttribute.DefaultExpression,
                 columnAttribute?.IsNullable ?? true,
                 columnAttribute?.IsPrimaryKey ?? false,
                 columnAttribute?.IsAutoIncrement ?? false,
@@ -127,10 +127,10 @@ public static class DxTableFactory
                 columnAttribute?.IsForeignKey ?? false,
                 string.IsNullOrWhiteSpace(columnAttribute?.ReferencedTableName)
                     ? null
-                    : columnAttribute?.ReferencedTableName,
+                    : columnAttribute.ReferencedTableName,
                 string.IsNullOrWhiteSpace(columnAttribute?.ReferencedColumnName)
                     ? null
-                    : columnAttribute?.ReferencedColumnName,
+                    : columnAttribute.ReferencedColumnName,
                 columnAttribute?.OnDelete ?? null,
                 columnAttribute?.OnUpdate ?? null
             );
@@ -328,8 +328,8 @@ public static class DxTableFactory
             // flag the column as part of the primary key
             foreach (var c in cpa.Columns)
             {
-                var column = columns.FirstOrDefault(c =>
-                    c.ColumnName.Equals(c.ColumnName, StringComparison.OrdinalIgnoreCase)
+                var column = columns.FirstOrDefault(col =>
+                    col.ColumnName.Equals(c.ColumnName, StringComparison.OrdinalIgnoreCase)
                 );
                 if (column != null)
                     column.IsPrimaryKey = true;
@@ -340,25 +340,24 @@ public static class DxTableFactory
         var ccaId = 1;
         foreach (var cca in ccas)
         {
-            if (cca != null && !string.IsNullOrWhiteSpace(cca.Expression))
-            {
-                var constraintName = !string.IsNullOrWhiteSpace(cca.ConstraintName)
-                    ? cca.ConstraintName
-                    : ProviderUtils.GenerateCheckConstraintName(tableName, $"{ccaId++}");
+            if (string.IsNullOrWhiteSpace(cca.Expression)) continue;
+            
+            var constraintName = !string.IsNullOrWhiteSpace(cca.ConstraintName)
+                ? cca.ConstraintName
+                : ProviderUtils.GenerateCheckConstraintName(tableName, $"{ccaId++}");
 
-                checkConstraints.Add(
-                    new DxCheckConstraint(
-                        schemaName,
-                        tableName,
-                        null,
-                        constraintName,
-                        cca.Expression
-                    )
-                );
-            }
+            checkConstraints.Add(
+                new DxCheckConstraint(
+                    schemaName,
+                    tableName,
+                    null,
+                    constraintName,
+                    cca.Expression
+                )
+            );
         }
 
-        var ucas = type.GetCustomAttributes<DxUniqueConstraintAttribute>() ?? [];
+        var ucas = type.GetCustomAttributes<DxUniqueConstraintAttribute>();
         foreach (var uca in ucas)
         {
             if (uca.Columns == null)
@@ -457,7 +456,7 @@ public static class DxTableFactory
 
             foreignKeyConstraints.Add(foreignKeyConstraint);
 
-            for (int i = 0; i < cfk.SourceColumnNames.Length; i++)
+            for (var i = 0; i < cfk.SourceColumnNames.Length; i++)
             {
                 var sc = cfk.SourceColumnNames[i];
                 var column = columns.FirstOrDefault(c =>

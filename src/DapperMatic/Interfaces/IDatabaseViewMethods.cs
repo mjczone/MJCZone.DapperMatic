@@ -3,7 +3,7 @@ using DapperMatic.Models;
 
 namespace DapperMatic.Interfaces;
 
-public partial interface IDatabaseViewMethods
+public interface IDatabaseViewMethods
 {
     Task<bool> DoesViewExistAsync(
         IDbConnection db,

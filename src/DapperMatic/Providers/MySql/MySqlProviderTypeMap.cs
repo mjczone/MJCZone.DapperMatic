@@ -1,7 +1,8 @@
 // Purpose: Provides a type map for MySql data types.
 namespace DapperMatic.Providers.MySql;
 
-public class MySqlProviderTypeMap : ProviderTypeMapBase<MySqlProviderTypeMap>
+// ReSharper disable once ClassNeverInstantiated.Global
+public sealed class MySqlProviderTypeMap : ProviderTypeMapBase<MySqlProviderTypeMap>
 {
     public MySqlProviderTypeMap()
     {
@@ -74,7 +75,7 @@ public class MySqlProviderTypeMap : ProviderTypeMapBase<MySqlProviderTypeMap>
             .. CommonTypes,
             .. CommonDictionaryTypes,
             .. CommonEnumerableTypes,
-            typeof(object),
+            typeof(object)
         ];
         Type[] allDateTimeAffinityTypes =
         [
@@ -100,7 +101,7 @@ public class MySqlProviderTypeMap : ProviderTypeMapBase<MySqlProviderTypeMap>
             typeof(short)
         ];
         Type[] allBlobAffinityTypes = [typeof(byte[]), typeof(object)];
-        Type[] allGeometryAffinityType = [typeof(byte[]), typeof(object)];
+        Type[] allGeometryAffinityType = [typeof(string), typeof(object)];
         return
         [
             // TEXT AFFINITY TYPES
@@ -110,46 +111,46 @@ public class MySqlProviderTypeMap : ProviderTypeMapBase<MySqlProviderTypeMap>
                 allTextAffinityTypes,
                 "varchar({0})",
                 sqlTypeFormatWithMaxLength: "text",
-                isRecommendedDotNetTypeMatch: (x) => x == typeof(string)
+                isRecommendedDotNetTypeMatch: x => x == typeof(string)
             ),
             new ProviderDataType("text", typeof(string), allTextAffinityTypes),
             new ProviderDataType("char", typeof(string), allTextAffinityTypes, "char({0})"),
             // OTHER AFFINITY TYPES
             // new ProviderDataType("json", typeof(string), [typeof(string)]),
             // GEOMETRY SUPPORTED YET
-            new ProviderDataType("geometry", typeof(object), [typeof(string), typeof(object)]),
-            new ProviderDataType("point", typeof(object), [typeof(string), typeof(object)]),
-            new ProviderDataType("linestring", typeof(object), [typeof(string), typeof(object)]),
-            new ProviderDataType("polygon", typeof(object), [typeof(string), typeof(object)]),
+            new ProviderDataType("geometry", typeof(object), allGeometryAffinityType),
+            new ProviderDataType("point", typeof(object), allGeometryAffinityType),
+            new ProviderDataType("linestring", typeof(object), allGeometryAffinityType),
+            new ProviderDataType("polygon", typeof(object), allGeometryAffinityType),
             new ProviderDataType(
                 "geometrycollection",
                 typeof(object),
-                [typeof(string), typeof(object)]
+                allGeometryAffinityType
             ),
             new ProviderDataType(
                 "geomcollection",
                 typeof(object),
-                [typeof(string), typeof(object)]
+                allGeometryAffinityType
             ),
-            new ProviderDataType("multipoint", typeof(object), [typeof(string), typeof(object)]),
+            new ProviderDataType("multipoint", typeof(object), allGeometryAffinityType),
             new ProviderDataType(
                 "multilinestring",
                 typeof(object),
-                [typeof(string), typeof(object)]
+                allGeometryAffinityType
             ),
-            new ProviderDataType("multipolygon", typeof(object), [typeof(string), typeof(object)]),
+            new ProviderDataType("multipolygon", typeof(object), allGeometryAffinityType),
             // non-instantiable types
-            // new ProviderDataType("curve", typeof(object), [typeof(string), typeof(object)]),
-            // new ProviderDataType("surface", typeof(object), [typeof(string), typeof(object)]),
-            // new ProviderDataType("multicurve", typeof(object), [typeof(string), typeof(object)]),
-            // new ProviderDataType("multisurface", typeof(object), [typeof(string), typeof(object)]),
+            // new ProviderDataType("curve", typeof(object), allGeometryAffinityType),
+            // new ProviderDataType("surface", typeof(object), allGeometryAffinityType),
+            // new ProviderDataType("multicurve", typeof(object), allGeometryAffinityType),
+            // new ProviderDataType("multisurface", typeof(object), allGeometryAffinityType),
             // INTEGER AFFINITY TYPES
             new ProviderDataType("bit", typeof(bool), allIntegerAffinityTypes),
             new ProviderDataType(
                 "integer",
                 typeof(int),
                 allIntegerAffinityTypes,
-                isRecommendedDotNetTypeMatch: (x) => x == typeof(int)
+                isRecommendedDotNetTypeMatch: x => x == typeof(int)
             ),
             new ProviderDataType("int", typeof(int), allIntegerAffinityTypes),
             new ProviderDataType("tinyint", typeof(byte), allIntegerAffinityTypes),
@@ -157,14 +158,14 @@ public class MySqlProviderTypeMap : ProviderTypeMapBase<MySqlProviderTypeMap>
                 "smallint",
                 typeof(short),
                 allIntegerAffinityTypes,
-                isRecommendedDotNetTypeMatch: (x) => x == typeof(short)
+                isRecommendedDotNetTypeMatch: x => x == typeof(short)
             ),
             new ProviderDataType("mediumint", typeof(int), allIntegerAffinityTypes),
             new ProviderDataType(
                 "bigint",
                 typeof(long),
                 allIntegerAffinityTypes,
-                isRecommendedDotNetTypeMatch: (x) => x == typeof(long)
+                isRecommendedDotNetTypeMatch: x => x == typeof(long)
             ),
             // REAL AFFINITY TYPES
             new ProviderDataType(
@@ -174,7 +175,7 @@ public class MySqlProviderTypeMap : ProviderTypeMapBase<MySqlProviderTypeMap>
                 null,
                 "decimal({0})",
                 "decimal({0},{1})",
-                isRecommendedDotNetTypeMatch: (x) => x == typeof(decimal)
+                isRecommendedDotNetTypeMatch: x => x == typeof(decimal)
             ),
             new ProviderDataType(
                 "numeric",
@@ -191,7 +192,7 @@ public class MySqlProviderTypeMap : ProviderTypeMapBase<MySqlProviderTypeMap>
                 null,
                 "double({0})",
                 "double({0},{1})",
-                isRecommendedDotNetTypeMatch: (x) => x == typeof(double)
+                isRecommendedDotNetTypeMatch: x => x == typeof(double)
             ),
             new ProviderDataType(
                 "double precision",
@@ -205,7 +206,7 @@ public class MySqlProviderTypeMap : ProviderTypeMapBase<MySqlProviderTypeMap>
                 "float",
                 typeof(double),
                 allRealAffinityTypes,
-                isRecommendedDotNetTypeMatch: (x) => x == typeof(float)
+                isRecommendedDotNetTypeMatch: x => x == typeof(float)
             ),
             new ProviderDataType("real", typeof(float), allRealAffinityTypes),
             // DATE/TIME AFFINITY TYPES
@@ -213,7 +214,7 @@ public class MySqlProviderTypeMap : ProviderTypeMapBase<MySqlProviderTypeMap>
                 "datetime",
                 typeof(DateTime),
                 allDateTimeAffinityTypes,
-                isRecommendedDotNetTypeMatch: (x) =>
+                isRecommendedDotNetTypeMatch: x =>
                     x == typeof(DateTime) || x == typeof(DateTimeOffset)
             ),
             new ProviderDataType("timestamp", typeof(DateTime), allDateTimeAffinityTypes),
@@ -225,15 +226,15 @@ public class MySqlProviderTypeMap : ProviderTypeMapBase<MySqlProviderTypeMap>
                 [typeof(int), typeof(DateTime), typeof(DateTimeOffset)]
             ),
             // BINARY AFFINITY TYPES
-            new ProviderDataType("blob", typeof(byte[]), [typeof(byte[]), typeof(object)]),
+            new ProviderDataType("blob", typeof(byte[]), allBlobAffinityTypes),
             new ProviderDataType(
                 "varbinary(255)",
                 typeof(byte[]),
-                [typeof(byte[]), typeof(object)],
+                allBlobAffinityTypes,
                 "varbinary({0})",
                 defaultLength: 255
             ),
-            new ProviderDataType("binary", typeof(byte[]), [typeof(byte[]), typeof(object)]),
+            new ProviderDataType("binary", typeof(byte[]), allBlobAffinityTypes)
         ];
     }
 }

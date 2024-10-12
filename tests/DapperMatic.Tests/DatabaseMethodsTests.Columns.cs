@@ -365,7 +365,7 @@ public abstract partial class DatabaseMethodsTests
 
         Assert.Equal(
             dbType == DbProviderType.MySql
-                ? (indexedColumnsExpected.Length + uniqueColumnsNonIndexed.Length)
+                ? indexedColumnsExpected.Length + uniqueColumnsNonIndexed.Length
                 : indexedColumnsExpected.Length,
             indexedColumnsActual.Length
         );

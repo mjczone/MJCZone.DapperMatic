@@ -29,7 +29,7 @@ public class PostgreSql_Postgis16_DatabaseFixture : PostgreSqlDatabaseFixture
 public abstract class PostgreSqlDatabaseFixture(string imageName)
     : DatabaseFixtureBase<PostgreSqlContainer>
 {
-    private readonly PostgreSqlContainer container = new PostgreSqlBuilder()
+    private readonly PostgreSqlContainer _container = new PostgreSqlBuilder()
         .WithImage(imageName)
         .WithPassword("Strong_password_123!")
         .WithAutoRemove(true)
@@ -38,6 +38,6 @@ public abstract class PostgreSqlDatabaseFixture(string imageName)
 
     public override PostgreSqlContainer Container
     {
-        get { return container; }
+        get { return _container; }
     }
 }

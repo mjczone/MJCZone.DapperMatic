@@ -1,9 +1,8 @@
 using System.Data;
-using DapperMatic.Interfaces;
 
 namespace DapperMatic.Providers.Base;
 
-public abstract partial class DatabaseMethodsBase : IDatabaseSchemaMethods
+public abstract partial class DatabaseMethodsBase
 {
     public virtual async Task<bool> DoesSchemaExistAsync(
         IDbConnection db,

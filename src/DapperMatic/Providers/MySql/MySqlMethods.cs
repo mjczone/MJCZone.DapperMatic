@@ -23,12 +23,10 @@ public partial class MySqlMethods : DatabaseMethodsBase, IDatabaseMethods
             ?? "";
         var version = ProviderUtils.ExtractVersionFromVersionString(versionStr);
         return (
-            (
-                versionStr.Contains("MariaDB", StringComparison.OrdinalIgnoreCase)
-                && version > new Version(10, 2, 1)
-            )
-            || version >= new Version(8, 0, 16)
-        );
+                   versionStr.Contains("MariaDB", StringComparison.OrdinalIgnoreCase)
+                   && version > new Version(10, 2, 1)
+               )
+               || version >= new Version(8, 0, 16);
     }
 
     public override Task<bool> SupportsOrderedKeysInConstraintsAsync(
@@ -49,7 +47,7 @@ public partial class MySqlMethods : DatabaseMethodsBase, IDatabaseMethods
     )
     {
         // sample output: 8.0.27, 8.4.2
-        var sql = $@"SELECT VERSION()";
+        var sql = @"SELECT VERSION()";
         var versionString =
             await ExecuteScalarAsync<string>(db, sql, tx: tx).ConfigureAwait(false) ?? "";
         return ProviderUtils.ExtractVersionFromVersionString(versionString);

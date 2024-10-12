@@ -1,5 +1,4 @@
 using DapperMatic.Models;
-using Microsoft.Extensions.Logging;
 
 namespace DapperMatic.Tests;
 

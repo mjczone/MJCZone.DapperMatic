@@ -33,7 +33,7 @@ public partial class SqlServerMethods : DatabaseMethodsBase, IDatabaseMethods
             SERVERPROPERTY('edition') As [SQL Server Edition]               --> Express Edition (64-bit), Developer Edition (64-bit), etc.
          */
 
-        var sql = $@"SELECT SERVERPROPERTY('Productversion')";
+        const string sql = "SELECT SERVERPROPERTY('Productversion')";
         var versionString =
             await ExecuteScalarAsync<string>(db, sql, tx: tx).ConfigureAwait(false) ?? "";
         return ProviderUtils.ExtractVersionFromVersionString(versionString);

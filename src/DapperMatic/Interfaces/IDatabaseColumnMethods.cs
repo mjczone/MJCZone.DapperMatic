@@ -3,7 +3,7 @@ using DapperMatic.Models;
 
 namespace DapperMatic.Interfaces;
 
-public partial interface IDatabaseColumnMethods
+public interface IDatabaseColumnMethods
 {
     Task<bool> CreateColumnIfNotExistsAsync(
         IDbConnection db,

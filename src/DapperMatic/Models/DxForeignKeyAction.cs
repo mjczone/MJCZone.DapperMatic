@@ -19,19 +19,19 @@ public static class DxForeignKeyActionExtensions
             DxForeignKeyAction.Cascade => "CASCADE",
             DxForeignKeyAction.Restrict => "RESTRICT",
             DxForeignKeyAction.SetNull => "SET NULL",
-            _ => "NO ACTION",
+            _ => "NO ACTION"
         };
     }
 
     public static DxForeignKeyAction ToForeignKeyAction(this string behavior)
     {
-        return (behavior ?? "").ToAlpha().ToUpperInvariant() switch
+        return behavior.ToAlpha().ToUpperInvariant() switch
         {
             "NOACTION" => DxForeignKeyAction.NoAction,
             "CASCADE" => DxForeignKeyAction.Cascade,
             "RESTRICT" => DxForeignKeyAction.Restrict,
             "SETNULL" => DxForeignKeyAction.SetNull,
-            _ => DxForeignKeyAction.NoAction,
+            _ => DxForeignKeyAction.NoAction
         };
     }
 }

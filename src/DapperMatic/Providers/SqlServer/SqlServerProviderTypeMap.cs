@@ -1,7 +1,8 @@
 // Purpose: Provides a type map for SqlServer data types.
 namespace DapperMatic.Providers.SqlServer;
 
-public class SqlServerProviderTypeMap : ProviderTypeMapBase<SqlServerProviderTypeMap>
+// ReSharper disable once ClassNeverInstantiated.Global
+public sealed class SqlServerProviderTypeMap : ProviderTypeMapBase<SqlServerProviderTypeMap>
 {
     public SqlServerProviderTypeMap()
     {
@@ -68,7 +69,7 @@ public class SqlServerProviderTypeMap : ProviderTypeMapBase<SqlServerProviderTyp
             .. CommonTypes,
             .. CommonDictionaryTypes,
             .. CommonEnumerableTypes,
-            typeof(object),
+            typeof(object)
         ];
         Type[] allDateTimeAffinityTypes =
         [
@@ -154,9 +155,9 @@ public class SqlServerProviderTypeMap : ProviderTypeMapBase<SqlServerProviderTyp
             new ProviderDataType("time", typeof(DateTime), allDateTimeAffinityTypes),
             new ProviderDataType("smalldatetime", typeof(DateTime), allDateTimeAffinityTypes),
             // BINARY AFFINITY TYPES
-            new ProviderDataType("varbinary", typeof(byte[]), [typeof(byte[]), typeof(object)]),
-            new ProviderDataType("binary", typeof(byte[]), [typeof(byte[]), typeof(object)]),
-            new ProviderDataType("image", typeof(byte[]), [typeof(byte[]), typeof(object)]),
+            new ProviderDataType("varbinary", typeof(byte[]), allBlobAffinityTypes),
+            new ProviderDataType("binary", typeof(byte[]), allBlobAffinityTypes),
+            new ProviderDataType("image", typeof(byte[]), allBlobAffinityTypes)
         ];
     }
 }

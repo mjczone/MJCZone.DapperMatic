@@ -1,5 +1,4 @@
 using System.Data;
-using System.Text;
 using System.Text.RegularExpressions;
 using DapperMatic.Models;
 
@@ -23,36 +22,38 @@ public partial class MySqlMethods
 
         // columns
         var columnsSql =
-            @$"
-            SELECT
-                t.TABLE_SCHEMA AS schema_name,
-                t.TABLE_NAME AS table_name,
-                c.COLUMN_NAME AS column_name,
-                t.TABLE_COLLATION AS table_collation,
-                c.ORDINAL_POSITION AS column_ordinal,
-                c.COLUMN_DEFAULT AS column_default,
-                case when (c.COLUMN_KEY = 'PRI') then 1 else 0 end AS is_primary_key,
-                case 
-                    when (c.COLUMN_KEY = 'UNI') then 1 else 0 end AS is_unique,
-                case 
-                    when (c.COLUMN_KEY = 'UNI') then 1 
-                    when (c.COLUMN_KEY = 'MUL') then 1 
-                    else 0 
-                end AS is_indexed,
-                case when (c.IS_NULLABLE = 'YES') then 1 else 0 end AS is_nullable,
-                c.DATA_TYPE AS data_type,
-                c.COLUMN_TYPE AS data_type_complete,
-                c.CHARACTER_MAXIMUM_LENGTH AS max_length,
-                c.NUMERIC_PRECISION AS numeric_precision,
-                c.NUMERIC_SCALE AS numeric_scale,
-                c.EXTRA as extra
-            FROM INFORMATION_SCHEMA.TABLES t
-                LEFT OUTER JOIN INFORMATION_SCHEMA.COLUMNS c ON t.TABLE_SCHEMA = c.TABLE_SCHEMA and t.TABLE_NAME = c.TABLE_NAME
-            WHERE t.TABLE_TYPE = 'BASE TABLE'
-                AND t.TABLE_SCHEMA = DATABASE()
-                {(string.IsNullOrWhiteSpace(where) ? null : " AND t.TABLE_NAME LIKE @where")}
-            ORDER BY t.TABLE_SCHEMA, t.TABLE_NAME, c.ORDINAL_POSITION
-        ";
+            $"""
+             
+                         SELECT
+                             t.TABLE_SCHEMA AS schema_name,
+                             t.TABLE_NAME AS table_name,
+                             c.COLUMN_NAME AS column_name,
+                             t.TABLE_COLLATION AS table_collation,
+                             c.ORDINAL_POSITION AS column_ordinal,
+                             c.COLUMN_DEFAULT AS column_default,
+                             case when (c.COLUMN_KEY = 'PRI') then 1 else 0 end AS is_primary_key,
+                             case 
+                                 when (c.COLUMN_KEY = 'UNI') then 1 else 0 end AS is_unique,
+                             case 
+                                 when (c.COLUMN_KEY = 'UNI') then 1 
+                                 when (c.COLUMN_KEY = 'MUL') then 1 
+                                 else 0 
+                             end AS is_indexed,
+                             case when (c.IS_NULLABLE = 'YES') then 1 else 0 end AS is_nullable,
+                             c.DATA_TYPE AS data_type,
+                             c.COLUMN_TYPE AS data_type_complete,
+                             c.CHARACTER_MAXIMUM_LENGTH AS max_length,
+                             c.NUMERIC_PRECISION AS numeric_precision,
+                             c.NUMERIC_SCALE AS numeric_scale,
+                             c.EXTRA as extra
+                         FROM INFORMATION_SCHEMA.TABLES t
+                             LEFT OUTER JOIN INFORMATION_SCHEMA.COLUMNS c ON t.TABLE_SCHEMA = c.TABLE_SCHEMA and t.TABLE_NAME = c.TABLE_NAME
+                         WHERE t.TABLE_TYPE = 'BASE TABLE'
+                             AND t.TABLE_SCHEMA = DATABASE()
+                             {(string.IsNullOrWhiteSpace(where) ? null : " AND t.TABLE_NAME LIKE @where")}
+                         ORDER BY t.TABLE_SCHEMA, t.TABLE_NAME, c.ORDINAL_POSITION
+                     
+             """;
         var columnResults = await QueryAsync<(
             string schema_name,
             string table_name,
@@ -75,44 +76,46 @@ public partial class MySqlMethods
 
         // get primary key, unique key in a single query
         var constraintsSql =
-            @$"
-                SELECT
-                    tc.table_schema AS schema_name,
-                    tc.table_name AS table_name,
-                    tc.constraint_type AS constraint_type,
-                    tc.constraint_name AS constraint_name,
-                    GROUP_CONCAT(kcu.column_name ORDER BY kcu.ordinal_position ASC SEPARATOR ', ') AS columns_csv,
-                    GROUP_CONCAT(CASE isc.collation
-                                WHEN 'A' THEN 'ASC'
-                                WHEN 'D' THEN 'DESC'
-                                ELSE 'ASC'
-                                END ORDER BY kcu.ordinal_position ASC SEPARATOR ', ') AS columns_desc_csv
-                FROM
-                    information_schema.table_constraints tc
-                JOIN
-                    information_schema.key_column_usage kcu
-                    ON tc.constraint_name = kcu.constraint_name
-                    AND tc.table_schema = kcu.table_schema
-                    AND tc.table_name = kcu.table_name
-                LEFT JOIN
-                    information_schema.statistics isc
-                    ON kcu.table_schema = isc.table_schema
-                    AND kcu.table_name = isc.table_name
-                    AND kcu.column_name = isc.column_name
-                    AND kcu.constraint_name = isc.index_name
-                WHERE
-                    tc.table_schema = DATABASE()
-                    and tc.constraint_type in ('UNIQUE', 'PRIMARY KEY')
-                    {(string.IsNullOrWhiteSpace(where) ? null : " AND tc.table_name LIKE @where")}
-                GROUP BY
-                    tc.table_name,
-                    tc.constraint_type,
-                    tc.constraint_name
-                ORDER BY
-                    tc.table_name,
-                    tc.constraint_type,
-                    tc.constraint_name
-        ";
+            $"""
+             
+                             SELECT
+                                 tc.table_schema AS schema_name,
+                                 tc.table_name AS table_name,
+                                 tc.constraint_type AS constraint_type,
+                                 tc.constraint_name AS constraint_name,
+                                 GROUP_CONCAT(kcu.column_name ORDER BY kcu.ordinal_position ASC SEPARATOR ', ') AS columns_csv,
+                                 GROUP_CONCAT(CASE isc.collation
+                                             WHEN 'A' THEN 'ASC'
+                                             WHEN 'D' THEN 'DESC'
+                                             ELSE 'ASC'
+                                             END ORDER BY kcu.ordinal_position ASC SEPARATOR ', ') AS columns_desc_csv
+                             FROM
+                                 information_schema.table_constraints tc
+                             JOIN
+                                 information_schema.key_column_usage kcu
+                                 ON tc.constraint_name = kcu.constraint_name
+                                 AND tc.table_schema = kcu.table_schema
+                                 AND tc.table_name = kcu.table_name
+                             LEFT JOIN
+                                 information_schema.statistics isc
+                                 ON kcu.table_schema = isc.table_schema
+                                 AND kcu.table_name = isc.table_name
+                                 AND kcu.column_name = isc.column_name
+                                 AND kcu.constraint_name = isc.index_name
+                             WHERE
+                                 tc.table_schema = DATABASE()
+                                 and tc.constraint_type in ('UNIQUE', 'PRIMARY KEY')
+                                 {(string.IsNullOrWhiteSpace(where) ? null : " AND tc.table_name LIKE @where")}
+                             GROUP BY
+                                 tc.table_name,
+                                 tc.constraint_type,
+                                 tc.constraint_name
+                             ORDER BY
+                                 tc.table_name,
+                                 tc.constraint_type,
+                                 tc.constraint_name
+                     
+             """;
         var constraintResults = await QueryAsync<(
             string schema_name,
             string table_name,
@@ -137,7 +140,7 @@ public partial class MySqlMethods
                     c.table_name,
                     c.column_name,
                     ProviderUtils.GenerateDefaultConstraintName(c.table_name, c.column_name),
-                    c.column_default.Trim(['(', ')'])
+                    c.column_default.Trim('(', ')')
                 );
             })
             .ToArray();
@@ -194,27 +197,29 @@ public partial class MySqlMethods
             .ToArray();
 
         var foreignKeysSql =
-            @$"
-            select distinct
-                kcu.TABLE_SCHEMA as schema_name, 
-                kcu.TABLE_NAME as table_name, 
-                kcu.CONSTRAINT_NAME as constraint_name,
-                kcu.REFERENCED_TABLE_SCHEMA as referenced_schema_name,
-                kcu.REFERENCED_TABLE_NAME as referenced_table_name,
-                rc.DELETE_RULE as delete_rule,
-                rc.UPDATE_RULE as update_rule,
-                kcu.ORDINAL_POSITION as key_ordinal,
-                kcu.COLUMN_NAME as column_name,
-                kcu.REFERENCED_COLUMN_NAME as referenced_column_name
-            from INFORMATION_SCHEMA.KEY_COLUMN_USAGE kcu 
-                INNER JOIN INFORMATION_SCHEMA.TABLE_CONSTRAINTS tc on kcu.CONSTRAINT_NAME = tc.CONSTRAINT_NAME
-                INNER JOIN INFORMATION_SCHEMA.REFERENTIAL_CONSTRAINTS rc on kcu.CONSTRAINT_NAME = rc.CONSTRAINT_NAME
-            where kcu.CONSTRAINT_SCHEMA = DATABASE()
-                and tc.CONSTRAINT_SCHEMA = DATABASE()
-                and tc.CONSTRAINT_TYPE = 'FOREIGN KEY'
-                {(string.IsNullOrWhiteSpace(where) ? null : " AND kcu.TABLE_NAME LIKE @where")}
-            order by schema_name, table_name, key_ordinal
-        ";
+            $"""
+             
+                         select distinct
+                             kcu.TABLE_SCHEMA as schema_name, 
+                             kcu.TABLE_NAME as table_name, 
+                             kcu.CONSTRAINT_NAME as constraint_name,
+                             kcu.REFERENCED_TABLE_SCHEMA as referenced_schema_name,
+                             kcu.REFERENCED_TABLE_NAME as referenced_table_name,
+                             rc.DELETE_RULE as delete_rule,
+                             rc.UPDATE_RULE as update_rule,
+                             kcu.ORDINAL_POSITION as key_ordinal,
+                             kcu.COLUMN_NAME as column_name,
+                             kcu.REFERENCED_COLUMN_NAME as referenced_column_name
+                         from INFORMATION_SCHEMA.KEY_COLUMN_USAGE kcu 
+                             INNER JOIN INFORMATION_SCHEMA.TABLE_CONSTRAINTS tc on kcu.CONSTRAINT_NAME = tc.CONSTRAINT_NAME
+                             INNER JOIN INFORMATION_SCHEMA.REFERENTIAL_CONSTRAINTS rc on kcu.CONSTRAINT_NAME = rc.CONSTRAINT_NAME
+                         where kcu.CONSTRAINT_SCHEMA = DATABASE()
+                             and tc.CONSTRAINT_SCHEMA = DATABASE()
+                             and tc.CONSTRAINT_TYPE = 'FOREIGN KEY'
+                             {(string.IsNullOrWhiteSpace(where) ? null : " AND kcu.TABLE_NAME LIKE @where")}
+                         order by schema_name, table_name, key_ordinal
+                     
+             """;
         var foreignKeyResults = await QueryAsync<(
             string schema_name,
             string table_name,
@@ -260,27 +265,29 @@ public partial class MySqlMethods
         if (await SupportsCheckConstraintsAsync(db, tx, cancellationToken).ConfigureAwait(false))
         {
             var checkConstraintsSql =
-                @$"
-            SELECT 
-                tc.TABLE_SCHEMA as schema_name,
-                tc.TABLE_NAME as table_name, 
-                kcu.COLUMN_NAME as column_name,
-                tc.CONSTRAINT_NAME as constraint_name,
-                cc.CHECK_CLAUSE AS check_expression
-            FROM 
-                INFORMATION_SCHEMA.TABLE_CONSTRAINTS AS tc
-            JOIN 
-                INFORMATION_SCHEMA.CHECK_CONSTRAINTS AS cc
-                ON tc.CONSTRAINT_NAME = cc.CONSTRAINT_NAME
-            LEFT JOIN 
-                INFORMATION_SCHEMA.KEY_COLUMN_USAGE AS kcu
-                ON tc.CONSTRAINT_NAME = kcu.CONSTRAINT_NAME
-            WHERE 
-                tc.TABLE_SCHEMA = DATABASE()
-                and tc.CONSTRAINT_TYPE = 'CHECK'
-                {(string.IsNullOrWhiteSpace(where) ? null : " AND tc.TABLE_NAME LIKE @where")}
-            order by schema_name, table_name, column_name, constraint_name            
-            ";
+                $"""
+                 
+                             SELECT 
+                                 tc.TABLE_SCHEMA as schema_name,
+                                 tc.TABLE_NAME as table_name, 
+                                 kcu.COLUMN_NAME as column_name,
+                                 tc.CONSTRAINT_NAME as constraint_name,
+                                 cc.CHECK_CLAUSE AS check_expression
+                             FROM 
+                                 INFORMATION_SCHEMA.TABLE_CONSTRAINTS AS tc
+                             JOIN 
+                                 INFORMATION_SCHEMA.CHECK_CONSTRAINTS AS cc
+                                 ON tc.CONSTRAINT_NAME = cc.CONSTRAINT_NAME
+                             LEFT JOIN 
+                                 INFORMATION_SCHEMA.KEY_COLUMN_USAGE AS kcu
+                                 ON tc.CONSTRAINT_NAME = kcu.CONSTRAINT_NAME
+                             WHERE 
+                                 tc.TABLE_SCHEMA = DATABASE()
+                                 and tc.CONSTRAINT_TYPE = 'CHECK'
+                                 {(string.IsNullOrWhiteSpace(where) ? null : " AND tc.TABLE_NAME LIKE @where")}
+                             order by schema_name, table_name, column_name, constraint_name            
+                             
+                 """;
 
             var checkConstraintResults = await QueryAsync<(
                 string schema_name,
@@ -300,7 +307,7 @@ public partial class MySqlMethods
                         var columnName = "";
                         foreach (var column in columnResults)
                         {
-                            string pattern = $@"\b{Regex.Escape(column.column_name)}\b";
+                            var pattern = $@"\b{Regex.Escape(column.column_name)}\b";
                             if (
                                 column.table_name.Equals(
                                     t.table_name,
@@ -337,7 +344,6 @@ public partial class MySqlMethods
                 db,
                 schemaName,
                 tableNameFilter,
-                null,
                 tx: tx,
                 cancellationToken: cancellationToken
             )
@@ -376,16 +382,15 @@ public partial class MySqlMethods
                 var columnIsUniqueViaUniqueConstraintOrIndex =
                     uniqueConstraints.Any(c =>
                         c.Columns.Length == 1
-                        && c.Columns.Any(c =>
-                            c.ColumnName.Equals(
+                        && c.Columns.Any(col =>
+                            col.ColumnName.Equals(
                                 tableColumn.column_name,
                                 StringComparison.OrdinalIgnoreCase
                             )
                         )
                     )
                     || indexes.Any(i =>
-                        i.IsUnique == true
-                        && i.Columns.Length == 1
+                        i is { IsUnique: true, Columns.Length: 1 }
                         && i.Columns.Any(c =>
                             c.ColumnName.Equals(
                                 tableColumn.column_name,
@@ -393,6 +398,7 @@ public partial class MySqlMethods
                             )
                         )
                     );
+                
                 var columnIsPartOfIndex = indexes.Any(i =>
                     i.Columns.Any(c =>
                         c.ColumnName.Equals(
@@ -401,25 +407,18 @@ public partial class MySqlMethods
                         )
                     )
                 );
-                var columnIsForeignKey = foreignKeyConstraints.Any(c =>
-                    c.SourceColumns.Any(c =>
-                        c.ColumnName.Equals(
-                            tableColumn.column_name,
-                            StringComparison.OrdinalIgnoreCase
-                        )
-                    )
-                );
 
                 var foreignKeyConstraint = foreignKeyConstraints.FirstOrDefault(c =>
-                    c.SourceColumns.Any(c =>
-                        c.ColumnName.Equals(
+                    c.SourceColumns.Any(scol =>
+                        scol.ColumnName.Equals(
                             tableColumn.column_name,
                             StringComparison.OrdinalIgnoreCase
                         )
                     )
                 );
+                
                 var foreignKeyColumnIndex = foreignKeyConstraint
-                    ?.SourceColumns.Select((c, i) => new { c, i })
+                    ?.SourceColumns.Select((scol, i) => new { c = scol, i })
                     .FirstOrDefault(c =>
                         c.c.ColumnName.Equals(
                             tableColumn.column_name,
@@ -428,7 +427,7 @@ public partial class MySqlMethods
                     )
                     ?.i;
 
-                var (dotnetType, l, p, s) = GetDotnetTypeFromSqlType(
+                var (dotnetType, _, _, _) = GetDotnetTypeFromSqlType(
                     tableColumn.data_type_complete
                 );
 
@@ -504,10 +503,10 @@ public partial class MySqlMethods
     protected override async Task<List<DxIndex>> GetIndexesInternalAsync(
         IDbConnection db,
         string? schemaName,
-        string? tableNameFilter,
-        string? indexNameFilter,
-        IDbTransaction? tx,
-        CancellationToken cancellationToken
+        string? tableNameFilter = null,
+        string? indexNameFilter = null,
+        IDbTransaction? tx = null,
+        CancellationToken cancellationToken = default
     )
     {
         var whereTableLike = string.IsNullOrWhiteSpace(tableNameFilter)
@@ -519,33 +518,35 @@ public partial class MySqlMethods
             : ToLikeString(indexNameFilter);
 
         var sql =
-            @$"
-            SELECT 
-                TABLE_SCHEMA as schema_name,
-                TABLE_NAME as table_name,
-                INDEX_NAME as index_name,
-                IF(NON_UNIQUE = 1, 0, 1) AS is_unique,
-                GROUP_CONCAT(COLUMN_NAME ORDER BY SEQ_IN_INDEX ASC) AS columns_csv,
-                GROUP_CONCAT(CASE
-                    WHEN COLLATION = 'A' THEN 'ASC'
-                    WHEN COLLATION = 'D' THEN 'DESC'
-                    ELSE 'N/A'
-                END ORDER BY SEQ_IN_INDEX ASC) AS columns_desc_csv
-            FROM 
-                INFORMATION_SCHEMA.STATISTICS stats
-            WHERE 
-                TABLE_SCHEMA = DATABASE()
-                and INDEX_NAME != 'PRIMARY'
-                and INDEX_NAME NOT IN (select CONSTRAINT_NAME from INFORMATION_SCHEMA.TABLE_CONSTRAINTS
-                                    where TABLE_SCHEMA = DATABASE() and 
-                                            TABLE_NAME = stats.TABLE_NAME and
-                                            CONSTRAINT_TYPE in ('PRIMARY KEY', 'FOREIGN KEY', 'CHECK'))
-                {(!string.IsNullOrWhiteSpace(whereTableLike) ? "and TABLE_NAME LIKE @whereTableLike" : "")}
-                {(!string.IsNullOrWhiteSpace(whereIndexLike) ? "and INDEX_NAME LIKE @whereIndexLike" : "")}
-            GROUP BY 
-                TABLE_NAME, INDEX_NAME, NON_UNIQUE
-            order by schema_name, table_name, index_name
-            ";
+            $"""
+             
+                         SELECT 
+                             TABLE_SCHEMA as schema_name,
+                             TABLE_NAME as table_name,
+                             INDEX_NAME as index_name,
+                             IF(NON_UNIQUE = 1, 0, 1) AS is_unique,
+                             GROUP_CONCAT(COLUMN_NAME ORDER BY SEQ_IN_INDEX ASC) AS columns_csv,
+                             GROUP_CONCAT(CASE
+                                 WHEN COLLATION = 'A' THEN 'ASC'
+                                 WHEN COLLATION = 'D' THEN 'DESC'
+                                 ELSE 'N/A'
+                             END ORDER BY SEQ_IN_INDEX ASC) AS columns_desc_csv
+                         FROM 
+                             INFORMATION_SCHEMA.STATISTICS stats
+                         WHERE 
+                             TABLE_SCHEMA = DATABASE()
+                             and INDEX_NAME != 'PRIMARY'
+                             and INDEX_NAME NOT IN (select CONSTRAINT_NAME from INFORMATION_SCHEMA.TABLE_CONSTRAINTS
+                                                 where TABLE_SCHEMA = DATABASE() and 
+                                                         TABLE_NAME = stats.TABLE_NAME and
+                                                         CONSTRAINT_TYPE in ('PRIMARY KEY', 'FOREIGN KEY', 'CHECK'))
+                             {(!string.IsNullOrWhiteSpace(whereTableLike) ? "and TABLE_NAME LIKE @whereTableLike" : "")}
+                             {(!string.IsNullOrWhiteSpace(whereIndexLike) ? "and INDEX_NAME LIKE @whereIndexLike" : "")}
+                         GROUP BY 
+                             TABLE_NAME, INDEX_NAME, NON_UNIQUE
+                         order by schema_name, table_name, index_name
+                         
+             """;
 
         var indexResults = await QueryAsync<(
             string schema_name,

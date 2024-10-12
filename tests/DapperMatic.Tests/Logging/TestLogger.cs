@@ -1,22 +1,21 @@
-namespace DapperMatic.Tests.Logging;
-
-using System;
 using System.Diagnostics;
 using Microsoft.Extensions.Logging;
 using Xunit.Abstractions;
+
+namespace DapperMatic.Tests.Logging;
 
 public class TestLogger : ILogger, IDisposable
 {
     private readonly Stopwatch _stopwatch = Stopwatch.StartNew();
 
     private LogLevel _minLogLevel = LogLevel.Debug;
-    private ITestOutputHelper output;
-    private string categoryName;
+    private ITestOutputHelper _output;
+    private string _categoryName;
 
     public TestLogger(ITestOutputHelper output, string categoryName)
     {
-        this.output = output;
-        this.categoryName = categoryName;
+        _output = output;
+        _categoryName = categoryName;
     }
 
     public IDisposable? BeginScope<TState>(TState state)
@@ -40,7 +39,7 @@ public class TestLogger : ILogger, IDisposable
     {
         if (IsEnabled(logLevel))
         {
-            output.WriteLine(
+            _output.WriteLine(
                 "[DapperMatic {0:hh\\:mm\\:ss\\.ff}] {1}",
                 _stopwatch.Elapsed,
                 formatter.Invoke(state, exception)

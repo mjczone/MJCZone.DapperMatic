@@ -4,7 +4,6 @@ namespace DapperMatic.DataAnnotations;
 
 [AttributeUsage(
     AttributeTargets.Property | AttributeTargets.Class,
-    Inherited = true,
     AllowMultiple = true
 )]
 public class DxUniqueConstraintAttribute : Attribute
@@ -12,12 +11,12 @@ public class DxUniqueConstraintAttribute : Attribute
     public DxUniqueConstraintAttribute(string constraintName, params string[] columnNames)
     {
         ConstraintName = constraintName;
-        Columns = columnNames?.Select(columnName => new DxOrderedColumn(columnName)).ToArray();
+        Columns = columnNames.Select(columnName => new DxOrderedColumn(columnName)).ToArray();
     }
 
     public DxUniqueConstraintAttribute(params string[] columnNames)
     {
-        Columns = columnNames?.Select(columnName => new DxOrderedColumn(columnName)).ToArray();
+        Columns = columnNames.Select(columnName => new DxOrderedColumn(columnName)).ToArray();
     }
 
     public DxUniqueConstraintAttribute(string constraintName, params DxOrderedColumn[] columns)

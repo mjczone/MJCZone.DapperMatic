@@ -54,59 +54,59 @@ public class ProviderDataType
     {
         get
         {
-            recommendedSqlTypeMatch ??= DefaultIsRecommendedSqlTypeMatch;
-            return recommendedSqlTypeMatch;
+            _recommendedSqlTypeMatch ??= DefaultIsRecommendedSqlTypeMatch;
+            return _recommendedSqlTypeMatch;
         }
-        set => recommendedSqlTypeMatch = value;
+        set => _recommendedSqlTypeMatch = value;
     }
-    private Func<string, bool>? recommendedSqlTypeMatch = null;
+    private Func<string, bool>? _recommendedSqlTypeMatch;
 
     /// <summary>
     /// Indicates whether this provider data type is the right one for a particular .NET type.
     /// There could be multiple provider data types that support 'typeof(string)' for example,
     /// but only one(s) that are the preferred one(s) should be used when deciding which
-    ///
-    public Func<Type, bool> IsRecommendedDotNetTypeMatch { get; set; } = (x) => false;
+    /// provider data type to use.
+    /// </summary>
+    public Func<Type, bool> IsRecommendedDotNetTypeMatch { get; set; } = _ => false;
 
     private ProviderSqlType DefaultSqlDataTypeParser(string sqlTypeWithLengthPrecisionOrScale)
     {
         var sqlDataType = new ProviderSqlType { SqlType = sqlTypeWithLengthPrecisionOrScale };
 
         var parts = sqlTypeWithLengthPrecisionOrScale.Split(
-            new[] { '(', ')' },
+            ['(', ')'],
             StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries
         );
-        if (parts.Length > 1)
+        if (parts.Length <= 1) return sqlDataType;
+        
+        if (SupportsLength)
         {
-            if (SupportsLength)
-            {
-                if (int.TryParse(parts[1], out var length))
-                    sqlDataType.Length = length;
-            }
-            else if (SupportsPrecision)
-            {
-                var csv = parts[1].Split(',');
+            if (int.TryParse(parts[1], out var length))
+                sqlDataType.Length = length;
+        }
+        else if (SupportsPrecision)
+        {
+            var csv = parts[1].Split(',');
 
-                if (int.TryParse(csv[0], out var precision))
-                    sqlDataType.Precision = precision;
+            if (int.TryParse(csv[0], out var precision))
+                sqlDataType.Precision = precision;
 
-                if (SupportsScale && csv.Length > 1 && int.TryParse(csv[1], out var scale))
-                    sqlDataType.Scale = scale;
-            }
+            if (SupportsScale && csv.Length > 1 && int.TryParse(csv[1], out var scale))
+                sqlDataType.Scale = scale;
         }
 
         return sqlDataType;
     }
 
-    private Func<string, ProviderSqlType>? parseSqlType = null;
+    private Func<string, ProviderSqlType>? _parseSqlType;
     public Func<string, ProviderSqlType> ParseSqlType
     {
         get
         {
-            parseSqlType ??= DefaultSqlDataTypeParser;
-            return parseSqlType;
+            _parseSqlType ??= DefaultSqlDataTypeParser;
+            return _parseSqlType;
         }
-        set => parseSqlType = value;
+        set => _parseSqlType = value;
     }
 
     /// <summary>

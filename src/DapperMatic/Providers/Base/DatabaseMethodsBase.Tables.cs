@@ -1,11 +1,10 @@
 using System.Data;
 using System.Text;
-using DapperMatic.Interfaces;
 using DapperMatic.Models;
 
 namespace DapperMatic.Providers.Base;
 
-public abstract partial class DatabaseMethodsBase : IDatabaseTableMethods
+public abstract partial class DatabaseMethodsBase
 {
     public virtual async Task<bool> DoesTableExistAsync(
         IDbConnection db,
@@ -249,7 +248,6 @@ public abstract partial class DatabaseMethodsBase : IDatabaseTableMethods
         // We assume that the referenced table already exists.
         if (
             afterAllTablesConstraints == null
-            && table.ForeignKeyConstraints != null
             && table.ForeignKeyConstraints.Count > 0
         )
         {
@@ -527,9 +525,9 @@ public abstract partial class DatabaseMethodsBase : IDatabaseTableMethods
     protected abstract Task<List<DxIndex>> GetIndexesInternalAsync(
         IDbConnection db,
         string? schemaName,
-        string? tableNameFilter,
-        string? indexNameFilter,
-        IDbTransaction? tx,
-        CancellationToken cancellationToken
+        string? tableNameFilter = null,
+        string? indexNameFilter = null,
+        IDbTransaction? tx = null,
+        CancellationToken cancellationToken = default
     );
 }

@@ -2,6 +2,8 @@ using System.Data;
 using System.Data.Common;
 using System.Text;
 using DapperMatic.Models;
+// ReSharper disable LoopCanBeConvertedToQuery
+// ReSharper disable ForeachCanBeConvertedToQueryUsingAnotherGetEnumerator
 
 namespace DapperMatic.Providers.Sqlite;
 
@@ -21,9 +23,11 @@ public partial class SqliteMethods
 
         var sql = new StringBuilder();
         sql.AppendLine(
-            @"SELECT name as table_name, sql as table_sql 
-                FROM sqlite_master 
-                WHERE type = 'table' AND name NOT LIKE 'sqlite_%'"
+            """
+            SELECT name as table_name, sql as table_sql 
+                            FROM sqlite_master 
+                            WHERE type = 'table' AND name NOT LIKE 'sqlite_%'
+            """
         );
         if (!string.IsNullOrWhiteSpace(where))
             sql.AppendLine(" AND name LIKE @where");
@@ -57,20 +61,33 @@ public partial class SqliteMethods
             )
             .ConfigureAwait(false);
 
-        if (indexes.Count > 0)
+        if (indexes.Count <= 0) return tables;
+        
+        foreach (var table in tables)
         {
-            foreach (var table in tables)
+            table.Indexes = indexes
+                .Where(i =>
+                    i.TableName.Equals(table.TableName, StringComparison.OrdinalIgnoreCase)
+                )
+                .ToList();
+                
+            if (table.Indexes.Count <= 0) continue;
+                
+            foreach (var column in table.Columns)
             {
-                table.Indexes = indexes
-                    .Where(i =>
-                        i.TableName.Equals(table.TableName, StringComparison.OrdinalIgnoreCase)
+                column.IsIndexed = table.Indexes.Any(i =>
+                    i.Columns.Any(c =>
+                        c.ColumnName.Equals(
+                            column.ColumnName,
+                            StringComparison.OrdinalIgnoreCase
+                        )
                     )
-                    .ToList();
-                if (table.Indexes.Count > 0)
+                );
+                if (column is { IsIndexed: true, IsUnique: false })
                 {
-                    foreach (var column in table.Columns)
-                    {
-                        column.IsIndexed = table.Indexes.Any(i =>
+                    column.IsUnique = table
+                        .Indexes.Where(i => i.IsUnique)
+                        .Any(i =>
                             i.Columns.Any(c =>
                                 c.ColumnName.Equals(
                                     column.ColumnName,
@@ -78,20 +95,6 @@ public partial class SqliteMethods
                                 )
                             )
                         );
-                        if (column.IsIndexed && !column.IsUnique)
-                        {
-                            column.IsUnique = table
-                                .Indexes.Where(i => i.IsUnique)
-                                .Any(i =>
-                                    i.Columns.Any(c =>
-                                        c.ColumnName.Equals(
-                                            column.ColumnName,
-                                            StringComparison.OrdinalIgnoreCase
-                                        )
-                                    )
-                                );
-                        }
-                    }
                 }
             }
         }
@@ -113,7 +116,7 @@ public partial class SqliteMethods
         )
             return false;
 
-        (_, tableName, _) = NormalizeNames(schemaName, tableName, null);
+        (_, tableName, _) = NormalizeNames(schemaName, tableName);
 
         // in SQLite, you could either delete all the records and reset the index (this could take a while if it's a big table)
         // - DELETE FROM table_name;
@@ -122,7 +125,7 @@ public partial class SqliteMethods
         // or just drop the table (this is faster) and recreate it
         var createTableSql = await ExecuteScalarAsync<string>(
                 db,
-                $"select sql FROM sqlite_master WHERE type = 'table' AND name = @tableName",
+                "select sql FROM sqlite_master WHERE type = 'table' AND name = @tableName",
                 new { tableName },
                 tx: tx
             )
@@ -142,10 +145,10 @@ public partial class SqliteMethods
     protected override async Task<List<DxIndex>> GetIndexesInternalAsync(
         IDbConnection db,
         string? schemaName,
-        string? tableNameFilter,
-        string? indexNameFilter,
-        IDbTransaction? tx,
-        CancellationToken cancellationToken
+        string? tableNameFilter = null,
+        string? indexNameFilter = null,
+        IDbTransaction? tx = null,
+        CancellationToken cancellationToken = default
     )
     {
         var whereTableLike = string.IsNullOrWhiteSpace(tableNameFilter)
@@ -156,22 +159,24 @@ public partial class SqliteMethods
             : ToLikeString(indexNameFilter);
 
         var sql =
-            $@"
-                SELECT DISTINCT 
-                    m.name AS table_name, 
-                    il.name AS index_name,
-                    il.""unique"" AS is_unique,	
-                    ii.name AS column_name,
-                    ii.DESC AS is_descending
-                FROM sqlite_schema AS m,
-                    pragma_index_list(m.name) AS il,
-                    pragma_index_xinfo(il.name) AS ii
-                WHERE m.type='table' 
-                    and ii.name IS NOT NULL 
-                    AND il.origin = 'c'
-                    {(string.IsNullOrWhiteSpace(whereTableLike) ? "" : " AND m.name LIKE @whereTableLike")}
-                    {(string.IsNullOrWhiteSpace(whereIndexLike) ? "" : " AND il.name LIKE @whereIndexLike")}                
-                ORDER BY m.name, il.name, ii.seqno";
+            $"""
+             
+                             SELECT DISTINCT 
+                                 m.name AS table_name, 
+                                 il.name AS index_name,
+                                 il."unique" AS is_unique,	
+                                 ii.name AS column_name,
+                                 ii.DESC AS is_descending
+                             FROM sqlite_schema AS m,
+                                 pragma_index_list(m.name) AS il,
+                                 pragma_index_xinfo(il.name) AS ii
+                             WHERE m.type='table' 
+                                 and ii.name IS NOT NULL 
+                                 AND il.origin = 'c'
+                                 {(string.IsNullOrWhiteSpace(whereTableLike) ? "" : " AND m.name LIKE @whereTableLike")}
+                                 {(string.IsNullOrWhiteSpace(whereIndexLike) ? "" : " AND il.name LIKE @whereIndexLike")}                
+                             ORDER BY m.name, il.name, ii.seqno
+             """;
 
         var results = await QueryAsync<(
             string table_name,
@@ -292,7 +297,6 @@ public partial class SqliteMethods
 
         await AlterTableUsingRecreateTableStrategyAsync(
             db,
-            schemaName,
             table,
             newTable,
             tx,
@@ -304,7 +308,6 @@ public partial class SqliteMethods
 
     private async Task AlterTableUsingRecreateTableStrategyAsync(
         IDbConnection db,
-        string? schemaName,
         DxTable existingTable,
         DxTable updatedTable,
         IDbTransaction? tx,
@@ -339,13 +342,13 @@ public partial class SqliteMethods
             // create a temporary table from the existing table's data
             await ExecuteAsync(
                     db,
-                    $@"CREATE TEMP TABLE {tempTableName} AS SELECT * FROM {tableName}",
+                    $"CREATE TEMP TABLE {tempTableName} AS SELECT * FROM {tableName}",
                     tx: innerTx
                 )
                 .ConfigureAwait(false);
 
             // drop the old table
-            await ExecuteAsync(db, $@"DROP TABLE {tableName}", tx: innerTx).ConfigureAwait(false);
+            await ExecuteAsync(db, $"DROP TABLE {tableName}", tx: innerTx).ConfigureAwait(false);
 
             var created = await CreateTableIfNotExistsAsync(
                     db,
@@ -365,21 +368,21 @@ public partial class SqliteMethods
                     updatedTable.Columns.Any(x =>
                         x.ColumnName.Equals(c, StringComparison.OrdinalIgnoreCase)
                     )
-                );
+                ).ToArray();
 
-                if (columnNamesInBothTables.Count() > 0)
+                if (columnNamesInBothTables.Length > 0)
                 {
                     var columnsToCopyString = string.Join(", ", columnNamesInBothTables);
                     await ExecuteAsync(
                             db,
-                            $@"INSERT INTO {updatedTable.TableName} ({columnsToCopyString}) SELECT {columnsToCopyString} FROM {tempTableName}",
+                            $"INSERT INTO {updatedTable.TableName} ({columnsToCopyString}) SELECT {columnsToCopyString} FROM {tempTableName}",
                             tx: innerTx
                         )
                         .ConfigureAwait(false);
                 }
 
                 // drop the temp table
-                await ExecuteAsync(db, $@"DROP TABLE {tempTableName}", tx: innerTx)
+                await ExecuteAsync(db, $"DROP TABLE {tempTableName}", tx: innerTx)
                     .ConfigureAwait(false);
 
                 // commit the transaction

@@ -1,11 +1,10 @@
 using System.Data;
 using System.Text;
-using DapperMatic.Interfaces;
 using DapperMatic.Models;
 
 namespace DapperMatic.Providers.Base;
 
-public abstract partial class DatabaseMethodsBase : IDatabaseColumnMethods
+public abstract partial class DatabaseMethodsBase
 {
     public virtual async Task<bool> DoesColumnExistAsync(
         IDbConnection db,
@@ -16,10 +15,8 @@ public abstract partial class DatabaseMethodsBase : IDatabaseColumnMethods
         CancellationToken cancellationToken = default
     )
     {
-        return (
-                await GetColumnAsync(db, schemaName, tableName, columnName, tx, cancellationToken)
-                    .ConfigureAwait(false)
-            ) != null;
+        return await GetColumnAsync(db, schemaName, tableName, columnName, tx, cancellationToken)
+            .ConfigureAwait(false) != null;
     }
 
     public virtual async Task<bool> CreateColumnIfNotExistsAsync(
@@ -410,9 +407,11 @@ public abstract partial class DatabaseMethodsBase : IDatabaseColumnMethods
         // As of version 3.25.0 released September 2018, SQLite supports renaming columns
         await ExecuteAsync(
                 db,
-                $@"ALTER TABLE {schemaQualifiedTableName} 
-                    RENAME COLUMN {columnName}
-                            TO {newColumnName}",
+                $"""
+                 ALTER TABLE {schemaQualifiedTableName} 
+                                     RENAME COLUMN {columnName}
+                                             TO {newColumnName}
+                 """,
                 tx: tx
             )
             .ConfigureAwait(false);

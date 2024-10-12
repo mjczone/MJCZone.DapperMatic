@@ -1,23 +1,25 @@
+using System.Diagnostics.CodeAnalysis;
 using System.Text;
 using System.Text.RegularExpressions;
 using DapperMatic.Models;
+// ReSharper disable ForCanBeConvertedToForeach
 
 namespace DapperMatic.Providers.Sqlite;
 
+[SuppressMessage("ReSharper", "ForeachCanBePartlyConvertedToQueryUsingAnotherGetEnumerator")]
 public static partial class SqliteSqlParser
 {
     public static DxTable? ParseCreateTableStatement(string createTableSql)
     {
         var statements = ParseDdlSql(createTableSql);
-        var createTableStatement = statements.SingleOrDefault() as SqlCompoundClause;
         if (
-            createTableStatement == null
+            statements.SingleOrDefault() is not SqlCompoundClause createTableStatement
             || createTableStatement.FindTokenIndex("CREATE") != 0
                 && createTableStatement.FindTokenIndex("TABLE") != 1
         )
             return null;
 
-        var tableName = createTableStatement.GetChild<SqlWordClause>(2)?.text;
+        var tableName = createTableStatement.GetChild<SqlWordClause>(2)?.Text;
         if (string.IsNullOrWhiteSpace(tableName))
             return null;
 
@@ -34,9 +36,9 @@ public static partial class SqliteSqlParser
         // see: https://www.sqlite.org/lang_createtable.html
 
         var tableGuts = createTableStatement.GetChild<SqlCompoundClause>(x =>
-            x.children.Count > 0 && x.parenthesis == true
+            x.Children.Count > 0 && x.Parenthesis
         );
-        if (tableGuts == null || tableGuts.children.Count == 0)
+        if (tableGuts == null || tableGuts.Children.Count == 0)
             return table;
 
         // we now iterate over these guts to parse out columns, primary keys, unique constraints, check constraints, default constraints, and foreign key constraints
@@ -44,25 +46,18 @@ public static partial class SqliteSqlParser
         //  - if as part of column definition, they appear inline
         //  - if separate as table constraint definitions, they always start with either the word "CONSTRAINT" or the constraint type identifier "PRIMARY KEY", "FOREIGN KEY", "UNIQUE", "CHECK", "DEFAULT"
 
-        Func<SqlClause, bool> isColumnDefinitionClause = (SqlClause clause) =>
+        bool IsColumnDefinitionClause(SqlClause clause)
         {
-            return !(
-                clause.FindTokenIndex("CONSTRAINT") == 0
-                || clause.FindTokenIndex("PRIMARY KEY") == 0
-                || clause.FindTokenIndex("FOREIGN KEY") == 0
-                || clause.FindTokenIndex("UNIQUE") == 0
-                || clause.FindTokenIndex("CHECK") == 0
-                || clause.FindTokenIndex("DEFAULT") == 0
-            );
-        };
+            return !(clause.FindTokenIndex("CONSTRAINT") == 0 || clause.FindTokenIndex("PRIMARY KEY") == 0 || clause.FindTokenIndex("FOREIGN KEY") == 0 || clause.FindTokenIndex("UNIQUE") == 0 || clause.FindTokenIndex("CHECK") == 0 || clause.FindTokenIndex("DEFAULT") == 0);
+        }
 
         // based on the documentation of the CREATE TABLE statement, we know that column definitions appear before table constraint clauses,
         // so we can safely assume that by the time we start parsing constraints, all the column definitions will have been added to the table.columns list
-        for (var clauseIndex = 0; clauseIndex < tableGuts.children.Count; clauseIndex++)
+        for (var clauseIndex = 0; clauseIndex < tableGuts.Children.Count; clauseIndex++)
         {
-            var clause = tableGuts.children[clauseIndex];
+            var clause = tableGuts.Children[clauseIndex];
             // see if it's a column definition or a table constraint
-            if (isColumnDefinitionClause(clause))
+            if (IsColumnDefinitionClause(clause))
             {
                 // it's a column definition, parse it
                 // see:https://www.sqlite.org/syntax/column-def.html
@@ -70,12 +65,12 @@ public static partial class SqliteSqlParser
                     continue;
 
                 // first word in the column name
-                var columnName = columnDefinition.GetChild<SqlWordClause>(0)?.text;
+                var columnName = columnDefinition.GetChild<SqlWordClause>(0)?.Text;
                 if (string.IsNullOrWhiteSpace(columnName))
                     continue;
 
                 // second word is the column type
-                var columnDataType = columnDefinition.GetChild<SqlWordClause>(1)?.text;
+                var columnDataType = columnDefinition.GetChild<SqlWordClause>(1)?.Text;
                 if (string.IsNullOrWhiteSpace(columnDataType))
                     continue;
 
@@ -84,42 +79,48 @@ public static partial class SqliteSqlParser
                 int? scale = null;
 
                 var remainingWordsIndex = 2;
-                if (columnDefinition.children!.Count > 2)
+                if (columnDefinition.Children.Count > 2)
                 {
                     var thirdChild = columnDefinition.GetChild<SqlCompoundClause>(2);
                     if (
-                        thirdChild != null
-                        && thirdChild.children.Count > 0
-                        && thirdChild.children.Count <= 2
+                        thirdChild is { Children.Count: > 0 and <= 2 }
                     )
                     {
-                        if (thirdChild.children.Count == 1)
+                        switch (thirdChild.Children.Count)
                         {
-                            if (
-                                thirdChild.children[0] is SqlWordClause sw1
-                                && int.TryParse(sw1.text, out var intValue)
-                            )
+                            case 1:
                             {
-                                length = intValue;
+                                if (
+                                    thirdChild.Children[0] is SqlWordClause sw1
+                                    && int.TryParse(sw1.Text, out var intValue)
+                                )
+                                {
+                                    length = intValue;
+                                }
+
+                                break;
+                            }
+                            case 2:
+                            {
+                                if (
+                                    thirdChild.Children[0] is SqlWordClause sw1
+                                    && int.TryParse(sw1.Text, out var intValue)
+                                )
+                                {
+                                    precision = intValue;
+                                }
+                                if (
+                                    thirdChild.Children[1] is SqlWordClause sw2
+                                    && int.TryParse(sw2.Text, out var intValue2)
+                                )
+                                {
+                                    scale = intValue2;
+                                }
+
+                                break;
                             }
                         }
-                        if (thirdChild.children.Count == 2)
-                        {
-                            if (
-                                thirdChild.children[0] is SqlWordClause sw1
-                                && int.TryParse(sw1.text, out var intValue)
-                            )
-                            {
-                                precision = intValue;
-                            }
-                            if (
-                                thirdChild.children[1] is SqlWordClause sw2
-                                && int.TryParse(sw2.text, out var intValue2)
-                            )
-                            {
-                                scale = intValue2;
-                            }
-                        }
+
                         remainingWordsIndex = 3;
                     }
                 }
@@ -143,239 +144,238 @@ public static partial class SqliteSqlParser
                 table.Columns.Add(column);
 
                 // remaining words are optional in the column definition
-                if (columnDefinition.children!.Count > remainingWordsIndex)
+                if (columnDefinition.Children.Count <= remainingWordsIndex) continue;
+                
+                string? inlineConstraintName = null;
+                for (var i = remainingWordsIndex; i < columnDefinition.Children.Count; i++)
                 {
-                    string? inlineConstraintName = null;
-                    for (var i = remainingWordsIndex; i < columnDefinition.children.Count; i++)
+                    var opt = columnDefinition.Children[i];
+                    if (opt is SqlWordClause swc)
                     {
-                        var opt = columnDefinition.children[i];
-                        if (opt is SqlWordClause swc)
+                        switch (swc.Text.ToUpper())
                         {
-                            switch (swc.text.ToUpper())
-                            {
-                                case "NOT NULL":
-                                    column.IsNullable = false;
-                                    break;
+                            case "NOT NULL":
+                                column.IsNullable = false;
+                                break;
 
-                                case "AUTOINCREMENT":
-                                    column.IsAutoIncrement = true;
-                                    break;
+                            case "AUTOINCREMENT":
+                                column.IsAutoIncrement = true;
+                                break;
 
-                                case "CONSTRAINT":
-                                    inlineConstraintName = columnDefinition
-                                        .GetChild<SqlWordClause>(i + 1)
-                                        ?.text;
-                                    // skip the next opt
-                                    i++;
-                                    break;
+                            case "CONSTRAINT":
+                                inlineConstraintName = columnDefinition
+                                    .GetChild<SqlWordClause>(i + 1)
+                                    ?.Text;
+                                // skip the next opt
+                                i++;
+                                break;
 
-                                case "DEFAULT":
-                                    // the clause can be a compound clause, or literal-value (quoted), or a number (integer, float, etc.)
-                                    // if the clause is a compound parenthesized clause, we will remove the parentheses and trim the text
-                                    column.DefaultExpression = columnDefinition
-                                        .GetChild<SqlClause>(i + 1)
-                                        ?.ToString()
-                                        ?.Trim(['(', ')', ' ']);
-                                    // skip the next opt
-                                    i++;
-                                    if (!string.IsNullOrWhiteSpace(column.DefaultExpression))
-                                    {
-                                        // add the default constraint to the table
-                                        var defaultConstraintName =
-                                            inlineConstraintName
-                                            ?? ProviderUtils.GenerateDefaultConstraintName(
-                                                tableName,
-                                                columnName
-                                            );
-                                        table.DefaultConstraints.Add(
-                                            new DxDefaultConstraint(
-                                                null,
-                                                tableName,
-                                                column.ColumnName,
-                                                defaultConstraintName,
-                                                column.DefaultExpression
-                                            )
-                                        );
-                                    }
-                                    inlineConstraintName = null;
-                                    break;
-
-                                case "UNIQUE":
-                                    column.IsUnique = true;
+                            case "DEFAULT":
+                                // the clause can be a compound clause, or literal-value (quoted), or a number (integer, float, etc.)
+                                // if the clause is a compound parenthesized clause, we will remove the parentheses and trim the text
+                                column.DefaultExpression = columnDefinition
+                                    .GetChild<SqlClause>(i + 1)
+                                    ?.ToString()
+                                    ?.Trim('(', ')', ' ');
+                                // skip the next opt
+                                i++;
+                                if (!string.IsNullOrWhiteSpace(column.DefaultExpression))
+                                {
                                     // add the default constraint to the table
-                                    var uniqueConstraintName =
+                                    var defaultConstraintName =
                                         inlineConstraintName
-                                        ?? ProviderUtils.GenerateUniqueConstraintName(
+                                        ?? ProviderUtils.GenerateDefaultConstraintName(
                                             tableName,
                                             columnName
                                         );
-                                    table.UniqueConstraints.Add(
-                                        new DxUniqueConstraint(
+                                    table.DefaultConstraints.Add(
+                                        new DxDefaultConstraint(
                                             null,
                                             tableName,
-                                            uniqueConstraintName,
-                                            [new DxOrderedColumn(column.ColumnName)]
+                                            column.ColumnName,
+                                            defaultConstraintName,
+                                            column.DefaultExpression
                                         )
                                     );
-                                    inlineConstraintName = null;
-                                    break;
+                                }
+                                inlineConstraintName = null;
+                                break;
 
-                                case "CHECK":
-                                    // the check expression is typically a compound clause based on the SQLite documentation
-                                    // if the check expression is a compound parenthesized clause, we will remove the parentheses and trim the text
-                                    column.CheckExpression = columnDefinition
-                                        .GetChild<SqlClause>(i + 1)
-                                        ?.ToString()
-                                        ?.Trim(['(', ')', ' ']);
-                                    // skip the next opt
-                                    i++;
-                                    if (!string.IsNullOrWhiteSpace(column.CheckExpression))
-                                    {
-                                        // add the default constraint to the table
-                                        var checkConstraintName =
-                                            inlineConstraintName
-                                            ?? ProviderUtils.GenerateCheckConstraintName(
-                                                tableName,
-                                                columnName
-                                            );
-                                        table.CheckConstraints.Add(
-                                            new DxCheckConstraint(
-                                                null,
-                                                tableName,
-                                                column.ColumnName,
-                                                checkConstraintName,
-                                                column.CheckExpression
-                                            )
-                                        );
-                                    }
-                                    inlineConstraintName = null;
-                                    break;
+                            case "UNIQUE":
+                                column.IsUnique = true;
+                                // add the default constraint to the table
+                                var uniqueConstraintName =
+                                    inlineConstraintName
+                                    ?? ProviderUtils.GenerateUniqueConstraintName(
+                                        tableName,
+                                        columnName
+                                    );
+                                table.UniqueConstraints.Add(
+                                    new DxUniqueConstraint(
+                                        null,
+                                        tableName,
+                                        uniqueConstraintName,
+                                        [new DxOrderedColumn(column.ColumnName)]
+                                    )
+                                );
+                                inlineConstraintName = null;
+                                break;
 
-                                case "PRIMARY KEY":
-                                    column.IsPrimaryKey = true;
+                            case "CHECK":
+                                // the check expression is typically a compound clause based on the SQLite documentation
+                                // if the check expression is a compound parenthesized clause, we will remove the parentheses and trim the text
+                                column.CheckExpression = columnDefinition
+                                    .GetChild<SqlClause>(i + 1)
+                                    ?.ToString()
+                                    ?.Trim('(', ')', ' ');
+                                // skip the next opt
+                                i++;
+                                if (!string.IsNullOrWhiteSpace(column.CheckExpression))
+                                {
                                     // add the default constraint to the table
-                                    var pkConstraintName =
+                                    var checkConstraintName =
                                         inlineConstraintName
-                                        ?? ProviderUtils.GeneratePrimaryKeyConstraintName(
+                                        ?? ProviderUtils.GenerateCheckConstraintName(
                                             tableName,
                                             columnName
                                         );
-                                    var columnOrder = DxColumnOrder.Ascending;
-                                    if (
-                                        columnDefinition
-                                            .GetChild<SqlClause>(i + 1)
-                                            ?.ToString()
-                                            ?.Equals("DESC", StringComparison.OrdinalIgnoreCase)
-                                        == true
-                                    )
-                                    {
-                                        columnOrder = DxColumnOrder.Descending;
-                                        // skip the next opt
-                                        i++;
-                                    }
-                                    table.PrimaryKeyConstraint = new DxPrimaryKeyConstraint(
-                                        null,
-                                        tableName,
-                                        pkConstraintName,
-                                        [new DxOrderedColumn(column.ColumnName, columnOrder)]
-                                    );
-                                    inlineConstraintName = null;
-                                    break;
-
-                                case "REFERENCES":
-                                    // see: https://www.sqlite.org/syntax/foreign-key-clause.html
-                                    column.IsForeignKey = true;
-
-                                    var referenceTableNameIndex = i + 1;
-                                    var referenceColumnNamesIndex = i + 2;
-
-                                    var referencedTableName = columnDefinition
-                                        .GetChild<SqlWordClause>(referenceTableNameIndex)
-                                        ?.text;
-                                    if (string.IsNullOrWhiteSpace(referencedTableName))
-                                        break;
-
-                                    // skip next opt
-                                    i++;
-
-                                    // TODO: sqlite doesn't require the referenced column name, but we will for now in our library
-                                    var referenceColumnName = columnDefinition
-                                        .GetChild<SqlCompoundClause>(referenceColumnNamesIndex)
-                                        ?.GetChild<SqlWordClause>(0)
-                                        ?.text;
-                                    if (string.IsNullOrWhiteSpace(referenceColumnName))
-                                        break;
-
-                                    // skip next opt
-                                    i++;
-
-                                    var constraintName =
-                                        inlineConstraintName
-                                        ?? ProviderUtils.GenerateForeignKeyConstraintName(
+                                    table.CheckConstraints.Add(
+                                        new DxCheckConstraint(
+                                            null,
                                             tableName,
-                                            columnName,
-                                            referencedTableName,
-                                            referenceColumnName
-                                        );
+                                            column.ColumnName,
+                                            checkConstraintName,
+                                            column.CheckExpression
+                                        )
+                                    );
+                                }
+                                inlineConstraintName = null;
+                                break;
 
-                                    var foreignKey = new DxForeignKeyConstraint(
-                                        null,
+                            case "PRIMARY KEY":
+                                column.IsPrimaryKey = true;
+                                // add the default constraint to the table
+                                var pkConstraintName =
+                                    inlineConstraintName
+                                    ?? ProviderUtils.GeneratePrimaryKeyConstraintName(
                                         tableName,
-                                        constraintName,
-                                        [new DxOrderedColumn(column.ColumnName)],
+                                        columnName
+                                    );
+                                var columnOrder = DxColumnOrder.Ascending;
+                                if (
+                                    columnDefinition
+                                        .GetChild<SqlClause>(i + 1)
+                                        ?.ToString()
+                                        ?.Equals("DESC", StringComparison.OrdinalIgnoreCase)
+                                    == true
+                                )
+                                {
+                                    columnOrder = DxColumnOrder.Descending;
+                                    // skip the next opt
+                                    i++;
+                                }
+                                table.PrimaryKeyConstraint = new DxPrimaryKeyConstraint(
+                                    null,
+                                    tableName,
+                                    pkConstraintName,
+                                    [new DxOrderedColumn(column.ColumnName, columnOrder)]
+                                );
+                                inlineConstraintName = null;
+                                break;
+
+                            case "REFERENCES":
+                                // see: https://www.sqlite.org/syntax/foreign-key-clause.html
+                                column.IsForeignKey = true;
+
+                                var referenceTableNameIndex = i + 1;
+                                var referenceColumnNamesIndex = i + 2;
+
+                                var referencedTableName = columnDefinition
+                                    .GetChild<SqlWordClause>(referenceTableNameIndex)
+                                    ?.Text;
+                                if (string.IsNullOrWhiteSpace(referencedTableName))
+                                    break;
+
+                                // skip next opt
+                                i++;
+
+                                // TODO: sqlite doesn't require the referenced column name, but we will for now in our library
+                                var referenceColumnName = columnDefinition
+                                    .GetChild<SqlCompoundClause>(referenceColumnNamesIndex)
+                                    ?.GetChild<SqlWordClause>(0)
+                                    ?.Text;
+                                if (string.IsNullOrWhiteSpace(referenceColumnName))
+                                    break;
+
+                                // skip next opt
+                                i++;
+
+                                var constraintName =
+                                    inlineConstraintName
+                                    ?? ProviderUtils.GenerateForeignKeyConstraintName(
+                                        tableName,
+                                        columnName,
                                         referencedTableName,
-                                        [new DxOrderedColumn(referenceColumnName)]
+                                        referenceColumnName
                                     );
 
-                                    var onDeleteTokenIndex = columnDefinition.FindTokenIndex(
-                                        "ON DELETE"
-                                    );
-                                    if (onDeleteTokenIndex >= i)
-                                    {
-                                        var onDelete = columnDefinition
-                                            .GetChild<SqlWordClause>(onDeleteTokenIndex + 1)
-                                            ?.text;
-                                        if (!string.IsNullOrWhiteSpace(onDelete))
-                                            foreignKey.OnDelete = onDelete.ToForeignKeyAction();
-                                    }
+                                var foreignKey = new DxForeignKeyConstraint(
+                                    null,
+                                    tableName,
+                                    constraintName,
+                                    [new DxOrderedColumn(column.ColumnName)],
+                                    referencedTableName,
+                                    [new DxOrderedColumn(referenceColumnName)]
+                                );
 
-                                    var onUpdateTokenIndex = columnDefinition.FindTokenIndex(
-                                        "ON UPDATE"
-                                    );
-                                    if (onUpdateTokenIndex >= i)
-                                    {
-                                        var onUpdate = columnDefinition
-                                            .GetChild<SqlWordClause>(onUpdateTokenIndex + 1)
-                                            ?.text;
-                                        if (!string.IsNullOrWhiteSpace(onUpdate))
-                                            foreignKey.OnUpdate = onUpdate.ToForeignKeyAction();
-                                    }
+                                var onDeleteTokenIndex = columnDefinition.FindTokenIndex(
+                                    "ON DELETE"
+                                );
+                                if (onDeleteTokenIndex >= i)
+                                {
+                                    var onDelete = columnDefinition
+                                        .GetChild<SqlWordClause>(onDeleteTokenIndex + 1)
+                                        ?.Text;
+                                    if (!string.IsNullOrWhiteSpace(onDelete))
+                                        foreignKey.OnDelete = onDelete.ToForeignKeyAction();
+                                }
 
-                                    column.ReferencedTableName = foreignKey.ReferencedTableName;
-                                    column.ReferencedColumnName = foreignKey
-                                        .ReferencedColumns[0]
-                                        .ColumnName;
-                                    column.OnDelete = foreignKey.OnDelete;
-                                    column.OnUpdate = foreignKey.OnUpdate;
+                                var onUpdateTokenIndex = columnDefinition.FindTokenIndex(
+                                    "ON UPDATE"
+                                );
+                                if (onUpdateTokenIndex >= i)
+                                {
+                                    var onUpdate = columnDefinition
+                                        .GetChild<SqlWordClause>(onUpdateTokenIndex + 1)
+                                        ?.Text;
+                                    if (!string.IsNullOrWhiteSpace(onUpdate))
+                                        foreignKey.OnUpdate = onUpdate.ToForeignKeyAction();
+                                }
 
-                                    table.ForeignKeyConstraints.Add(foreignKey);
+                                column.ReferencedTableName = foreignKey.ReferencedTableName;
+                                column.ReferencedColumnName = foreignKey
+                                    .ReferencedColumns[0]
+                                    .ColumnName;
+                                column.OnDelete = foreignKey.OnDelete;
+                                column.OnUpdate = foreignKey.OnUpdate;
 
-                                    inlineConstraintName = null;
-                                    break;
+                                table.ForeignKeyConstraints.Add(foreignKey);
 
-                                case "COLLATE":
-                                    var collation = columnDefinition
-                                        .GetChild<SqlWordClause>(i + 1)
-                                        ?.ToString();
-                                    if (!string.IsNullOrWhiteSpace(collation))
-                                    {
-                                        // TODO: not supported at this time
-                                        // column.Collation = collation;
-                                        // skip the next opt
-                                        i++;
-                                    }
-                                    break;
-                            }
+                                inlineConstraintName = null;
+                                break;
+
+                            case "COLLATE":
+                                var collation = columnDefinition
+                                    .GetChild<SqlWordClause>(i + 1)
+                                    ?.ToString();
+                                if (!string.IsNullOrWhiteSpace(collation))
+                                {
+                                    // TODO: not supported at this time
+                                    // column.Collation = collation;
+                                    // skip the next opt
+                                    i++;
+                                }
+                                break;
                         }
                     }
                 }
@@ -388,17 +388,17 @@ public static partial class SqliteSqlParser
                     continue;
 
                 string? inlineConstraintName = null;
-                for (var i = 0; i < tableConstraint.children.Count; i++)
+                for (var i = 0; i < tableConstraint.Children.Count; i++)
                 {
-                    var opt = tableConstraint.children[i];
+                    var opt = tableConstraint.Children[i];
                     if (opt is SqlWordClause swc)
                     {
-                        switch (swc.text.ToUpper())
+                        switch (swc.Text.ToUpper())
                         {
                             case "CONSTRAINT":
                                 inlineConstraintName = tableConstraint
                                     .GetChild<SqlWordClause>(i + 1)
-                                    ?.text;
+                                    ?.Text;
                                 // skip the next opt
                                 i++;
                                 break;
@@ -484,7 +484,7 @@ public static partial class SqliteSqlParser
                                 var checkConstraintExpression = tableConstraint
                                     .GetChild<SqlCompoundClause>(i + 1)
                                     ?.ToString()
-                                    ?.Trim(['(', ')', ' ']);
+                                    .Trim('(', ')', ' ');
 
                                 if (!string.IsNullOrWhiteSpace(checkConstraintExpression))
                                 {
@@ -531,7 +531,7 @@ public static partial class SqliteSqlParser
 
                                 var referencedTableName = tableConstraint
                                     .GetChild<SqlWordClause>(referencesClauseIndex + 1)
-                                    ?.text;
+                                    ?.Text;
                                 var fkReferencedColumnsClause =
                                     tableConstraint.GetChild<SqlCompoundClause>(
                                         referencesClauseIndex + 2
@@ -576,7 +576,7 @@ public static partial class SqliteSqlParser
                                 {
                                     var onDelete = tableConstraint
                                         .GetChild<SqlWordClause>(onDeleteTokenIndex + 1)
-                                        ?.text;
+                                        ?.Text;
                                     if (!string.IsNullOrWhiteSpace(onDelete))
                                         foreignKey.OnDelete = onDelete.ToForeignKeyAction();
                                 }
@@ -588,7 +588,7 @@ public static partial class SqliteSqlParser
                                 {
                                     var onUpdate = tableConstraint
                                         .GetChild<SqlWordClause>(onUpdateTokenIndex + 1)
-                                        ?.text;
+                                        ?.Text;
                                     if (!string.IsNullOrWhiteSpace(onUpdate))
                                         foreignKey.OnUpdate = onUpdate.ToForeignKeyAction();
                                 }
@@ -633,34 +633,36 @@ public static partial class SqliteSqlParser
     {
         if (
             pkColumnsClause == null
-            || pkColumnsClause.children.Count == 0
-            || pkColumnsClause.parenthesis == false
+            || pkColumnsClause.Children.Count == 0
+            || pkColumnsClause.Parenthesis == false
         )
-            return Array.Empty<DxOrderedColumn>();
+            return [];
 
         var pkOrderedColumns = pkColumnsClause
-            .children.Select(child =>
+            .Children.Select(child =>
             {
-                if (child is SqlWordClause wc)
+                switch (child)
                 {
-                    return new DxOrderedColumn(wc.text, DxColumnOrder.Ascending);
-                }
-                if (child is SqlCompoundClause cc)
-                {
-                    var ccName = cc.GetChild<SqlWordClause>(0)?.text;
-                    if (string.IsNullOrWhiteSpace(ccName))
-                        return null;
-                    var ccOrder = DxColumnOrder.Ascending;
-                    if (
-                        cc.GetChild<SqlWordClause>(1)
-                            ?.text?.Equals("DESC", StringComparison.OrdinalIgnoreCase) == true
-                    )
+                    case SqlWordClause wc:
+                        return new DxOrderedColumn(wc.Text);
+                    case SqlCompoundClause cc:
                     {
-                        ccOrder = DxColumnOrder.Descending;
+                        var ccName = cc.GetChild<SqlWordClause>(0)?.Text;
+                        if (string.IsNullOrWhiteSpace(ccName))
+                            return null;
+                        var ccOrder = DxColumnOrder.Ascending;
+                        if (
+                            cc.GetChild<SqlWordClause>(1)
+                                ?.Text.Equals("DESC", StringComparison.OrdinalIgnoreCase) == true
+                        )
+                        {
+                            ccOrder = DxColumnOrder.Descending;
+                        }
+                        return new DxOrderedColumn(ccName, ccOrder);
                     }
-                    return new DxOrderedColumn(ccName, ccOrder);
+                    default:
+                        return null;
                 }
-                return null;
             })
             .Where(oc => oc != null)
             .Cast<DxOrderedColumn>()
@@ -669,9 +671,13 @@ public static partial class SqliteSqlParser
     }
 }
 
+[SuppressMessage("ReSharper", "ForCanBeConvertedToForeach")]
+[SuppressMessage("ReSharper", "ConvertIfStatementToSwitchStatement")]
+[SuppressMessage("ReSharper", "InvertIf")]
+[SuppressMessage("ReSharper", "ForeachCanBeConvertedToQueryUsingAnotherGetEnumerator")]
 public static partial class SqliteSqlParser
 {
-    public static List<SqlClause> ParseDdlSql(string sql)
+    private static List<SqlClause> ParseDdlSql(string sql)
     {
         var statementParts = ParseSqlIntoStatementParts(sql);
 
@@ -686,10 +692,8 @@ public static partial class SqliteSqlParser
             // clauseBuilder.Complete();
 
             var rootClause = clauseBuilder.GetRootClause();
-            if (rootClause != null)
-                rootClause = clauseBuilder.ReduceNesting(rootClause);
-            if (rootClause != null)
-                statements.Add(rootClause);
+            rootClause = ClauseBuilder.ReduceNesting(rootClause);
+            statements.Add(rootClause);
         }
 
         return statements;
@@ -697,19 +701,16 @@ public static partial class SqliteSqlParser
 
     private static string StripCommentsFromSql(string sqlQuery)
     {
-        // Regular expression patterns to match single-line and multi-line comments
-        string singleLineCommentPattern = @"--.*?$";
-        string multiLineCommentPattern = @"/\*.*?\*/";
-
         // Remove multi-line comments (non-greedy)
-        sqlQuery = Regex.Replace(sqlQuery, multiLineCommentPattern, "", RegexOptions.Singleline);
+        sqlQuery = MultiLineCommentRegex().Replace(sqlQuery, "");
 
         // Remove single-line comments
-        sqlQuery = Regex.Replace(sqlQuery, singleLineCommentPattern, "", RegexOptions.Multiline);
+        sqlQuery = SingleLineCommentRegex().Replace(sqlQuery, "");
 
         return sqlQuery;
     }
 
+    [SuppressMessage("ReSharper", "RedundantAssignment")]
     private static List<string[]> ParseSqlIntoStatementParts(string sql)
     {
         sql = StripCommentsFromSql(sql);
@@ -724,7 +725,7 @@ public static partial class SqliteSqlParser
         sql = string.Join(
             ' ',
             sql.Split(
-                new char[] { ' ', '\r', '\n' },
+                [' ', '\r', '\n'],
                 StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries
             )
         );
@@ -760,10 +761,10 @@ public static partial class SqliteSqlParser
             // detect end of statement
             if (!inQuotes && c == ';')
             {
-                if (parts.Any())
+                if (parts.Count != 0)
                 {
                     statements.Add(substitute_decode(parts).ToArray());
-                    parts = new List<string>();
+                    parts = [];
                 }
                 continue;
             }
@@ -794,10 +795,10 @@ public static partial class SqliteSqlParser
             cpart = string.Empty;
         }
 
-        if (parts.Any())
+        if (parts.Count != 0)
         {
             statements.Add(substitute_decode(parts).ToArray());
-            parts = new List<string>();
+            parts = [];
         }
 
         return statements;
@@ -807,7 +808,7 @@ public static partial class SqliteSqlParser
 
     private static string substitute_encode(string text)
     {
-        foreach (var s in substitutions)
+        foreach (var s in Substitutions)
         {
             text = text.Replace(s.Key, s.Value, StringComparison.OrdinalIgnoreCase);
         }
@@ -817,16 +818,16 @@ public static partial class SqliteSqlParser
     private static List<string> substitute_decode(List<string> strings)
     {
         var parts = new List<string>();
-        for (var pi = 0; pi < strings.Count; pi++)
+        foreach (var t in strings)
         {
-            parts.Add(substitute_decode(strings[pi]));
+            parts.Add(substitute_decode(t));
         }
         return parts;
     }
 
     private static string substitute_decode(string text)
     {
-        foreach (var s in substitutions)
+        foreach (var s in Substitutions)
         {
             text = text.Replace(s.Value, s.Key, StringComparison.OrdinalIgnoreCase);
         }
@@ -836,7 +837,7 @@ public static partial class SqliteSqlParser
     /// <summary>
     /// Keep certain words together that belong together while parsing a CREATE TABLE statement
     /// </summary>
-    private static readonly Dictionary<string, string> substitutions = new List<string>
+    private static readonly Dictionary<string, string> Substitutions = new List<string>
     {
         "FOREIGN KEY",
         "PRIMARY KEY",
@@ -855,194 +856,187 @@ public static partial class SqliteSqlParser
     /// <summary>
     /// Don't mistake words as identifiers with keywords
     /// </summary>
-    public static readonly List<string> keyword =
-        new()
-        {
-            "ABORT",
-            "ACTION",
-            "ADD",
-            "AFTER",
-            "ALL",
-            "ALTER",
-            "ALWAYS",
-            "ANALYZE",
-            "AND",
-            "AS",
-            "ASC",
-            "ATTACH",
-            "AUTOINCREMENT",
-            "BEFORE",
-            "BEGIN",
-            "BETWEEN",
-            "BY",
-            "CASCADE",
-            "CASE",
-            "CAST",
-            "CHECK",
-            "COLLATE",
-            "COLUMN",
-            "COMMIT",
-            "CONFLICT",
-            "CONSTRAINT",
-            "CREATE",
-            "CROSS",
-            "CURRENT",
-            "CURRENT_DATE",
-            "CURRENT_TIME",
-            "CURRENT_TIMESTAMP",
-            "DATABASE",
-            "DEFAULT",
-            "DEFERRABLE",
-            "DEFERRED",
-            "DELETE",
-            "DESC",
-            "DETACH",
-            "DISTINCT",
-            "DO",
-            "DROP",
-            "EACH",
-            "ELSE",
-            "END",
-            "ESCAPE",
-            "EXCEPT",
-            "EXCLUDE",
-            "EXCLUSIVE",
-            "EXISTS",
-            "EXPLAIN",
-            "FAIL",
-            "FILTER",
-            "FIRST",
-            "FOLLOWING",
-            "FOR",
-            "FOREIGN",
-            "FROM",
-            "FULL",
-            "GENERATED",
-            "GLOB",
-            "GROUP",
-            "GROUPS",
-            "HAVING",
-            "IF",
-            "IGNORE",
-            "IMMEDIATE",
-            "IN",
-            "INDEX",
-            "INDEXED",
-            "INITIALLY",
-            "INNER",
-            "INSERT",
-            "INSTEAD",
-            "INTERSECT",
-            "INTO",
-            "IS",
-            "ISNULL",
-            "JOIN",
-            "KEY",
-            "LAST",
-            "LEFT",
-            "LIKE",
-            "LIMIT",
-            "MATCH",
-            "MATERIALIZED",
-            "NATURAL",
-            "NO",
-            "NOT",
-            "NOTHING",
-            "NOTNULL",
-            "NULL",
-            "NULLS",
-            "OF",
-            "OFFSET",
-            "ON",
-            "OR",
-            "ORDER",
-            "OTHERS",
-            "OUTER",
-            "OVER",
-            "PARTITION",
-            "PLAN",
-            "PRAGMA",
-            "PRECEDING",
-            "PRIMARY",
-            "QUERY",
-            "RAISE",
-            "RANGE",
-            "RECURSIVE",
-            "REFERENCES",
-            "REGEXP",
-            "REINDEX",
-            "RELEASE",
-            "RENAME",
-            "REPLACE",
-            "RESTRICT",
-            "RETURNING",
-            "RIGHT",
-            "ROLLBACK",
-            "ROW",
-            "ROWS",
-            "SAVEPOINT",
-            "SELECT",
-            "SET",
-            "TABLE",
-            "TEMP",
-            "TEMPORARY",
-            "THEN",
-            "TIES",
-            "TO",
-            "TRANSACTION",
-            "TRIGGER",
-            "UNBOUNDED",
-            "UNION",
-            "UNIQUE",
-            "UPDATE",
-            "USING",
-            "VACUUM",
-            "VALUES",
-            "VIEW",
-            "VIRTUAL",
-            "WHEN",
-            "WHERE",
-            "WINDOW",
-            "WITH",
-            "WITHOUT"
-        };
+    public static readonly List<string> Keyword =
+    [
+        "ABORT",
+        "ACTION",
+        "ADD",
+        "AFTER",
+        "ALL",
+        "ALTER",
+        "ALWAYS",
+        "ANALYZE",
+        "AND",
+        "AS",
+        "ASC",
+        "ATTACH",
+        "AUTOINCREMENT",
+        "BEFORE",
+        "BEGIN",
+        "BETWEEN",
+        "BY",
+        "CASCADE",
+        "CASE",
+        "CAST",
+        "CHECK",
+        "COLLATE",
+        "COLUMN",
+        "COMMIT",
+        "CONFLICT",
+        "CONSTRAINT",
+        "CREATE",
+        "CROSS",
+        "CURRENT",
+        "CURRENT_DATE",
+        "CURRENT_TIME",
+        "CURRENT_TIMESTAMP",
+        "DATABASE",
+        "DEFAULT",
+        "DEFERRABLE",
+        "DEFERRED",
+        "DELETE",
+        "DESC",
+        "DETACH",
+        "DISTINCT",
+        "DO",
+        "DROP",
+        "EACH",
+        "ELSE",
+        "END",
+        "ESCAPE",
+        "EXCEPT",
+        "EXCLUDE",
+        "EXCLUSIVE",
+        "EXISTS",
+        "EXPLAIN",
+        "FAIL",
+        "FILTER",
+        "FIRST",
+        "FOLLOWING",
+        "FOR",
+        "FOREIGN",
+        "FROM",
+        "FULL",
+        "GENERATED",
+        "GLOB",
+        "GROUP",
+        "GROUPS",
+        "HAVING",
+        "IF",
+        "IGNORE",
+        "IMMEDIATE",
+        "IN",
+        "INDEX",
+        "INDEXED",
+        "INITIALLY",
+        "INNER",
+        "INSERT",
+        "INSTEAD",
+        "INTERSECT",
+        "INTO",
+        "IS",
+        "ISNULL",
+        "JOIN",
+        "KEY",
+        "LAST",
+        "LEFT",
+        "LIKE",
+        "LIMIT",
+        "MATCH",
+        "MATERIALIZED",
+        "NATURAL",
+        "NO",
+        "NOT",
+        "NOTHING",
+        "NOTNULL",
+        "NULL",
+        "NULLS",
+        "OF",
+        "OFFSET",
+        "ON",
+        "OR",
+        "ORDER",
+        "OTHERS",
+        "OUTER",
+        "OVER",
+        "PARTITION",
+        "PLAN",
+        "PRAGMA",
+        "PRECEDING",
+        "PRIMARY",
+        "QUERY",
+        "RAISE",
+        "RANGE",
+        "RECURSIVE",
+        "REFERENCES",
+        "REGEXP",
+        "REINDEX",
+        "RELEASE",
+        "RENAME",
+        "REPLACE",
+        "RESTRICT",
+        "RETURNING",
+        "RIGHT",
+        "ROLLBACK",
+        "ROW",
+        "ROWS",
+        "SAVEPOINT",
+        "SELECT",
+        "SET",
+        "TABLE",
+        "TEMP",
+        "TEMPORARY",
+        "THEN",
+        "TIES",
+        "TO",
+        "TRANSACTION",
+        "TRIGGER",
+        "UNBOUNDED",
+        "UNION",
+        "UNIQUE",
+        "UPDATE",
+        "USING",
+        "VACUUM",
+        "VALUES",
+        "VIEW",
+        "VIRTUAL",
+        "WHEN",
+        "WHERE",
+        "WINDOW",
+        "WITH",
+        "WITHOUT"
+    ];
     #endregion // Static Variables
 
     #region ClauseBuilder Classes
 
-    public abstract class SqlClause
+    public abstract class SqlClause(SqlCompoundClause? parent)
     {
-        private SqlCompoundClause? parent;
-
-        public SqlClause(SqlCompoundClause? parent)
-        {
-            this.parent = parent;
-        }
+        private SqlCompoundClause? _parent = parent;
 
         public bool HasParent()
         {
-            return parent != null;
+            return _parent != null;
         }
 
         public SqlCompoundClause? GetParent()
         {
-            return this.parent;
+            return _parent;
         }
 
         public void SetParent(SqlCompoundClause clause)
         {
-            this.parent = clause;
+            _parent = clause;
         }
 
         public int FindTokenIndex(string token)
         {
             if (this is SqlCompoundClause scc)
             {
-                if (scc.children != null)
-                    return scc.children.FindIndex(c =>
-                        c is SqlWordClause swc
-                        && swc.text.Equals(token, StringComparison.OrdinalIgnoreCase)
-                    );
+                return scc.Children.FindIndex(c =>
+                    c is SqlWordClause swc
+                    && swc.Text.Equals(token, StringComparison.OrdinalIgnoreCase)
+                );
             }
             return -1;
         }
@@ -1050,114 +1044,106 @@ public static partial class SqliteSqlParser
         public TClause? GetChild<TClause>(int index)
             where TClause : SqlClause
         {
-            if (this is SqlCompoundClause scc)
-            {
-                if (scc.children != null && index >= 0 && index < scc.children.Count)
-                    return scc.children[index] as TClause;
-            }
+            if (this is not SqlCompoundClause scc) return null;
+            
+            if (index >= 0 && index < scc.Children.Count)
+                return scc.Children[index] as TClause;
+            
             return null;
         }
 
         public TClause? GetChild<TClause>(Func<TClause, bool> predicate)
             where TClause : SqlClause
         {
-            if (this is SqlCompoundClause scc)
+            if (this is not SqlCompoundClause scc) return null;
+            
+            foreach (var child in scc.Children)
             {
-                foreach (var child in scc.children)
-                {
-                    if (child is TClause tc && predicate(tc))
-                        return tc;
-                }
+                if (child is TClause tc && predicate(tc))
+                    return tc;
             }
+            
             return null;
         }
     }
 
     public class SqlWordClause : SqlClause
     {
-        private string _rawtext = string.Empty;
-
         public SqlWordClause(SqlCompoundClause? parent, string text)
             : base(parent)
         {
-            _rawtext = text;
             if (text.StartsWith('[') && text.EndsWith(']'))
             {
-                quotes = new[] { '[', ']' };
-                this.text = text.Trim('[', ']');
+                Quotes = ['[', ']'];
+                Text = text.Trim('[', ']');
             }
             else if (text.StartsWith('\'') && text.EndsWith('\''))
             {
-                quotes = new[] { '\'', '\'' };
-                this.text = text.Trim('\'');
+                Quotes = ['\'', '\''];
+                Text = text.Trim('\'');
             }
             else if (text.StartsWith('"') && text.EndsWith('"'))
             {
-                quotes = new[] { '"', '"' };
-                this.text = text.Trim('"');
+                Quotes = ['"', '"'];
+                Text = text.Trim('"');
             }
             else if (text.StartsWith('`') && text.EndsWith('`'))
             {
-                quotes = new[] { '`', '`' };
-                this.text = text.Trim('`');
+                Quotes = ['`', '`'];
+                Text = text.Trim('`');
             }
             else
             {
-                quotes = null;
-                this.text = text;
+                Quotes = null;
+                Text = text;
             }
         }
 
-        public string text { get; set; } = string.Empty;
-        public char[]? quotes { get; set; }
+        public string Text { get; set; }
+        // ReSharper disable once MemberCanBePrivate.Global
+        public char[]? Quotes { get; set; }
 
         public override string ToString()
         {
-            return (quotes == null || quotes.Length != 2)
-                ? this.text
-                : $"{quotes[0]}{this.text}{quotes[1]}";
+            return Quotes is not { Length: 2 }
+                ? Text
+                : $"{Quotes[0]}{Text}{Quotes[1]}";
         }
     }
 
-    public class SqlStatementClause : SqlCompoundClause
+    public class SqlStatementClause(SqlCompoundClause? parent) : SqlCompoundClause(parent)
     {
-        public SqlStatementClause(SqlCompoundClause? parent)
-            : base(parent) { }
-
         public override string ToString()
         {
             return $"{base.ToString()};";
         }
     }
 
-    public class SqlCompoundClause : SqlClause
+    public class SqlCompoundClause(SqlCompoundClause? parent) : SqlClause(parent)
     {
-        public SqlCompoundClause(SqlCompoundClause? parent)
-            : base(parent) { }
-
-        public List<SqlClause> children { get; set; } = new();
-        public bool parenthesis { get; set; }
+        public List<SqlClause> Children { get; set; } = [];
+        public bool Parenthesis { get; set; }
 
         public override string ToString()
         {
             var sb = new StringBuilder();
-            if (parenthesis)
+            if (Parenthesis)
             {
-                sb.Append("(");
+                sb.Append('(');
             }
             var first = true;
-            foreach (var child in children)
+            foreach (var child in Children)
             {
                 if (!first)
-                    sb.Append(parenthesis ? ", " : " ");
+                    sb.Append(Parenthesis ? ", " : " ");
                 else
                     first = false;
 
-                sb.Append(child.ToString());
+                sb.Append(child);
             }
-            if (parenthesis)
+            if (Parenthesis)
             {
-                sb.Append(")");
+                sb.Append(')');
             }
             return sb.ToString();
         }
@@ -1165,20 +1151,20 @@ public static partial class SqliteSqlParser
 
     public class ClauseBuilder
     {
-        private SqlCompoundClause rootClause;
-        private SqlCompoundClause activeClause;
+        private readonly SqlCompoundClause _rootClause;
+        private SqlCompoundClause _activeClause;
 
-        private List<SqlCompoundClause> allCompoundClauses = new List<SqlCompoundClause>();
+        private readonly List<SqlCompoundClause> _allCompoundClauses = [];
 
         public ClauseBuilder()
         {
-            rootClause = new SqlStatementClause(null);
-            activeClause = rootClause;
+            _rootClause = new SqlStatementClause(null);
+            _activeClause = _rootClause;
         }
 
         public SqlClause GetRootClause()
         {
-            return rootClause;
+            return _rootClause;
         }
 
         public void AddPart(string part)
@@ -1186,26 +1172,26 @@ public static partial class SqliteSqlParser
             if (part == "(")
             {
                 // start a new compound clause and add it to the current active clause
-                var newClause = new SqlCompoundClause(activeClause) { parenthesis = true };
-                allCompoundClauses.Add(newClause);
-                activeClause.children.Add(newClause);
+                var newClause = new SqlCompoundClause(_activeClause) { Parenthesis = true };
+                _allCompoundClauses.Add(newClause);
+                _activeClause.Children.Add(newClause);
                 // add a compound clause to this clause, and make that the active clause
                 var firstChildClause = new SqlCompoundClause(newClause);
-                allCompoundClauses.Add(firstChildClause);
-                newClause.children.Add(firstChildClause);
+                _allCompoundClauses.Add(firstChildClause);
+                newClause.Children.Add(firstChildClause);
                 // switch the active clause to the new clause
-                activeClause = firstChildClause;
+                _activeClause = firstChildClause;
                 return;
             }
             if (part == ")")
             {
                 // end the existing clause by making the active clause the parent (up 2 levels)
-                if (activeClause.HasParent())
+                if (_activeClause.HasParent())
                 {
-                    activeClause = activeClause.GetParent()!;
-                    if (activeClause.HasParent())
+                    _activeClause = _activeClause.GetParent()!;
+                    if (_activeClause.HasParent())
                     {
-                        activeClause = activeClause.GetParent()!;
+                        _activeClause = _activeClause.GetParent()!;
                     }
                 }
                 return;
@@ -1213,64 +1199,68 @@ public static partial class SqliteSqlParser
             if (part == ",")
             {
                 // start a new clause and add it to the current active clause
-                var newClause = new SqlCompoundClause(activeClause.GetParent());
-                allCompoundClauses.Add(newClause);
-                activeClause.GetParent()!.children.Add(newClause);
-                activeClause = newClause;
+                var newClause = new SqlCompoundClause(_activeClause.GetParent());
+                _allCompoundClauses.Add(newClause);
+                _activeClause.GetParent()!.Children.Add(newClause);
+                _activeClause = newClause;
                 return;
             }
 
-            activeClause.children.Add(new SqlWordClause(activeClause, part));
+            _activeClause.Children.Add(new SqlWordClause(_activeClause, part));
         }
 
         public void Complete()
         {
             foreach (
-                var c in allCompoundClauses /*.Where(x => x.parenthesis)*/
+                var c in _allCompoundClauses /*.Where(x => x.parenthesis)*/
             )
             {
-                if (c.children.Count == 1)
-                {
-                    var child = c.children[0];
-                    if (child is SqlCompoundClause scc && scc.parenthesis == false)
-                    {
-                        if (scc.children.Count == 1)
-                        {
-                            // reduce indentation, reduce nesting
-                            var gscc = scc.children[0];
-                            gscc.SetParent(c);
-                            c.children = new List<SqlClause> { gscc };
-                        }
-                    }
-                }
+                if (c.Children.Count != 1) continue;
+                
+                var child = c.Children[0];
+                if (child is not SqlCompoundClause { Parenthesis: false } scc) continue;
+
+                if (scc.Children.Count != 1) continue;
+                
+                // reduce indentation, reduce nesting
+                var gscc = scc.Children[0];
+                gscc.SetParent(c);
+                c.Children = [gscc];
             }
         }
 
-        public SqlClause ReduceNesting(SqlClause clause)
+        public static SqlClause ReduceNesting(SqlClause clause)
         {
-            var currentClause = clause;
-            if (currentClause is SqlCompoundClause scc)
+            if (clause is not SqlCompoundClause scc) return clause;
+            
+            var children = new List<SqlClause>();
+            // ReSharper disable once ForeachCanBeConvertedToQueryUsingAnotherGetEnumerator
+            foreach (var child in scc.Children)
             {
-                var children = new List<SqlClause>();
-                foreach (var child in scc.children)
-                {
-                    var reducedChild = ReduceNesting(child);
-                    children.Add(reducedChild);
-                }
-                scc.children = children;
+                var reducedChild = ReduceNesting(child);
+                children.Add(reducedChild);
+            }
+            scc.Children = children;
 
-                // reduce nesting
-                if (!scc.parenthesis && children.Count == 1 && children[0] is SqlWordClause cswc)
-                {
-                    return cswc;
-                }
-
-                return scc;
+            // reduce nesting
+            if (!scc.Parenthesis && children is [SqlWordClause cswc])
+            {
+                return cswc;
             }
 
-            return currentClause;
+            return scc;
+
         }
     }
+
+    // Regular expression patterns to match single-line and multi-line comments
+    // const string singleLineCommentPattern = @"--.*?$";
+    // const string multiLineCommentPattern = @"/\*.*?\*/";
+    
+    [GeneratedRegex(@"/\*.*?\*/", RegexOptions.Singleline)]
+    private static partial Regex MultiLineCommentRegex();
+    [GeneratedRegex("--.*?$", RegexOptions.Multiline)]
+    private static partial Regex SingleLineCommentRegex();
 
     #endregion // ClauseBuilder Classes
 }

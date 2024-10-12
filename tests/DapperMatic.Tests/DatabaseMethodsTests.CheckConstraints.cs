@@ -23,7 +23,7 @@ public abstract partial class DatabaseMethodsTests
             [new DxColumn(schemaName, testTableName, "testColumn", typeof(int))]
         );
 
-        var constraintName = $"ck_testTable";
+        var constraintName = "ck_testTable";
         var exists = await db.DoesCheckConstraintExistAsync(
             schemaName,
             testTableName,

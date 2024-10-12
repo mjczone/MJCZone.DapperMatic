@@ -1,5 +1,4 @@
 using System.Data;
-using Dapper;
 using DapperMatic.Tests.ProviderFixtures;
 using MySql.Data.MySqlClient;
 using Xunit.Abstractions;

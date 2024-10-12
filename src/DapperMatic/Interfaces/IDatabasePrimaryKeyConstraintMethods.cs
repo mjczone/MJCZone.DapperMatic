@@ -3,7 +3,7 @@ using DapperMatic.Models;
 
 namespace DapperMatic.Interfaces;
 
-public partial interface IDatabasePrimaryKeyConstraintMethods
+public interface IDatabasePrimaryKeyConstraintMethods
 {
     Task<bool> CreatePrimaryKeyConstraintIfNotExistsAsync(
         IDbConnection db,

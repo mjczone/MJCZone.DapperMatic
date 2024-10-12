@@ -4,7 +4,6 @@ namespace DapperMatic.DataAnnotations;
 
 [AttributeUsage(
     AttributeTargets.Property | AttributeTargets.Class,
-    Inherited = true,
     AllowMultiple = true
 )]
 public class DxPrimaryKeyConstraintAttribute : Attribute
@@ -19,7 +18,7 @@ public class DxPrimaryKeyConstraintAttribute : Attribute
     public DxPrimaryKeyConstraintAttribute(string constraintName, params string[] columnNames)
     {
         ConstraintName = constraintName;
-        Columns = columnNames?.Select(columnName => new DxOrderedColumn(columnName)).ToArray();
+        Columns = columnNames.Select(columnName => new DxOrderedColumn(columnName)).ToArray();
     }
 
     public string? ConstraintName { get; }

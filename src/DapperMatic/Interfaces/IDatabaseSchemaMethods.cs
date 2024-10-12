@@ -2,7 +2,7 @@ using System.Data;
 
 namespace DapperMatic.Interfaces;
 
-public partial interface IDatabaseSchemaMethods
+public interface IDatabaseSchemaMethods
 {
     string GetSchemaQualifiedIdentifierName(string? schemaName, string tableName);
 

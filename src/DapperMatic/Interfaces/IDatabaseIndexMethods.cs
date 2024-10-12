@@ -3,7 +3,7 @@ using DapperMatic.Models;
 
 namespace DapperMatic.Interfaces;
 
-public partial interface IDatabaseIndexMethods
+public interface IDatabaseIndexMethods
 {
     Task<bool> CreateIndexIfNotExistsAsync(
         IDbConnection db,

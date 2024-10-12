@@ -4,7 +4,6 @@ namespace DapperMatic.DataAnnotations;
 
 [AttributeUsage(
     AttributeTargets.Property | AttributeTargets.Class,
-    Inherited = true,
     AllowMultiple = true
 )]
 public class DxIndexAttribute : Attribute
@@ -13,13 +12,13 @@ public class DxIndexAttribute : Attribute
     {
         IndexName = constraintName;
         IsUnique = isUnique;
-        Columns = columnNames?.Select(columnName => new DxOrderedColumn(columnName)).ToArray();
+        Columns = columnNames.Select(columnName => new DxOrderedColumn(columnName)).ToArray();
     }
 
     public DxIndexAttribute(bool isUnique, params string[] columnNames)
     {
         IsUnique = isUnique;
-        Columns = columnNames?.Select(columnName => new DxOrderedColumn(columnName)).ToArray();
+        Columns = columnNames.Select(columnName => new DxOrderedColumn(columnName)).ToArray();
     }
 
     public DxIndexAttribute(string constraintName, bool isUnique, params DxOrderedColumn[] columns)

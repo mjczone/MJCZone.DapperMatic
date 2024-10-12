@@ -1,30 +1,24 @@
+using System.Diagnostics.CodeAnalysis;
 using System.Text;
 
 namespace DapperMatic;
 
+[SuppressMessage("ReSharper", "UnusedMember.Global")]
+[SuppressMessage("ReSharper", "MemberCanBePrivate.Global")]
 public static class ExtensionMethods
 {
-    public static string ToQuotedIdentifier(
-        this string prefix,
-        char quoteChar,
-        params string[] identifierSegments
-    )
-    {
-        return prefix.ToQuotedIdentifier(new[] { quoteChar }, identifierSegments);
-    }
-
     public static string ToQuotedIdentifier(
         this string prefix,
         char[] quoteChar,
         params string[] identifierSegments
     )
     {
-        if (quoteChar.Length == 0)
-            return prefix.ToRawIdentifier(identifierSegments);
-        if (quoteChar.Length == 1)
-            return quoteChar[0] + prefix.ToRawIdentifier(identifierSegments) + quoteChar[0];
-
-        return quoteChar[0] + prefix.ToRawIdentifier(identifierSegments) + quoteChar[1];
+        return quoteChar.Length switch
+        {
+            0 => prefix.ToRawIdentifier(identifierSegments),
+            1 => quoteChar[0] + prefix.ToRawIdentifier(identifierSegments) + quoteChar[0],
+            _ => quoteChar[0] + prefix.ToRawIdentifier(identifierSegments) + quoteChar[1]
+        };
     }
 
     /// <summary>
@@ -48,12 +42,12 @@ public static class ExtensionMethods
 
     public static bool IsAlphaNumeric(this char c)
     {
-        return (c >= 'A' && c <= 'Z') || (c >= 'a' && c <= 'z') || (c >= '0' && c <= '9');
+        return c is >= 'A' and <= 'Z' or >= 'a' and <= 'z' or >= '0' and <= '9';
     }
 
     public static bool IsAlpha(this char c)
     {
-        return (c >= 'A' && c <= 'Z') || (c >= 'a' && c <= 'z');
+        return c is >= 'A' and <= 'Z' or >= 'a' and <= 'z';
     }
 
     public static string ToAlphaNumeric(this string text, string additionalAllowedCharacters = "")
@@ -70,7 +64,7 @@ public static class ExtensionMethods
         //     .ToArray();
         // return new string(arr);
 
-        return String.Concat(
+        return string.Concat(
             Array.FindAll(
                 text.ToCharArray(),
                 c => c.IsAlphaNumeric() || additionalAllowedCharacters.Contains(c)
@@ -80,7 +74,7 @@ public static class ExtensionMethods
 
     public static string ToAlpha(this string text, string additionalAllowedCharacters = "")
     {
-        return String.Concat(
+        return string.Concat(
             Array.FindAll(
                 text.ToCharArray(),
                 c => c.IsAlpha() || additionalAllowedCharacters.Contains(c)
@@ -95,9 +89,9 @@ public static class ExtensionMethods
     {
         str = str.Trim();
         var sb = new StringBuilder();
-        for (int i = 0; i < str.Length; i++)
+        for (var i = 0; i < str.Length; i++)
         {
-            char c = str[i];
+            var c = str[i];
             if (
                 i > 0
                 && char.IsUpper(c)
@@ -122,6 +116,7 @@ public static class ExtensionMethods
     /// </summary>
     /// <param name="text">A string</param>
     /// <param name="wildcardPattern">Wildcard pattern string</param>
+    /// <param name="ignoreCase">Ignore the case of the string when evaluating a match</param>
     /// <returns>bool</returns>
     public static bool IsWildcardPatternMatch(
         this string text,

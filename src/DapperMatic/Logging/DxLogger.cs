@@ -1,8 +1,10 @@
+using System.Diagnostics.CodeAnalysis;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 
 namespace DapperMatic.Logging;
 
+[SuppressMessage("ReSharper", "UnusedMember.Global")]
 public static class DxLogger
 {
     private static ILoggerFactory _loggerFactory = new NullLoggerFactory();

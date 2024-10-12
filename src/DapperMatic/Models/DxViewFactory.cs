@@ -6,7 +6,7 @@ namespace DapperMatic.Models;
 
 public static class DxViewFactory
 {
-    private static ConcurrentDictionary<Type, DxView> _cache = new();
+    private static readonly ConcurrentDictionary<Type, DxView> Cache = new();
 
     /// <summary>
     /// Returns an instance of a DxView for the given type. If the type is not a valid DxView,
@@ -14,7 +14,7 @@ public static class DxViewFactory
     /// </summary>
     public static DxView? GetView(Type type)
     {
-        if (_cache.TryGetValue(type, out var view))
+        if (Cache.TryGetValue(type, out var view))
             return view;
 
         var viewAttribute = type.GetCustomAttribute<DxViewAttribute>();
@@ -30,7 +30,7 @@ public static class DxViewFactory
             viewAttribute.Definition.Trim()
         );
 
-        _cache.TryAdd(type, view);
+        Cache.TryAdd(type, view);
         return view;
     }
 }

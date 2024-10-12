@@ -39,7 +39,7 @@ public class MariaDb_10_11_DatabaseFixture : MySqlDatabaseFixture
 
 public abstract class MySqlDatabaseFixture(string imageName) : DatabaseFixtureBase<MySqlContainer>
 {
-    private readonly MySqlContainer container = new MySqlBuilder()
+    private readonly MySqlContainer _container = new MySqlBuilder()
         .WithImage(imageName)
         .WithPassword("Strong_password_123!")
         .WithAutoRemove(true)
@@ -48,6 +48,6 @@ public abstract class MySqlDatabaseFixture(string imageName) : DatabaseFixtureBa
 
     public override MySqlContainer Container
     {
-        get { return container; }
+        get { return _container; }
     }
 }

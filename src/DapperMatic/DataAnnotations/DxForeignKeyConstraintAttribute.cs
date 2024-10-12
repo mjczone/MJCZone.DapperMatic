@@ -4,7 +4,6 @@ namespace DapperMatic.DataAnnotations;
 
 [AttributeUsage(
     AttributeTargets.Property | AttributeTargets.Class,
-    Inherited = true,
     AllowMultiple = true
 )]
 public class DxForeignKeyConstraintAttribute : Attribute

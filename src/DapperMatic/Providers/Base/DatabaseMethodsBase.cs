@@ -56,7 +56,7 @@ public abstract partial class DatabaseMethodsBase : IDatabaseMethods
     {
         var providerDataType = ProviderTypeMap.GetRecommendedDataTypeForSqlType(sqlType);
 
-        if (providerDataType == null || providerDataType.PrimaryDotnetType == null)
+        if (providerDataType.PrimaryDotnetType == null)
             throw new NotSupportedException($"SQL type {sqlType} is not supported.");
 
         var sqlDataType = providerDataType.ParseSqlType(sqlType);
@@ -86,10 +86,8 @@ public abstract partial class DatabaseMethodsBase : IDatabaseMethods
                 providerDataType.SupportsLength
                 && !string.IsNullOrWhiteSpace(providerDataType.SqlTypeWithLengthFormat)
             )
-                return (
-                    length == int.MaxValue
-                    && !string.IsNullOrWhiteSpace(providerDataType.SqlTypeWithMaxLengthFormat)
-                )
+                return length == int.MaxValue
+                       && !string.IsNullOrWhiteSpace(providerDataType.SqlTypeWithMaxLengthFormat)
                     ? string.Format(providerDataType.SqlTypeWithMaxLengthFormat, length)
                     : string.Format(providerDataType.SqlTypeWithLengthFormat, length);
         }
@@ -121,27 +119,27 @@ public abstract partial class DatabaseMethodsBase : IDatabaseMethods
     internal static readonly ConcurrentDictionary<
         string,
         (string sql, object? parameters)
-    > _lastSqls = new();
+    > LastSqls = new();
 
     public abstract Task<Version> GetDatabaseVersionAsync(
         IDbConnection db,
-        IDbTransaction? tx,
+        IDbTransaction? tx = null,
         CancellationToken cancellationToken = default
     );
 
     public string GetLastSql(IDbConnection db)
     {
-        return _lastSqls.TryGetValue(db.ConnectionString, out var sql) ? sql.sql : "";
+        return LastSqls.TryGetValue(db.ConnectionString, out var sql) ? sql.sql : "";
     }
 
     public (string sql, object? parameters) GetLastSqlWithParams(IDbConnection db)
     {
-        return _lastSqls.TryGetValue(db.ConnectionString, out var sql) ? sql : ("", null);
+        return LastSqls.TryGetValue(db.ConnectionString, out var sql) ? sql : ("", null);
     }
 
     private static void SetLastSql(IDbConnection db, string sql, object? param = null)
     {
-        _lastSqls.AddOrUpdate(db.ConnectionString, (sql, param), (key, oldValue) => (sql, param));
+        LastSqls.AddOrUpdate(db.ConnectionString, (sql, param), (_, _) => (sql, param));
     }
 
     protected virtual async Task<List<TOutput>> QueryAsync<TOutput>(
@@ -313,10 +311,7 @@ public abstract partial class DatabaseMethodsBase : IDatabaseMethods
         if (!SupportsSchemas)
             return string.Empty;
 
-        if (string.IsNullOrWhiteSpace(schemaName))
-            return DefaultSchema;
-
-        return NormalizeName(schemaName);
+        return string.IsNullOrWhiteSpace(schemaName) ? DefaultSchema : NormalizeName(schemaName);
     }
 
     /// <summary>
@@ -342,24 +337,25 @@ public abstract partial class DatabaseMethodsBase : IDatabaseMethods
         if (!string.IsNullOrWhiteSpace(identifierName))
             identifierName = NormalizeName(identifierName);
 
-        return (schemaName ?? "", tableName ?? "", identifierName ?? "");
+        return (schemaName, tableName ?? "", identifierName ?? "");
     }
 
+    // ReSharper disable once MemberCanBePrivate.Global
     protected void Log(LogLevel logLevel, string message, params object?[] args)
     {
-        if (Logger != null && Logger.IsEnabled(logLevel))
+        if (!Logger.IsEnabled(logLevel)) return;
+        
+        try
         {
-            try
-            {
-                Logger.Log(logLevel, message, args);
-            }
-            catch (Exception ex)
-            {
-                Console.WriteLine(ex);
-            }
+            Logger.Log(logLevel, message, args);
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine(ex);
         }
     }
 
+    // ReSharper disable once MemberCanBePrivate.Global
     protected void Log(
         LogLevel logLevel,
         Exception exception,
@@ -367,16 +363,15 @@ public abstract partial class DatabaseMethodsBase : IDatabaseMethods
         params object?[] args
     )
     {
-        if (Logger != null && Logger.IsEnabled(logLevel))
+        if (!Logger.IsEnabled(logLevel)) return;
+        
+        try
         {
-            try
-            {
-                Logger.Log(logLevel, exception, message, args);
-            }
-            catch (Exception ex)
-            {
-                Console.WriteLine(ex);
-            }
+            Logger.Log(logLevel, exception, message, args);
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine(ex);
         }
     }
 }

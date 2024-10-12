@@ -1,7 +1,8 @@
 // Purpose: Provides a type map for PostgreSql data types.
 namespace DapperMatic.Providers.PostgreSql;
 
-public class PostgreSqlProviderTypeMap : ProviderTypeMapBase<PostgreSqlProviderTypeMap>
+// ReSharper disable once ClassNeverInstantiated.Global
+public sealed class PostgreSqlProviderTypeMap : ProviderTypeMapBase<PostgreSqlProviderTypeMap>
 {
     public PostgreSqlProviderTypeMap()
     {
@@ -79,7 +80,7 @@ public class PostgreSqlProviderTypeMap : ProviderTypeMapBase<PostgreSqlProviderT
             .. CommonTypes,
             .. CommonDictionaryTypes,
             .. CommonEnumerableTypes,
-            typeof(object),
+            typeof(object)
         ];
         Type[] allDateTimeAffinityTypes =
         [
@@ -105,75 +106,75 @@ public class PostgreSqlProviderTypeMap : ProviderTypeMapBase<PostgreSqlProviderT
             typeof(short)
         ];
         Type[] allBlobAffinityTypes = [typeof(byte[]), typeof(object)];
-        Type[] allGeometryAffinityType = [typeof(byte[]), typeof(object)];
+        Type[] allGeometryAffinityType = [typeof(string), typeof(object)];
         ProviderDataType[] providerDataTypes =
         [
             // TEXT AFFINITY TYPES
-            new ProviderDataType(
+            new(
                 "character",
                 typeof(string),
                 allTextAffinityTypes,
                 "character({0})"
             ),
-            new ProviderDataType("char", typeof(string), allTextAffinityTypes, "char({0})"),
-            new ProviderDataType(
+            new("char", typeof(string), allTextAffinityTypes, "char({0})"),
+            new(
                 "character varying",
                 typeof(string),
                 allTextAffinityTypes,
                 "character varying({0})"
             ),
-            new ProviderDataType("varchar", typeof(string), allTextAffinityTypes, "varchar({0})"),
-            new ProviderDataType("text", typeof(string), allTextAffinityTypes),
-            new ProviderDataType("json", typeof(string), [typeof(string)]),
-            new ProviderDataType("jsonb", typeof(string), [typeof(string)]),
-            new ProviderDataType("xml", typeof(string), [typeof(string)]),
-            new ProviderDataType("uuid", typeof(Guid), [typeof(Guid), typeof(string)]),
+            new("varchar", typeof(string), allTextAffinityTypes, "varchar({0})"),
+            new("text", typeof(string), allTextAffinityTypes),
+            new("json", typeof(string), [typeof(string)]),
+            new("jsonb", typeof(string), [typeof(string)]),
+            new("xml", typeof(string), [typeof(string)]),
+            new("uuid", typeof(Guid), [typeof(Guid), typeof(string)]),
             // OTHER AFFINITY TYPES
-            new ProviderDataType("cidr", typeof(object), [typeof(string), typeof(object)]),
-            new ProviderDataType("inet", typeof(object), [typeof(string), typeof(object)]),
-            new ProviderDataType("macaddr", typeof(object), [typeof(string), typeof(object)]),
-            new ProviderDataType("macaddr8", typeof(object), [typeof(string), typeof(object)]),
-            new ProviderDataType("pg_lsn", typeof(object), [typeof(string), typeof(object)]),
-            new ProviderDataType("pg_snapshot", typeof(object), [typeof(string), typeof(object)]),
-            new ProviderDataType("tsquery", typeof(object), [typeof(string), typeof(object)]),
-            new ProviderDataType("tsvector", typeof(object), [typeof(string), typeof(object)]),
-            new ProviderDataType("txid_snapshot", typeof(object), [typeof(string), typeof(object)]),
+            new("cidr", typeof(object), allGeometryAffinityType),
+            new("inet", typeof(object), allGeometryAffinityType),
+            new("macaddr", typeof(object), allGeometryAffinityType),
+            new("macaddr8", typeof(object), allGeometryAffinityType),
+            new("pg_lsn", typeof(object), allGeometryAffinityType),
+            new("pg_snapshot", typeof(object), allGeometryAffinityType),
+            new("tsquery", typeof(object), allGeometryAffinityType),
+            new("tsvector", typeof(object), allGeometryAffinityType),
+            new("txid_snapshot", typeof(object), allGeometryAffinityType),
             // GEOMETRY SUPPORTED YET
-            new ProviderDataType("box", typeof(object), [typeof(string), typeof(object)]),
-            new ProviderDataType("circle", typeof(object), [typeof(string), typeof(object)]),
-            new ProviderDataType("lseg", typeof(object), [typeof(string), typeof(object)]),
-            new ProviderDataType("line", typeof(object), [typeof(string), typeof(object)]),
-            new ProviderDataType("path", typeof(object), [typeof(string), typeof(object)]),
-            new ProviderDataType("point", typeof(object), [typeof(string), typeof(object)]),
-            new ProviderDataType("polygon", typeof(object), [typeof(string), typeof(object)]),
-            new ProviderDataType("geometry", typeof(object), [typeof(string), typeof(object)]),
-            new ProviderDataType("geography", typeof(object), [typeof(string), typeof(object)]),
+            new("box", typeof(object), allGeometryAffinityType),
+            new("circle", typeof(object), allGeometryAffinityType),
+            new("lseg", typeof(object), allGeometryAffinityType),
+            new("line", typeof(object), allGeometryAffinityType),
+            new("path", typeof(object), allGeometryAffinityType),
+            new("point", typeof(object), allGeometryAffinityType),
+            new("polygon", typeof(object), allGeometryAffinityType),
+            new("geometry", typeof(object), allGeometryAffinityType),
+            new("geography", typeof(object), allGeometryAffinityType),
             // INTEGER AFFINITY TYPES
-            new ProviderDataType("smallint", typeof(short), allIntegerAffinityTypes),
-            new ProviderDataType("int2", typeof(short), allIntegerAffinityTypes),
-            new ProviderDataType("smallserial", typeof(short), allIntegerAffinityTypes),
-            new ProviderDataType("serial2", typeof(short), allIntegerAffinityTypes),
-            new ProviderDataType("integer", typeof(int), allIntegerAffinityTypes),
-            new ProviderDataType("int", typeof(int), allIntegerAffinityTypes),
-            new ProviderDataType("int4", typeof(int), allIntegerAffinityTypes),
-            new ProviderDataType("serial", typeof(int), allIntegerAffinityTypes),
-            new ProviderDataType("serial4", typeof(int), allIntegerAffinityTypes),
-            new ProviderDataType("bigint", typeof(long), allIntegerAffinityTypes),
-            new ProviderDataType("int8", typeof(long), allIntegerAffinityTypes),
-            new ProviderDataType("bigserial", typeof(long), allIntegerAffinityTypes),
-            new ProviderDataType("serial8", typeof(long), allIntegerAffinityTypes),
-            new ProviderDataType("bit", typeof(int), allIntegerAffinityTypes, "bit({0})"),
-            new ProviderDataType(
+            new("smallint", typeof(short), allIntegerAffinityTypes),
+            new("int2", typeof(short), allIntegerAffinityTypes),
+            new("smallserial", typeof(short), allIntegerAffinityTypes),
+            new("serial2", typeof(short), allIntegerAffinityTypes),
+            new("integer", typeof(int), allIntegerAffinityTypes),
+            new("int", typeof(int), allIntegerAffinityTypes),
+            new("int4", typeof(int), allIntegerAffinityTypes),
+            new("serial", typeof(int), allIntegerAffinityTypes),
+            new("serial4", typeof(int), allIntegerAffinityTypes),
+            new("bigint", typeof(long), allIntegerAffinityTypes),
+            new("int8", typeof(long), allIntegerAffinityTypes),
+            new("bigserial", typeof(long), allIntegerAffinityTypes),
+            new("serial8", typeof(long), allIntegerAffinityTypes),
+            new("bit", typeof(int), allIntegerAffinityTypes, "bit({0})"),
+            new(
                 "bit varying",
                 typeof(int),
                 allIntegerAffinityTypes,
                 "bit varying({0})"
             ),
-            new ProviderDataType("varbit", typeof(int), allIntegerAffinityTypes, "varbit({0})"),
-            new ProviderDataType("boolean", typeof(bool), allIntegerAffinityTypes),
-            new ProviderDataType("bool", typeof(bool), allIntegerAffinityTypes),
+            new("varbit", typeof(int), allIntegerAffinityTypes, "varbit({0})"),
+            new("boolean", typeof(bool), allIntegerAffinityTypes),
+            new("bool", typeof(bool), allIntegerAffinityTypes),
             // REAL AFFINITY TYPES
-            new ProviderDataType(
+            new(
                 "decimal",
                 typeof(decimal),
                 allRealAffinityTypes,
@@ -181,7 +182,7 @@ public class PostgreSqlProviderTypeMap : ProviderTypeMapBase<PostgreSqlProviderT
                 "decimal({0})",
                 "decimal({0},{1})"
             ),
-            new ProviderDataType(
+            new(
                 "numeric",
                 typeof(decimal),
                 allRealAffinityTypes,
@@ -189,64 +190,64 @@ public class PostgreSqlProviderTypeMap : ProviderTypeMapBase<PostgreSqlProviderT
                 "numeric({0})",
                 "numeric({0},{1})"
             ),
-            new ProviderDataType("money", typeof(decimal), allRealAffinityTypes, null),
-            new ProviderDataType("double precision", typeof(double), allRealAffinityTypes, null),
-            new ProviderDataType("float8", typeof(double), allRealAffinityTypes),
-            new ProviderDataType("real", typeof(float), allRealAffinityTypes),
-            new ProviderDataType("float4", typeof(float), allRealAffinityTypes),
+            new("money", typeof(decimal), allRealAffinityTypes),
+            new("double precision", typeof(double), allRealAffinityTypes),
+            new("float8", typeof(double), allRealAffinityTypes),
+            new("real", typeof(float), allRealAffinityTypes),
+            new("float4", typeof(float), allRealAffinityTypes),
             // DATE/TIME AFFINITY TYPES
-            new ProviderDataType("date", typeof(DateTime), allDateTimeAffinityTypes),
-            new ProviderDataType("interval", typeof(TimeSpan), allDateTimeAffinityTypes),
-            new ProviderDataType(
+            new("date", typeof(DateTime), allDateTimeAffinityTypes),
+            new("interval", typeof(TimeSpan), allDateTimeAffinityTypes),
+            new(
                 "time without time zone",
                 typeof(TimeSpan),
                 allDateTimeAffinityTypes,
                 null,
                 "time({0}) without time zone"
             ),
-            new ProviderDataType(
+            new(
                 "time",
                 typeof(TimeSpan),
                 allDateTimeAffinityTypes,
                 null,
                 "time({0})"
             ),
-            new ProviderDataType(
+            new(
                 "time with time zone",
                 typeof(TimeSpan),
                 allDateTimeAffinityTypes,
                 null,
                 "time({0}) with time zone"
             ),
-            new ProviderDataType(
+            new(
                 "timetz",
                 typeof(TimeSpan),
                 allDateTimeAffinityTypes,
                 null,
                 "timetz({0})"
             ),
-            new ProviderDataType(
+            new(
                 "timestamp without time zone",
                 typeof(DateTime),
                 allDateTimeAffinityTypes,
                 null,
                 "timestamp({0}) without time zone"
             ),
-            new ProviderDataType(
+            new(
                 "timestamp",
                 typeof(DateTime),
                 allDateTimeAffinityTypes,
                 null,
                 "timestamp({0})"
             ),
-            new ProviderDataType(
+            new(
                 "timestamp with time zone",
                 typeof(DateTimeOffset),
                 allDateTimeAffinityTypes,
                 null,
                 "timestamp({0}) with time zone"
             ),
-            new ProviderDataType(
+            new(
                 "timestamptz",
                 typeof(DateTimeOffset),
                 allDateTimeAffinityTypes,
@@ -254,7 +255,7 @@ public class PostgreSqlProviderTypeMap : ProviderTypeMapBase<PostgreSqlProviderT
                 "timestamptz({0})"
             ),
             // BINARY AFFINITY TYPES
-            new ProviderDataType("bytea", typeof(byte[]), [typeof(byte[]), typeof(object)]),
+            new("bytea", typeof(byte[]), allBlobAffinityTypes)
         ];
 
         // add array versions of data types
@@ -274,11 +275,11 @@ public class PostgreSqlProviderTypeMap : ProviderTypeMapBase<PostgreSqlProviderT
                         $"{x.SqlTypeFormat}[]",
                         x.PrimaryDotnetType.MakeArrayType(),
                         x.SupportedDotnetTypes.Select(t => t.MakeArrayType())
-                            .Concat([typeof(string), typeof(object)])
+                            .Concat(allGeometryAffinityType)
                             .Distinct()
                             .ToArray()
                     );
-                }),
+                })
         ];
 
         return providerDataTypes;

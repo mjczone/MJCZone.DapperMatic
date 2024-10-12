@@ -3,7 +3,7 @@ using DapperMatic.Providers;
 
 namespace DapperMatic.Interfaces;
 
-public partial interface IDatabaseMethods
+public interface IDatabaseMethods
     : IDatabaseTableMethods,
         IDatabaseColumnMethods,
         IDatabaseIndexMethods,

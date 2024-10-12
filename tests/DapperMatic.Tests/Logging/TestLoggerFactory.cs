@@ -1,7 +1,7 @@
-namespace DapperMatic.Tests.Logging;
-
 using Microsoft.Extensions.Logging;
 using Xunit.Abstractions;
+
+namespace DapperMatic.Tests.Logging;
 
 public class TestLoggerProvider : ILoggerProvider
 {

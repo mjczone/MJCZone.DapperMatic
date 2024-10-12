@@ -1,10 +1,9 @@
 using System.Data;
-using DapperMatic.Interfaces;
 using DapperMatic.Models;
 
 namespace DapperMatic.Providers.Base;
 
-public abstract partial class DatabaseMethodsBase : IDatabaseUniqueConstraintMethods
+public abstract partial class DatabaseMethodsBase
 {
     public virtual async Task<bool> DoesUniqueConstraintExistAsync(
         IDbConnection db,
@@ -224,9 +223,7 @@ public abstract partial class DatabaseMethodsBase : IDatabaseUniqueConstraintMet
         var table = await GetTableAsync(db, schemaName, tableName, tx, cancellationToken)
             .ConfigureAwait(false);
         if (table == null)
-            return new List<DxUniqueConstraint>();
-
-        (schemaName, tableName, _) = NormalizeNames(schemaName, tableName);
+            return [];
 
         var filter = string.IsNullOrWhiteSpace(constraintNameFilter)
             ? null
@@ -249,17 +246,15 @@ public abstract partial class DatabaseMethodsBase : IDatabaseUniqueConstraintMet
     )
     {
         if (
-            !(
-                await DoesUniqueConstraintExistAsync(
-                        db,
-                        schemaName,
-                        tableName,
-                        constraintName,
-                        tx,
-                        cancellationToken
-                    )
-                    .ConfigureAwait(false)
-            )
+            !await DoesUniqueConstraintExistAsync(
+                    db,
+                    schemaName,
+                    tableName,
+                    constraintName,
+                    tx,
+                    cancellationToken
+                )
+                .ConfigureAwait(false)
         )
             return false;
 

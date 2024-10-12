@@ -1,6 +1,6 @@
-using System.Collections;
 using System.Collections.Concurrent;
 using System.Collections.ObjectModel;
+using System.Diagnostics.CodeAnalysis;
 
 namespace DapperMatic.Providers;
 
@@ -16,7 +16,7 @@ public abstract class ProviderTypeMapBase : IProviderTypeMap
             ?? providerDataTypes.FirstOrDefault(x => x.PrimaryDotnetType == dotnetType)
             ?? providerDataTypes.FirstOrDefault(x => x.SupportedDotnetTypes.Contains(dotnetType));
 
-        Type? alternateType = null;
+        Type? alternateType;
 
         if (
             providerDataType == null
@@ -72,6 +72,7 @@ public abstract class ProviderTypeMapBase : IProviderTypeMap
                 );
         }
 
+        // ReSharper disable once InvertIf
         if (providerDataType == null && dotnetType.IsClass)
         {
             alternateType = typeof(object);
@@ -133,54 +134,52 @@ public abstract class ProviderTypeMapBase : IProviderTypeMap
     protected static readonly Type[] CommonDictionaryTypes =
     [
         // dictionary types
-        .. (
-            CommonTypes
-                .Select(t => typeof(Dictionary<,>).MakeGenericType(t, typeof(string)))
-                .ToArray()
-        ),
-        .. (
-            CommonTypes
-                .Select(t => typeof(Dictionary<,>).MakeGenericType(t, typeof(object)))
-                .ToArray()
-        )
+        .. CommonTypes
+            .Select(t => typeof(Dictionary<,>).MakeGenericType(t, typeof(string)))
+            .ToArray(),
+        .. CommonTypes
+            .Select(t => typeof(Dictionary<,>).MakeGenericType(t, typeof(object)))
+            .ToArray()
     ];
 
     protected static readonly Type[] CommonEnumerableTypes =
     [
         // enumerable types
-        .. (CommonTypes.Select(t => typeof(List<>).MakeGenericType(t)).ToArray()),
-        .. (CommonTypes.Select(t => t.MakeArrayType()).ToArray())
+        .. CommonTypes.Select(t => typeof(List<>).MakeGenericType(t)).ToArray(),
+        .. CommonTypes.Select(t => t.MakeArrayType()).ToArray()
     ];
 }
 
+[SuppressMessage("ReSharper", "UnusedMember.Global")]
 public abstract class ProviderTypeMapBase<TProviderTypeMap> : ProviderTypeMapBase
     where TProviderTypeMap : class, IProviderTypeMap
 {
-    protected static ConcurrentDictionary<Guid, ProviderDataType> _providerDataTypes = [];
-    private static readonly Lazy<TProviderTypeMap> _instance =
-        new(() => Activator.CreateInstance<TProviderTypeMap>());
-    public static TProviderTypeMap Instance => _instance.Value;
+    // ReSharper disable once StaticMemberInGenericType
+    private static readonly ConcurrentDictionary<Guid, ProviderDataType> ProviderDataTypes = [];
+    private static readonly Lazy<TProviderTypeMap> LazyInstance =
+        new(Activator.CreateInstance<TProviderTypeMap>);
+    public static TProviderTypeMap Instance => LazyInstance.Value;
 
     public virtual void Reset()
     {
-        _providerDataTypes.Clear();
+        ProviderDataTypes.Clear();
         foreach (var providerDataType in GetDefaultProviderDataTypes())
         {
-            _providerDataTypes.TryAdd(Guid.NewGuid(), providerDataType);
+            ProviderDataTypes.TryAdd(Guid.NewGuid(), providerDataType);
         }
     }
 
     public static void RemoveProviderDataTypes(Func<ProviderDataType, bool> predicate)
     {
-        var keys = _providerDataTypes.Keys;
+        var keys = ProviderDataTypes.Keys;
         foreach (var key in keys)
         {
             if (
-                _providerDataTypes.TryGetValue(key, out var providerDataType)
+                ProviderDataTypes.TryGetValue(key, out var providerDataType)
                 && predicate(providerDataType)
             )
             {
-                _providerDataTypes.TryRemove(key, out _);
+                ProviderDataTypes.TryRemove(key, out _);
             }
         }
     }
@@ -190,26 +189,26 @@ public abstract class ProviderTypeMapBase<TProviderTypeMap> : ProviderTypeMapBas
         Func<ProviderDataType, ProviderDataType> update
     )
     {
-        var keys = _providerDataTypes.Keys;
+        var keys = ProviderDataTypes.Keys;
         foreach (var key in keys)
         {
             if (
-                _providerDataTypes.TryGetValue(key, out var providerDataType)
+                ProviderDataTypes.TryGetValue(key, out var providerDataType)
                 && predicate(providerDataType)
             )
             {
-                _providerDataTypes.TryUpdate(key, update(providerDataType), providerDataType);
+                ProviderDataTypes.TryUpdate(key, update(providerDataType), providerDataType);
             }
         }
     }
 
     public static void RegisterProviderDataType(ProviderDataType providerDataType)
     {
-        _providerDataTypes.TryAdd(Guid.NewGuid(), providerDataType);
+        ProviderDataTypes.TryAdd(Guid.NewGuid(), providerDataType);
     }
 
     public override ProviderDataType[] GetProviderDataTypes()
     {
-        return [.. _providerDataTypes.Values];
+        return [.. ProviderDataTypes.Values];
     }
 }
