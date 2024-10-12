@@ -2,10 +2,11 @@ using System.Collections.Concurrent;
 using System.Data;
 using System.Text.Json;
 using Dapper;
+using DapperMatic.Interfaces;
 using DapperMatic.Logging;
 using Microsoft.Extensions.Logging;
 
-namespace DapperMatic.Providers;
+namespace DapperMatic.Providers.Base;
 
 public abstract partial class DatabaseMethodsBase : IDatabaseMethods
 {

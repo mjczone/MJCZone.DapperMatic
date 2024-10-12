@@ -1,7 +1,8 @@
 using System.Data;
+using DapperMatic.Interfaces;
 using DapperMatic.Models;
 
-namespace DapperMatic.Providers;
+namespace DapperMatic.Providers.Base;
 
 public abstract partial class DatabaseMethodsBase : IDatabaseIndexMethods
 {

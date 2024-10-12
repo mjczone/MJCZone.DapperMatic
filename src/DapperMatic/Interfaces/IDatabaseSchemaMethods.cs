@@ -1,6 +1,6 @@
 using System.Data;
 
-namespace DapperMatic;
+namespace DapperMatic.Interfaces;
 
 public partial interface IDatabaseSchemaMethods
 {

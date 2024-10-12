@@ -1,7 +1,7 @@
 using System.Data;
 using DapperMatic.Providers;
 
-namespace DapperMatic;
+namespace DapperMatic.Interfaces;
 
 public partial interface IDatabaseMethods
     : IDatabaseTableMethods,

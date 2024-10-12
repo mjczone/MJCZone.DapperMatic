@@ -1,5 +1,6 @@
 using System.Collections.Concurrent;
 using System.Data;
+using DapperMatic.Interfaces;
 
 namespace DapperMatic.Providers;
 

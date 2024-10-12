@@ -1,7 +1,7 @@
 using System.Data;
-using DapperMatic.Models;
+using DapperMatic.Interfaces;
 
-namespace DapperMatic.Providers;
+namespace DapperMatic.Providers.Base;
 
 public abstract partial class DatabaseMethodsBase : IDatabaseSchemaMethods
 {

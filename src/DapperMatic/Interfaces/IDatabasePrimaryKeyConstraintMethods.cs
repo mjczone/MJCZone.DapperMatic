@@ -1,7 +1,7 @@
 using System.Data;
 using DapperMatic.Models;
 
-namespace DapperMatic;
+namespace DapperMatic.Interfaces;
 
 public partial interface IDatabasePrimaryKeyConstraintMethods
 {

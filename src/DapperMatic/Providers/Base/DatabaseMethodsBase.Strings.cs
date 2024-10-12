@@ -1,9 +1,7 @@
-using System.Data;
 using System.Text;
 using DapperMatic.Models;
-using Microsoft.VisualBasic;
 
-namespace DapperMatic.Providers;
+namespace DapperMatic.Providers.Base;
 
 public abstract partial class DatabaseMethodsBase
 {

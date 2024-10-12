@@ -1,4 +1,6 @@
 using System.Data;
+using DapperMatic.Interfaces;
+using DapperMatic.Providers.Base;
 
 namespace DapperMatic.Providers.SqlServer;
 

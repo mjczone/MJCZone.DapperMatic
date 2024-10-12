@@ -1,4 +1,5 @@
 using System.Data;
+using DapperMatic.Interfaces;
 using DapperMatic.Models;
 using DapperMatic.Providers;
 
