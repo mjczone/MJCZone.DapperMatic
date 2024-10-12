@@ -48,11 +48,7 @@ public abstract partial class DatabaseMethodsTests
             testTableName,
             constraintName
         );
-        Assert.Equal(
-            constraintName,
-            existingConstraint?.ConstraintName,
-            StringComparer.OrdinalIgnoreCase
-        );
+        Assert.Equal(constraintName, existingConstraint?.ConstraintName, true);
 
         var defaultConstraintNames = await db.GetDefaultConstraintNamesAsync(
             schemaName,

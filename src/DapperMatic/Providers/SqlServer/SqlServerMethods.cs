@@ -5,8 +5,12 @@ namespace DapperMatic.Providers.SqlServer;
 public partial class SqlServerMethods : DatabaseMethodsBase, IDatabaseMethods
 {
     public override DbProviderType ProviderType => DbProviderType.SqlServer;
+
+    public override IProviderTypeMap ProviderTypeMap => SqlServerProviderTypeMap.Instance;
+
     private static string _defaultSchema = "dbo";
     protected override string DefaultSchema => _defaultSchema;
+
     public static void SetDefaultSchema(string schema)
     {
         _defaultSchema = schema;
@@ -31,11 +35,6 @@ public partial class SqlServerMethods : DatabaseMethodsBase, IDatabaseMethods
         var versionString =
             await ExecuteScalarAsync<string>(db, sql, tx: tx).ConfigureAwait(false) ?? "";
         return ProviderUtils.ExtractVersionFromVersionString(versionString);
-    }
-
-    public override Type GetDotnetTypeFromSqlType(string sqlType)
-    {
-        return SqlServerSqlParser.GetDotnetTypeFromSqlType(sqlType);
     }
 
     public override char[] QuoteChars => ['[', ']'];

@@ -5,6 +5,9 @@ namespace DapperMatic.Providers.MySql;
 public partial class MySqlMethods : DatabaseMethodsBase, IDatabaseMethods
 {
     public override DbProviderType ProviderType => DbProviderType.MySql;
+
+    public override IProviderTypeMap ProviderTypeMap => MySqlProviderTypeMap.Instance;
+
     protected override string DefaultSchema => "";
 
     public override async Task<bool> SupportsCheckConstraintsAsync(
@@ -48,11 +51,6 @@ public partial class MySqlMethods : DatabaseMethodsBase, IDatabaseMethods
         var versionString =
             await ExecuteScalarAsync<string>(db, sql, tx: tx).ConfigureAwait(false) ?? "";
         return ProviderUtils.ExtractVersionFromVersionString(versionString);
-    }
-
-    public override Type GetDotnetTypeFromSqlType(string sqlType)
-    {
-        return MySqlSqlParser.GetDotnetTypeFromSqlType(sqlType);
     }
 
     public override char[] QuoteChars => ['`'];

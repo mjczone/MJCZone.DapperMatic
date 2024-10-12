@@ -261,7 +261,7 @@ public abstract partial class DatabaseMethodsBase : IDatabaseForeignKeyConstrain
         return string.IsNullOrWhiteSpace(filter)
             ? table.ForeignKeyConstraints
             : table
-                .ForeignKeyConstraints.Where(c => IsWildcardPatternMatch(c.ConstraintName, filter))
+                .ForeignKeyConstraints.Where(c => c.ConstraintName.IsWildcardPatternMatch(filter))
                 .ToList();
     }
 

@@ -93,8 +93,8 @@ Version version = await db.GetDatabaseVersionAsync(tx, cancellationToken);
 // Check to see if the database supports schemas
 var supportsSchemas = db.SupportsSchemas();
 
-// Get the mapped .NET type matching a specific provider sql data type
-Type dotnetType = db.GetDotnetTypeFromSqlType(string sqlType);
+// Get the mapped .NET type matching a specific provider sql data type (e.g., varchar(255), decimal(15,4))
+var (/* Type */ dotnetType, /* int? */ length, /* int? */ precision, /* int? */ scale) = db.GetDotnetTypeFromSqlType(string sqlType);
 
 // Normalize a database name identifier to some idiomatic standard, namely alpha numeric with underscores and without spaces
 var normalizedName = db.NormalizeName(name);

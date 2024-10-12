@@ -234,7 +234,7 @@ public abstract partial class DatabaseMethodsBase : IDatabaseUniqueConstraintMet
         return string.IsNullOrWhiteSpace(filter)
             ? table.UniqueConstraints
             : table
-                .UniqueConstraints.Where(c => IsWildcardPatternMatch(c.ConstraintName, filter))
+                .UniqueConstraints.Where(c => c.ConstraintName.IsWildcardPatternMatch(filter))
                 .ToList();
     }
 

@@ -110,7 +110,12 @@ public abstract partial class DatabaseMethodsBase : IDatabaseCheckConstraintMeth
         )
             return false;
 
-        var sql = SqlAlterTableAddCheckConstraint(schemaName, tableName, constraintName, expression);
+        var sql = SqlAlterTableAddCheckConstraint(
+            schemaName,
+            tableName,
+            constraintName,
+            expression
+        );
 
         await ExecuteAsync(db, sql, tx: tx).ConfigureAwait(false);
 
@@ -250,7 +255,7 @@ public abstract partial class DatabaseMethodsBase : IDatabaseCheckConstraintMeth
         return string.IsNullOrWhiteSpace(filter)
             ? table.CheckConstraints
             : table
-                .CheckConstraints.Where(c => IsWildcardPatternMatch(c.ConstraintName, filter))
+                .CheckConstraints.Where(c => c.ConstraintName.IsWildcardPatternMatch(filter))
                 .ToList();
     }
 
@@ -275,7 +280,7 @@ public abstract partial class DatabaseMethodsBase : IDatabaseCheckConstraintMeth
             return false;
 
         var sql = SqlDropCheckConstraint(schemaName, tableName, constraintName);
-        
+
         await ExecuteAsync(db, sql, tx: tx).ConfigureAwait(false);
 
         return true;

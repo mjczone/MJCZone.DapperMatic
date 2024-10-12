@@ -400,11 +400,13 @@ public partial class SqlServerMethods
                     )
                     ?.i;
 
+                var (dotnetType, l, p, s) = GetDotnetTypeFromSqlType(tableColumn.data_type);
+
                 var column = new DxColumn(
                     tableColumn.schema_name,
                     tableColumn.table_name,
                     tableColumn.column_name,
-                    GetDotnetTypeFromSqlType(tableColumn.data_type),
+                    dotnetType,
                     tableColumn.data_type,
                     tableColumn.max_length,
                     tableColumn.numeric_precision,

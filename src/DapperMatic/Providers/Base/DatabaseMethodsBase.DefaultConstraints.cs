@@ -240,7 +240,7 @@ public abstract partial class DatabaseMethodsBase : IDatabaseDefaultConstraintMe
         return string.IsNullOrWhiteSpace(filter)
             ? table.DefaultConstraints
             : table
-                .DefaultConstraints.Where(c => IsWildcardPatternMatch(c.ConstraintName, filter))
+                .DefaultConstraints.Where(c => c.ConstraintName.IsWildcardPatternMatch(filter))
                 .ToList();
     }
 
@@ -265,12 +265,7 @@ public abstract partial class DatabaseMethodsBase : IDatabaseDefaultConstraintMe
         if (string.IsNullOrWhiteSpace(constraintName))
             return false;
 
-        var sql = SqlDropDefaultConstraint(
-            schemaName,
-            tableName,
-            columnName,
-            constraintName
-        );
+        var sql = SqlDropDefaultConstraint(schemaName, tableName, columnName, constraintName);
 
         await ExecuteAsync(db, sql, tx: tx).ConfigureAwait(false);
 

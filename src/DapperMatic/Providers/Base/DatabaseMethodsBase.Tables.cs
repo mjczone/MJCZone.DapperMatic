@@ -108,6 +108,9 @@ public abstract partial class DatabaseMethodsBase : IDatabaseTableMethods
         )
             return false;
 
+        var dbVersion = await GetDatabaseVersionAsync(db, tx, cancellationToken)
+            .ConfigureAwait(false);
+
         var supportsOrderedKeysInConstraints = await SupportsOrderedKeysInConstraintsAsync(
                 db,
                 tx: tx,
@@ -201,7 +204,12 @@ public abstract partial class DatabaseMethodsBase : IDatabaseTableMethods
                 }
             }
 
-            var columnDefinitionSql = SqlInlineColumnDefinition(table, column, tableConstraints);
+            var columnDefinitionSql = SqlInlineColumnDefinition(
+                table,
+                column,
+                tableConstraints,
+                dbVersion
+            );
             sql.Append(columnDefinitionSql);
         }
 

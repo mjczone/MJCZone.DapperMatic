@@ -1,3 +1,5 @@
+using DapperMatic.Models;
+
 namespace DapperMatic.Providers.PostgreSql;
 
 public partial class PostgreSqlMethods
@@ -28,6 +30,20 @@ public partial class PostgreSqlMethods
     #endregion // Schema Strings
 
     #region Table Strings
+
+    protected override string SqlInlineColumnNullable(DxColumn column)
+    {
+        if (
+            column.IsNullable
+            && (column.ProviderDataType ?? "").Contains(
+                "serial",
+                StringComparison.OrdinalIgnoreCase
+            )
+        )
+            return "";
+
+        return column.IsNullable ? " NULL" : " NOT NULL";
+    }
 
     protected override string SqlInlinePrimaryKeyAutoIncrementColumnConstraint()
     {

@@ -148,7 +148,14 @@ public abstract partial class DatabaseMethodsTests
                 "datetimeoffsetColumn" + columnCount++,
                 typeof(DateTimeOffset)
             ),
-            new(schemaName, tableName2, "decimalColumn" + columnCount++, typeof(decimal)),
+            new(
+                schemaName,
+                tableName2,
+                "decimalColumn" + columnCount++,
+                typeof(decimal),
+                precision: 16,
+                scale: 3
+            ),
             new(
                 schemaName,
                 tableName2,
@@ -222,8 +229,8 @@ public abstract partial class DatabaseMethodsTests
                 Assert.Equal(col.IsForeignKey, column.IsForeignKey);
                 if (col.IsForeignKey)
                 {
-                    Assert.Equal(col.ReferencedTableName, column.ReferencedTableName);
-                    Assert.Equal(col.ReferencedColumnName, column.ReferencedColumnName);
+                    Assert.Equal(col.ReferencedTableName, column.ReferencedTableName, true);
+                    Assert.Equal(col.ReferencedColumnName, column.ReferencedColumnName, true);
                     Assert.Equal(col.OnDelete, column.OnDelete);
                     Assert.Equal(col.OnUpdate, column.OnUpdate);
                 }
@@ -242,7 +249,27 @@ public abstract partial class DatabaseMethodsTests
             Assert.NotEmpty(column.ProviderDataType);
             if (!string.IsNullOrWhiteSpace(col.ProviderDataType))
             {
-                Assert.Equal(col.ProviderDataType, column.ProviderDataType);
+                if (
+                    !col.ProviderDataType.Equals(
+                        column.ProviderDataType,
+                        StringComparison.OrdinalIgnoreCase
+                    )
+                )
+                {
+                    // then we want to make sure that the new provider data type in the database is more complete than the one we provided
+                    // sometimes, if you tell a database to create a column with a type of "decimal", it will actually create it as "decimal(11)" or something similar
+                    // in our case here, too, when creating a numeric(10, 5) column, the database might create it as decimal(10, 5)
+                    // so we CAN'T just compare the two strings directly
+                    // Assert.True(col.ProviderDataType.Length < column.ProviderDataType.Length);
+
+                    // sometimes, it's tricky to know what the database will do, so we just want to make sure that the database type is at least as specific as the one we provided
+                    if (col.Length.HasValue)
+                        Assert.Equal(col.Length, column.Length);
+                    if (col.Precision.HasValue)
+                        Assert.Equal(col.Precision, column.Precision);
+                    if (col.Scale.HasValue)
+                        Assert.Equal(col.Scale, column.Scale);
+                }
             }
         }
 

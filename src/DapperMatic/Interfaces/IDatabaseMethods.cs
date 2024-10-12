@@ -1,4 +1,5 @@
 using System.Data;
+using DapperMatic.Providers;
 
 namespace DapperMatic;
 
@@ -15,6 +16,7 @@ public partial interface IDatabaseMethods
         IDatabaseViewMethods
 {
     DbProviderType ProviderType { get; }
+    IProviderTypeMap ProviderTypeMap { get; }
 
     bool SupportsSchemas { get; }
 
@@ -36,7 +38,11 @@ public partial interface IDatabaseMethods
         IDbTransaction? tx = null,
         CancellationToken cancellationToken = default
     );
-    Type GetDotnetTypeFromSqlType(string sqlType);
+
+    (Type dotnetType, int? length, int? precision, int? scale) GetDotnetTypeFromSqlType(
+        string sqlType
+    );
     string GetSqlTypeFromDotnetType(Type type, int? length, int? precision, int? scale);
+
     string NormalizeName(string name);
 }

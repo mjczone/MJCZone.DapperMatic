@@ -5,6 +5,9 @@ namespace DapperMatic.Providers.Sqlite;
 public partial class SqliteMethods : DatabaseMethodsBase, IDatabaseMethods
 {
     public override DbProviderType ProviderType => DbProviderType.Sqlite;
+
+    public override IProviderTypeMap ProviderTypeMap => SqliteProviderTypeMap.Instance;
+
     protected override string DefaultSchema => "";
 
     internal SqliteMethods() { }
@@ -20,11 +23,6 @@ public partial class SqliteMethods : DatabaseMethodsBase, IDatabaseMethods
         var versionString =
             await ExecuteScalarAsync<string>(db, sql, tx: tx).ConfigureAwait(false) ?? "";
         return ProviderUtils.ExtractVersionFromVersionString(versionString);
-    }
-
-    public override Type GetDotnetTypeFromSqlType(string sqlType)
-    {
-        return SqliteSqlParser.GetDotnetTypeFromSqlType(sqlType);
     }
 
     public override char[] QuoteChars => ['"'];

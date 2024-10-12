@@ -26,7 +26,17 @@ public static partial class IDbConnectionExtensions
         return await Database(db).GetDatabaseVersionAsync(db, tx, cancellationToken);
     }
 
-    public static Type GetDotnetTypeFromSqlType(this IDbConnection db, string sqlType)
+    public static IProviderTypeMap GetProviderTypeMap(this IDbConnection db)
+    {
+        return Database(db).ProviderTypeMap;
+    }
+
+    public static (
+        Type dotnetType,
+        int? length,
+        int? precision,
+        int? scale
+    ) GetDotnetTypeFromSqlType(this IDbConnection db, string sqlType)
     {
         return Database(db).GetDotnetTypeFromSqlType(sqlType);
     }

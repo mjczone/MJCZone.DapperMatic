@@ -11,6 +11,8 @@ public abstract partial class DatabaseMethodsBase : IDatabaseMethods
 {
     public abstract DbProviderType ProviderType { get; }
 
+    public abstract IProviderTypeMap ProviderTypeMap { get; }
+
     protected abstract string DefaultSchema { get; }
 
     public virtual bool SupportsSchemas => !string.IsNullOrWhiteSpace(DefaultSchema);
@@ -35,16 +37,35 @@ public abstract partial class DatabaseMethodsBase : IDatabaseMethods
 
     private ILogger Logger => DxLogger.CreateLogger(GetType());
 
-    protected virtual List<DataTypeMap> DataTypes =>
-        DataTypeMapFactory.GetDefaultDbProviderDataTypeMap(ProviderType);
+    // protected virtual List<DataTypeMap> DataTypes =>
+    //     DataTypeMapFactory.GetDefaultDbProviderDataTypeMap(ProviderType);
 
-    protected DataTypeMap? GetDataType(Type type)
+    // protected DataTypeMap? GetDataType(Type type)
+    // {
+    //     var dotnetType = Nullable.GetUnderlyingType(type) ?? type;
+    //     return DataTypes.FirstOrDefault(x => x.DotnetType == type);
+    // }
+
+    public virtual (
+        Type dotnetType,
+        int? length,
+        int? precision,
+        int? scale
+    ) GetDotnetTypeFromSqlType(string sqlType)
     {
-        var dotnetType = Nullable.GetUnderlyingType(type) ?? type;
-        return DataTypes.FirstOrDefault(x => x.DotnetType == type);
-    }
+        var providerDataType = ProviderTypeMap.GetRecommendedDataTypeForSqlType(sqlType);
 
-    public abstract Type GetDotnetTypeFromSqlType(string sqlType);
+        if (providerDataType == null || providerDataType.PrimaryDotnetType == null)
+            throw new NotSupportedException($"SQL type {sqlType} is not supported.");
+
+        var sqlDataType = providerDataType.ParseSqlType(sqlType);
+        return (
+            providerDataType.PrimaryDotnetType,
+            sqlDataType.Length,
+            sqlDataType.Precision,
+            sqlDataType.Scale
+        );
+    }
 
     public string GetSqlTypeFromDotnetType(
         Type type,
@@ -53,52 +74,47 @@ public abstract partial class DatabaseMethodsBase : IDatabaseMethods
         int? scale = null
     )
     {
-        var dotnetType = Nullable.GetUnderlyingType(type) ?? type;
-        var dataType = GetDataType(dotnetType);
+        var providerDataType = ProviderTypeMap.GetRecommendedDataTypeForDotnetType(type);
 
-        if (dataType == null)
+        if (providerDataType == null || string.IsNullOrWhiteSpace(providerDataType.SqlTypeFormat))
+            throw new NotSupportedException($"No provider data type found for .NET type {type}.");
+
+        if (length.HasValue)
         {
-            throw new NotSupportedException($"Type {type} is not supported.");
-        }
-
-        string? sqlType = null;
-
-        if (length != null && length > 0)
-        {
-            // there are times where a length is passed in, but the datatype supports precision instead, accommodate for that case
             if (
-                precision == null
-                && scale == null
-                && string.IsNullOrWhiteSpace(dataType.SqlTypeWithLength)
-                && string.IsNullOrWhiteSpace(dataType.SqlTypeWithMaxLength)
-                && !string.IsNullOrWhiteSpace(dataType.SqlTypeWithPrecisionAndScale)
+                providerDataType.SupportsLength
+                && !string.IsNullOrWhiteSpace(providerDataType.SqlTypeWithLengthFormat)
             )
-            {
-                sqlType = string.Format(
-                    dataType.SqlTypeWithPrecisionAndScale ?? dataType.SqlType,
-                    length,
-                    0
-                );
-            }
-            else if (length == int.MaxValue)
-            {
-                sqlType = string.Format(dataType.SqlTypeWithMaxLength ?? dataType.SqlType, length);
-            }
-            else
-            {
-                sqlType = string.Format(dataType.SqlTypeWithLength ?? dataType.SqlType, length);
-            }
+                return (
+                    length == int.MaxValue
+                    && !string.IsNullOrWhiteSpace(providerDataType.SqlTypeWithMaxLengthFormat)
+                )
+                    ? string.Format(providerDataType.SqlTypeWithMaxLengthFormat, length)
+                    : string.Format(providerDataType.SqlTypeWithLengthFormat, length);
         }
-        else if (precision != null)
+        else if (precision.HasValue)
         {
-            sqlType = string.Format(
-                dataType.SqlTypeWithPrecisionAndScale ?? dataType.SqlType,
-                precision,
-                scale ?? 0
-            );
+            if (providerDataType.SupportsPrecision)
+            {
+                if (
+                    scale.HasValue
+                    && providerDataType.SupportsScale
+                    && !string.IsNullOrWhiteSpace(
+                        providerDataType.SqlTypeWithPrecisionAndScaleFormat
+                    )
+                )
+                    return string.Format(
+                        providerDataType.SqlTypeWithPrecisionAndScaleFormat,
+                        precision,
+                        scale
+                    );
+
+                if (!string.IsNullOrWhiteSpace(providerDataType.SqlTypeWithPrecisionFormat))
+                    return string.Format(providerDataType.SqlTypeWithPrecisionFormat, precision);
+            }
         }
 
-        return sqlType ?? dataType.SqlType;
+        return providerDataType.SqlTypeFormat;
     }
 
     internal static readonly ConcurrentDictionary<
@@ -242,136 +258,6 @@ public abstract partial class DatabaseMethodsBase : IDatabaseMethods
             );
             throw;
         }
-    }
-
-    // create a wildcard pattern matching algorithm that accepts wildcards (*) and questions (?)
-    // for example:
-    // *abc* should match abc, abcd, abcdabc, etc.
-    // a?c should match ac, abc, abcc, etc.
-    // the method should take in a string and a wildcard pattern and return true/false whether the string
-    // matches the wildcard pattern.
-    /// <summary>
-    /// Wildcard pattern matching algorithm. Accepts wildcards (*) and question marks (?)
-    /// </summary>
-    /// <param name="input">A string</param>
-    /// <param name="wildcardPattern">Wildcard pattern string</param>
-    /// <returns>bool</returns>
-    protected virtual bool IsWildcardPatternMatch(
-        string input,
-        string wildcardPattern,
-        bool ignoreCase = true
-    )
-    {
-        if (string.IsNullOrWhiteSpace(input) || string.IsNullOrWhiteSpace(wildcardPattern))
-            return false;
-
-        if (ignoreCase)
-        {
-            input = input.ToLowerInvariant();
-            wildcardPattern = wildcardPattern.ToLowerInvariant();
-        }
-
-        var inputIndex = 0;
-        var patternIndex = 0;
-        var inputLength = input.Length;
-        var patternLength = wildcardPattern.Length;
-        var lastWildcardIndex = -1;
-        var lastInputIndex = -1;
-
-        while (inputIndex < inputLength)
-        {
-            if (
-                patternIndex < patternLength
-                && (
-                    wildcardPattern[patternIndex] == '?'
-                    || wildcardPattern[patternIndex] == input[inputIndex]
-                )
-            )
-            {
-                patternIndex++;
-                inputIndex++;
-            }
-            else if (patternIndex < patternLength && wildcardPattern[patternIndex] == '*')
-            {
-                lastWildcardIndex = patternIndex;
-                lastInputIndex = inputIndex;
-                patternIndex++;
-            }
-            else if (lastWildcardIndex != -1)
-            {
-                patternIndex = lastWildcardIndex + 1;
-                lastInputIndex++;
-                inputIndex = lastInputIndex;
-            }
-            else
-            {
-                return false;
-            }
-        }
-
-        while (patternIndex < patternLength && wildcardPattern[patternIndex] == '*')
-        {
-            patternIndex++;
-        }
-
-        return patternIndex == patternLength;
-    }
-
-    protected virtual void ExtractColumnTypeInfoFromFullSqlType(
-        string data_type,
-        string data_type_ext,
-        out Type dotnetType,
-        out int? length,
-        out int? precision,
-        out int? scale
-    )
-    {
-        dotnetType = GetDotnetTypeFromSqlType(data_type);
-        if (!data_type_ext.Contains('('))
-        {
-            length = null;
-            precision = null;
-            scale = null;
-            return;
-        }
-
-        // extract length, precision, and scale from data_type_ext
-        // example: data_type_ext = 'character varying(255)' or 'numeric(18,2)' or 'time(6) with time zone'
-        var typeInfo = data_type_ext.Split('(')[1].Split(')')[0].Trim().Split(',');
-
-        if (typeInfo.Length == 2)
-        {
-            length = null;
-            precision = int.TryParse(typeInfo[0], out var p) ? p : null;
-            scale = int.TryParse(typeInfo[1], out var s) ? s : null;
-            return;
-        }
-
-        if (typeInfo.Length == 1)
-        {
-            // detect it it's a length using the data_type, otherwise it's a precision
-            if (
-                data_type.Contains("char", StringComparison.OrdinalIgnoreCase)
-                || data_type.Contains("bit", StringComparison.OrdinalIgnoreCase)
-                || data_type.Contains("text", StringComparison.OrdinalIgnoreCase)
-            )
-            {
-                length = int.TryParse(typeInfo[0], out var l) ? l : null;
-                precision = null;
-                scale = null;
-            }
-            else
-            {
-                length = null;
-                precision = int.TryParse(typeInfo[0], out var p) ? p : null;
-                scale = null;
-            }
-            return;
-        }
-
-        length = null;
-        precision = null;
-        scale = null;
     }
 
     public abstract char[] QuoteChars { get; }

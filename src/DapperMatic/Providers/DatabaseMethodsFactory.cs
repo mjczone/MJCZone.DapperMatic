@@ -3,7 +3,7 @@ using System.Data;
 
 namespace DapperMatic.Providers;
 
-public static class DatabaseMethodsFactory
+internal static class DatabaseMethodsFactory
 {
     private static readonly ConcurrentDictionary<DbProviderType, IDatabaseMethods> _methodsCache =
         new();

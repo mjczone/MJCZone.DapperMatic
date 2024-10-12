@@ -1,3 +1,4 @@
+using System.Diagnostics.Contracts;
 using System.Text.RegularExpressions;
 
 namespace DapperMatic.Providers;
@@ -54,7 +55,7 @@ public static class ProviderUtils
 
     static readonly Regex pattern = new(@"\d+(\.\d+)+");
 
-    public static Version ExtractVersionFromVersionString(string versionString)
+    internal static Version ExtractVersionFromVersionString(string versionString)
     {
         var m = pattern.Match(versionString);
         var version = m.Value;

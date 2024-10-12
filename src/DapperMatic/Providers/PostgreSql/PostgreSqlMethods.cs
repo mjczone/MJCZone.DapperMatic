@@ -5,8 +5,12 @@ namespace DapperMatic.Providers.PostgreSql;
 public partial class PostgreSqlMethods : DatabaseMethodsBase, IDatabaseMethods
 {
     public override DbProviderType ProviderType => DbProviderType.PostgreSql;
+
+    public override IProviderTypeMap ProviderTypeMap => PostgreSqlProviderTypeMap.Instance;
+
     private static string _defaultSchema = "public";
     protected override string DefaultSchema => _defaultSchema;
+
     public static void SetDefaultSchema(string schema)
     {
         _defaultSchema = schema;
@@ -34,11 +38,6 @@ public partial class PostgreSqlMethods : DatabaseMethodsBase, IDatabaseMethods
         var versionString =
             await ExecuteScalarAsync<string>(db, sql, tx: tx).ConfigureAwait(false) ?? "";
         return ProviderUtils.ExtractVersionFromVersionString(versionString);
-    }
-
-    public override Type GetDotnetTypeFromSqlType(string sqlType)
-    {
-        return PostgreSqlSqlParser.GetDotnetTypeFromSqlType(sqlType);
     }
 
     public override char[] QuoteChars => ['"'];

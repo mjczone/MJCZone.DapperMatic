@@ -9,6 +9,27 @@ public partial class MySqlMethods
 
     #region Table Strings
 
+    protected override string SqlInlineColumnNameAndType(DxColumn column, Version dbVersion)
+    {
+        var nameAndType = base.SqlInlineColumnNameAndType(column, dbVersion);
+        if (
+            nameAndType.Contains(" varchar", StringComparison.OrdinalIgnoreCase)
+            || nameAndType.Contains(" text", StringComparison.OrdinalIgnoreCase)
+        )
+        {
+            var doNotAddUtf8mb4 =
+                (dbVersion < new Version(5, 5, 3))
+                || (dbVersion.Major == 10 && dbVersion < new Version(10, 5, 25));
+
+            if (!doNotAddUtf8mb4)
+            {
+                // make it unicode by default
+                nameAndType += " CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci";
+            }
+        }
+        return nameAndType;
+    }
+
     // MySQL requires the AUTO_INCREMENT keyword to appear in the column definition, also
     // MySQL DOES NOT ALLOW a named constraint in the column definition, so we HAVE to create
     // the primary key constraint in the table constraints section

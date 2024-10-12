@@ -53,13 +53,21 @@ public abstract partial class DatabaseMethodsBase : IDatabaseColumnMethods
         )
             return false;
 
+        var dbVersion = await GetDatabaseVersionAsync(db, tx, cancellationToken)
+            .ConfigureAwait(false);
+
         var tableConstraints = new DxTable(table.SchemaName, table.TableName);
 
         // attach the existing primary key constraint if it exists to ensure that it doesn't get recreated
         if (table.PrimaryKeyConstraint != null)
             tableConstraints.PrimaryKeyConstraint = table.PrimaryKeyConstraint;
 
-        var columnDefinitionSql = SqlInlineColumnDefinition(table, column, tableConstraints);
+        var columnDefinitionSql = SqlInlineColumnDefinition(
+            table,
+            column,
+            tableConstraints,
+            dbVersion
+        );
 
         var sql = new StringBuilder();
         sql.Append(
@@ -252,7 +260,7 @@ public abstract partial class DatabaseMethodsBase : IDatabaseColumnMethods
 
         return string.IsNullOrWhiteSpace(filter)
             ? table.Columns
-            : table.Columns.Where(c => IsWildcardPatternMatch(c.ColumnName, filter)).ToList();
+            : table.Columns.Where(c => c.ColumnName.IsWildcardPatternMatch(filter)).ToList();
     }
 
     public virtual async Task<bool> DropColumnIfExistsAsync(

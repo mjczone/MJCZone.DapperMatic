@@ -112,7 +112,8 @@ public abstract partial class DatabaseMethodsBase
     protected virtual string SqlInlineColumnDefinition(
         DxTable existingTable,
         DxColumn column,
-        DxTable tableConstraints
+        DxTable tableConstraints,
+        Version dbVersion
     )
     {
         var (schemaName, tableName, columnName) = NormalizeNames(
@@ -121,19 +122,11 @@ public abstract partial class DatabaseMethodsBase
             column.ColumnName
         );
 
-        var columnType = string.IsNullOrWhiteSpace(column.ProviderDataType)
-            ? GetSqlTypeFromDotnetType(
-                column.DotnetType,
-                column.Length,
-                column.Precision,
-                column.Scale
-            )
-            : column.ProviderDataType;
-
         var sql = new StringBuilder();
-        sql.Append($"{columnName} {columnType}");
 
-        sql.Append(column.IsNullable ? " NULL" : " NOT NULL");
+        sql.Append($"{SqlInlineColumnNameAndType(column, dbVersion)}");
+
+        sql.Append($" {SqlInlineColumnNullable(column)}");
 
         // Only add the primary key here if the primary key is a single column key
         // and doesn't already exist in the existing table constraints
@@ -352,6 +345,28 @@ public abstract partial class DatabaseMethodsBase
         }
 
         return sql.ToString();
+    }
+
+    protected virtual string SqlInlineColumnNameAndType(DxColumn column, Version dbVersion)
+    {
+        var columnType = string.IsNullOrWhiteSpace(column.ProviderDataType)
+            ? GetSqlTypeFromDotnetType(
+                column.DotnetType,
+                column.Length,
+                column.Precision,
+                column.Scale
+            )
+            : column.ProviderDataType;
+
+        // set the type on the column so that it can be used in other methods
+        column.ProviderDataType = columnType;
+
+        return $"{NormalizeName(column.ColumnName)} {columnType}";
+    }
+
+    protected virtual string SqlInlineColumnNullable(DxColumn column)
+    {
+        return column.IsNullable ? " NULL" : " NOT NULL";
     }
 
     protected virtual string SqlInlinePrimaryKeyColumnConstraint(

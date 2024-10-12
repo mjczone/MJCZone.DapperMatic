@@ -428,12 +428,16 @@ public partial class MySqlMethods
                     )
                     ?.i;
 
+                var (dotnetType, l, p, s) = GetDotnetTypeFromSqlType(
+                    tableColumn.data_type_complete
+                );
+
                 var column = new DxColumn(
                     tableColumn.schema_name,
                     tableColumn.table_name,
                     tableColumn.column_name,
-                    GetDotnetTypeFromSqlType(tableColumn.data_type),
-                    tableColumn.data_type,
+                    dotnetType,
+                    tableColumn.data_type_complete,
                     tableColumn.max_length,
                     tableColumn.numeric_precision,
                     tableColumn.numeric_scale,

@@ -402,13 +402,10 @@ public partial class PostgreSqlMethods
                     )
                     ?.i;
 
-                ExtractColumnTypeInfoFromFullSqlType(
-                    tableColumn.data_type,
-                    tableColumn.data_type_ext,
-                    out var dotnetType,
-                    out var length,
-                    out var precision,
-                    out var scale
+                var (dotnetType, length, precision, scale) = GetDotnetTypeFromSqlType(
+                    tableColumn.data_type.Length < tableColumn.data_type_ext.Length
+                        ? tableColumn.data_type_ext
+                        : tableColumn.data_type
                 );
 
                 var column = new DxColumn(

@@ -2,7 +2,7 @@ using System.Text;
 
 namespace DapperMatic;
 
-internal static class ExtensionMethods
+public static class ExtensionMethods
 {
     public static string ToQuotedIdentifier(
         this string prefix,
@@ -109,5 +109,78 @@ internal static class ExtensionMethods
             sb.Append(char.ToLowerInvariant(c));
         }
         return sb.ToString();
+    }
+
+    // create a wildcard pattern matching algorithm that accepts wildcards (*) and questions (?)
+    // for example:
+    // *abc* should match abc, abcd, abcdabc, etc.
+    // a?c should match ac, abc, abcc, etc.
+    // the method should take in a string and a wildcard pattern and return true/false whether the string
+    // matches the wildcard pattern.
+    /// <summary>
+    /// Wildcard pattern matching algorithm. Accepts wildcards (*) and question marks (?)
+    /// </summary>
+    /// <param name="text">A string</param>
+    /// <param name="wildcardPattern">Wildcard pattern string</param>
+    /// <returns>bool</returns>
+    public static bool IsWildcardPatternMatch(
+        this string text,
+        string wildcardPattern,
+        bool ignoreCase = true
+    )
+    {
+        if (string.IsNullOrWhiteSpace(text) || string.IsNullOrWhiteSpace(wildcardPattern))
+            return false;
+
+        if (ignoreCase)
+        {
+            text = text.ToLowerInvariant();
+            wildcardPattern = wildcardPattern.ToLowerInvariant();
+        }
+
+        var inputIndex = 0;
+        var patternIndex = 0;
+        var inputLength = text.Length;
+        var patternLength = wildcardPattern.Length;
+        var lastWildcardIndex = -1;
+        var lastInputIndex = -1;
+
+        while (inputIndex < inputLength)
+        {
+            if (
+                patternIndex < patternLength
+                && (
+                    wildcardPattern[patternIndex] == '?'
+                    || wildcardPattern[patternIndex] == text[inputIndex]
+                )
+            )
+            {
+                patternIndex++;
+                inputIndex++;
+            }
+            else if (patternIndex < patternLength && wildcardPattern[patternIndex] == '*')
+            {
+                lastWildcardIndex = patternIndex;
+                lastInputIndex = inputIndex;
+                patternIndex++;
+            }
+            else if (lastWildcardIndex != -1)
+            {
+                patternIndex = lastWildcardIndex + 1;
+                lastInputIndex++;
+                inputIndex = lastInputIndex;
+            }
+            else
+            {
+                return false;
+            }
+        }
+
+        while (patternIndex < patternLength && wildcardPattern[patternIndex] == '*')
+        {
+            patternIndex++;
+        }
+
+        return patternIndex == patternLength;
     }
 }
