@@ -39,7 +39,8 @@ public static class DbConnectionExtensions
         Type dotnetType,
         int? length,
         int? precision,
-        int? scale
+        int? scale,
+        Type[] otherSupportedTypes
     ) GetDotnetTypeFromSqlType(this IDbConnection db, string sqlType)
     {
         return Database(db).GetDotnetTypeFromSqlType(sqlType);

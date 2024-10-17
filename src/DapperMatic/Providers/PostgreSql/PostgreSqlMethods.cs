@@ -8,7 +8,7 @@ public partial class PostgreSqlMethods : DatabaseMethodsBase, IDatabaseMethods
 {
     public override DbProviderType ProviderType => DbProviderType.PostgreSql;
 
-    public override IProviderTypeMap ProviderTypeMap => PostgreSqlProviderTypeMap.Instance;
+    public override IProviderTypeMap ProviderTypeMap => PostgreSqlProviderTypeMap.Instance.Value;
 
     private static string _defaultSchema = "public";
     protected override string DefaultSchema => _defaultSchema;

@@ -6,6 +6,14 @@ using Xunit.Abstractions;
 namespace DapperMatic.Tests.ProviderTests;
 
 /// <summary>
+/// Testing MariaDb 11.2
+/// </summary>
+public class MariaDb_11_1_DatabaseMethodsTests(
+    MariaDb_11_1_DatabaseFixture fixture,
+    ITestOutputHelper output
+) : MariaDbDatabaseMethodsTests<MariaDb_11_1_DatabaseFixture>(fixture, output) { }
+
+/// <summary>
 /// Testing MariaDb 10.11
 /// </summary>
 public class MariaDb_10_11_DatabaseMethodsTests(
@@ -21,7 +29,7 @@ public abstract class MariaDbDatabaseMethodsTests<TDatabaseFixture>(
     TDatabaseFixture fixture,
     ITestOutputHelper output
 ) : DatabaseMethodsTests(output), IClassFixture<TDatabaseFixture>, IDisposable
-    where TDatabaseFixture : MySqlDatabaseFixture
+    where TDatabaseFixture : MariaDbDatabaseFixture
 {
     public override async Task<IDbConnection> OpenConnectionAsync()
     {
@@ -34,5 +42,10 @@ public abstract class MariaDbDatabaseMethodsTests<TDatabaseFixture>(
         var db = new MySqlConnection(connectionString);
         await db.OpenAsync();
         return db;
+    }
+
+    public override bool IgnoreSqlType(string sqlType)
+    {
+        return fixture.IgnoreSqlType(sqlType);
     }
 }

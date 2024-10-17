@@ -12,14 +12,25 @@ public partial class MySqlMethods
 
     protected override string SqlInlineColumnNameAndType(DxColumn column, Version dbVersion)
     {
+        if (column.DotnetType == typeof(Guid) && string.IsNullOrWhiteSpace(column.ProviderDataType))
+        {
+            column.ProviderDataType = "varchar(36)";
+        }
+
         var nameAndType = base.SqlInlineColumnNameAndType(column, dbVersion);
-        
-        if (!nameAndType.Contains(" varchar", StringComparison.OrdinalIgnoreCase)
-            && !nameAndType.Contains(" text", StringComparison.OrdinalIgnoreCase)) return nameAndType;
-        
+
+        if (
+            !nameAndType.Contains(" varchar", StringComparison.OrdinalIgnoreCase)
+            && !nameAndType.Contains(" text", StringComparison.OrdinalIgnoreCase)
+        )
+            return nameAndType;
+
         var doNotAddUtf8Mb4 =
             dbVersion < new Version(5, 5, 3)
-            || (dbVersion.Major == 10 && dbVersion < new Version(10, 5, 25));
+            // do not include MariaDb here
+            || dbVersion.Major == 10
+            || dbVersion.Major == 11;
+        // || (dbVersion.Major == 10 && dbVersion < new Version(10, 5, 25));
 
         if (!doNotAddUtf8Mb4)
         {
@@ -112,12 +123,12 @@ public partial class MySqlMethods
     )
     {
         const string sql = """
-                           SELECT COUNT(*)
-                           FROM INFORMATION_SCHEMA.TABLES
-                           WHERE TABLE_TYPE = 'BASE TABLE' 
-                               and TABLE_SCHEMA = DATABASE()
-                               and TABLE_NAME = @tableName
-                           """;
+            SELECT COUNT(*)
+            FROM INFORMATION_SCHEMA.TABLES
+            WHERE TABLE_TYPE = 'BASE TABLE' 
+                and TABLE_SCHEMA = DATABASE()
+                and TABLE_NAME = @tableName
+            """;
 
         return (
             sql,
@@ -135,17 +146,16 @@ public partial class MySqlMethods
     )
     {
         var where = string.IsNullOrWhiteSpace(tableNameFilter) ? "" : ToLikeString(tableNameFilter);
-        
-        var sql =
-            $"""
-             SELECT TABLE_NAME
-             FROM INFORMATION_SCHEMA.TABLES
-             WHERE 
-                 TABLE_TYPE = 'BASE TABLE' 
-                 AND TABLE_SCHEMA = DATABASE()
-                 {(string.IsNullOrWhiteSpace(where) ? null : " AND TABLE_NAME LIKE @where")}
-             ORDER BY TABLE_NAME
-             """;
+
+        var sql = $"""
+            SELECT TABLE_NAME
+            FROM INFORMATION_SCHEMA.TABLES
+            WHERE 
+                TABLE_TYPE = 'BASE TABLE' 
+                AND TABLE_SCHEMA = DATABASE()
+                {(string.IsNullOrWhiteSpace(where) ? null : " AND TABLE_NAME LIKE @where")}
+            ORDER BY TABLE_NAME
+            """;
 
         return (sql, new { schemaName = NormalizeSchemaName(schemaName), where });
     }
@@ -176,11 +186,13 @@ public partial class MySqlMethods
             && !(defaultExpression.StartsWith('\'') && defaultExpression.EndsWith('\''));
 
         return $"""
-                
-                            ALTER TABLE {schemaQualifiedTableName}
-                                ALTER COLUMN {NormalizeName(columnName)} SET DEFAULT {(addParentheses ? $"({defaultExpression})" : defaultExpression)}
-                        
-                """;
+
+                        ALTER TABLE {schemaQualifiedTableName}
+                            ALTER COLUMN {NormalizeName(columnName)} SET DEFAULT {(
+                addParentheses ? $"({defaultExpression})" : defaultExpression
+            )}
+                    
+            """;
     }
 
     protected override string SqlDropDefaultConstraint(
@@ -239,19 +251,20 @@ public partial class MySqlMethods
     {
         var where = string.IsNullOrWhiteSpace(viewNameFilter) ? "" : ToLikeString(viewNameFilter);
 
-        var sql =
-            $"""
-             SELECT
-                                 TABLE_NAME AS ViewName
-                             FROM 
-                                 INFORMATION_SCHEMA.VIEWS
-                             WHERE 
-                                 VIEW_DEFINITION IS NOT NULL
-                                 AND TABLE_SCHEMA = DATABASE()
-                                 {(string.IsNullOrWhiteSpace(where) ? "" : " AND TABLE_NAME LIKE @where")}
-                             ORDER BY
-                                 TABLE_SCHEMA, TABLE_NAME
-             """;
+        var sql = $"""
+            SELECT
+                                TABLE_NAME AS ViewName
+                            FROM 
+                                INFORMATION_SCHEMA.VIEWS
+                            WHERE 
+                                VIEW_DEFINITION IS NOT NULL
+                                AND TABLE_SCHEMA = DATABASE()
+                                {(
+                string.IsNullOrWhiteSpace(where) ? "" : " AND TABLE_NAME LIKE @where"
+            )}
+                            ORDER BY
+                                TABLE_SCHEMA, TABLE_NAME
+            """;
 
         return (sql, new { schemaName = NormalizeSchemaName(schemaName), where });
     }
@@ -263,21 +276,22 @@ public partial class MySqlMethods
     {
         var where = string.IsNullOrWhiteSpace(viewNameFilter) ? "" : ToLikeString(viewNameFilter);
 
-        var sql =
-            $"""
-             SELECT 
-                                 NULL AS SchemaName,
-                                 TABLE_NAME AS ViewName,
-                                 VIEW_DEFINITION AS Definition
-                             FROM 
-                                 INFORMATION_SCHEMA.VIEWS
-                             WHERE 
-                                 VIEW_DEFINITION IS NOT NULL
-                                 AND TABLE_SCHEMA = DATABASE()
-                                 {(string.IsNullOrWhiteSpace(where) ? "" : "AND TABLE_NAME LIKE @where")}
-                             ORDER BY
-                                 TABLE_SCHEMA, TABLE_NAME
-             """;
+        var sql = $"""
+            SELECT 
+                                NULL AS SchemaName,
+                                TABLE_NAME AS ViewName,
+                                VIEW_DEFINITION AS Definition
+                            FROM 
+                                INFORMATION_SCHEMA.VIEWS
+                            WHERE 
+                                VIEW_DEFINITION IS NOT NULL
+                                AND TABLE_SCHEMA = DATABASE()
+                                {(
+                string.IsNullOrWhiteSpace(where) ? "" : "AND TABLE_NAME LIKE @where"
+            )}
+                            ORDER BY
+                                TABLE_SCHEMA, TABLE_NAME
+            """;
 
         return (sql, new { schemaName = NormalizeSchemaName(schemaName), where });
     }

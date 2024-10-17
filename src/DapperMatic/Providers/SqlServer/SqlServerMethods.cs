@@ -8,7 +8,7 @@ public partial class SqlServerMethods : DatabaseMethodsBase, IDatabaseMethods
 {
     public override DbProviderType ProviderType => DbProviderType.SqlServer;
 
-    public override IProviderTypeMap ProviderTypeMap => SqlServerProviderTypeMap.Instance;
+    public override IProviderTypeMap ProviderTypeMap => SqlServerProviderTypeMap.Instance.Value;
 
     private static string _defaultSchema = "dbo";
     protected override string DefaultSchema => _defaultSchema;

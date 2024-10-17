@@ -8,7 +8,7 @@ public partial class MySqlMethods : DatabaseMethodsBase, IDatabaseMethods
 {
     public override DbProviderType ProviderType => DbProviderType.MySql;
 
-    public override IProviderTypeMap ProviderTypeMap => MySqlProviderTypeMap.Instance;
+    public override IProviderTypeMap ProviderTypeMap => MySqlProviderTypeMap.Instance.Value;
 
     protected override string DefaultSchema => "";
 
@@ -23,10 +23,10 @@ public partial class MySqlMethods : DatabaseMethodsBase, IDatabaseMethods
             ?? "";
         var version = ProviderUtils.ExtractVersionFromVersionString(versionStr);
         return (
-                   versionStr.Contains("MariaDB", StringComparison.OrdinalIgnoreCase)
-                   && version > new Version(10, 2, 1)
-               )
-               || version >= new Version(8, 0, 16);
+                versionStr.Contains("MariaDB", StringComparison.OrdinalIgnoreCase)
+                && version > new Version(10, 2, 1)
+            )
+            || version >= new Version(8, 0, 16);
     }
 
     public override Task<bool> SupportsOrderedKeysInConstraintsAsync(

@@ -8,7 +8,7 @@ public partial class SqliteMethods : DatabaseMethodsBase, IDatabaseMethods
 {
     public override DbProviderType ProviderType => DbProviderType.Sqlite;
 
-    public override IProviderTypeMap ProviderTypeMap => SqliteProviderTypeMap.Instance;
+    public override IProviderTypeMap ProviderTypeMap => SqliteProviderTypeMap.Instance.Value;
 
     protected override string DefaultSchema => "";
 

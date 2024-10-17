@@ -22,7 +22,7 @@ public class DxColumn
         int? scale = null,
         string? checkExpression = null,
         string? defaultExpression = null,
-        bool? isNullable = null,
+        bool isNullable = false,
         bool isPrimaryKey = false,
         bool isAutoIncrement = false,
         bool isUnique = false,
@@ -49,7 +49,7 @@ public class DxColumn
         Scale = scale;
         CheckExpression = checkExpression;
         DefaultExpression = defaultExpression;
-        IsNullable = isNullable.GetValueOrDefault(!isPrimaryKey);
+        IsNullable = isNullable;
         IsPrimaryKey = isPrimaryKey;
         IsAutoIncrement = isAutoIncrement;
         IsUnique = isUnique;

@@ -19,14 +19,13 @@ public abstract partial class DatabaseMethodsBase
             ? ""
             : ToLikeString(schemaNameFilter);
 
-        var sql =
-            $"""
-             
-                         SELECT SCHEMA_NAME
-                         FROM INFORMATION_SCHEMA.SCHEMATA
-                         {(string.IsNullOrWhiteSpace(where) ? "" : "WHERE SCHEMA_NAME LIKE @where")}
-                         ORDER BY SCHEMA_NAME
-             """;
+        var sql = $"""
+
+                        SELECT SCHEMA_NAME
+                        FROM INFORMATION_SCHEMA.SCHEMATA
+                        {(string.IsNullOrWhiteSpace(where) ? "" : "WHERE SCHEMA_NAME LIKE @where")}
+                        ORDER BY SCHEMA_NAME
+            """;
 
         return (sql, new { where });
     }
@@ -43,16 +42,17 @@ public abstract partial class DatabaseMethodsBase
         string tableName
     )
     {
-        var sql =
-            $"""
-             
-                         SELECT COUNT(*) 
-                         FROM INFORMATION_SCHEMA.TABLES 
-                         WHERE 
-                             TABLE_TYPE='BASE TABLE'
-                             {(string.IsNullOrWhiteSpace(schemaName) ? "" : " AND TABLE_SCHEMA = @schemaName")}
-                             AND TABLE_NAME = @tableName
-             """;
+        var sql = $"""
+
+                        SELECT COUNT(*) 
+                        FROM INFORMATION_SCHEMA.TABLES 
+                        WHERE 
+                            TABLE_TYPE='BASE TABLE'
+                            {(
+                string.IsNullOrWhiteSpace(schemaName) ? "" : " AND TABLE_SCHEMA = @schemaName"
+            )}
+                            AND TABLE_NAME = @tableName
+            """;
 
         return (
             sql,
@@ -71,17 +71,18 @@ public abstract partial class DatabaseMethodsBase
     {
         var where = string.IsNullOrWhiteSpace(tableNameFilter) ? "" : ToLikeString(tableNameFilter);
 
-        var sql =
-            $"""
-             
-                             SELECT TABLE_NAME
-                             FROM INFORMATION_SCHEMA.TABLES
-                             WHERE 
-                                 TABLE_TYPE = 'BASE TABLE' 
-                                 AND TABLE_SCHEMA = @schemaName
-                                 {(string.IsNullOrWhiteSpace(where) ? null : " AND TABLE_NAME LIKE @where")}
-                             ORDER BY TABLE_NAME
-             """;
+        var sql = $"""
+
+                            SELECT TABLE_NAME
+                            FROM INFORMATION_SCHEMA.TABLES
+                            WHERE 
+                                TABLE_TYPE = 'BASE TABLE' 
+                                AND TABLE_SCHEMA = @schemaName
+                                {(
+                string.IsNullOrWhiteSpace(where) ? null : " AND TABLE_NAME LIKE @where"
+            )}
+                            ORDER BY TABLE_NAME
+            """;
 
         return (sql, new { schemaName = NormalizeSchemaName(schemaName), where });
     }
@@ -451,7 +452,8 @@ public abstract partial class DatabaseMethodsBase
                 table.TableName,
                 pkColumnNames.ToArray()
             );
-        return $"CONSTRAINT {NormalizeName(pkConstrainName)} PRIMARY KEY ({string.Join(", ", pkColumnNames)})".Trim();
+        var pkColumnsCsv = string.Join(", ", pkColumnNames);
+        return $"CONSTRAINT {NormalizeName(pkConstrainName)} PRIMARY KEY ({pkColumnsCsv})";
     }
 
     protected virtual string SqlInlineCheckTableConstraint(DxTable table, DxCheckConstraint check)
@@ -511,13 +513,19 @@ public abstract partial class DatabaseMethodsBase
     )
     {
         return $"""
-                
-                            CONSTRAINT {NormalizeName(fk.ConstraintName)} 
-                                FOREIGN KEY ({string.Join(", ", fk.SourceColumns.Select(c => NormalizeName(c.ColumnName)))}) 
-                                    REFERENCES {GetSchemaQualifiedIdentifierName(table.SchemaName, fk.ReferencedTableName)} ({string.Join(", ", fk.ReferencedColumns.Select(c => NormalizeName(c.ColumnName)))})
-                                        ON DELETE {fk.OnDelete.ToSql()}
-                                        ON UPDATE {fk.OnUpdate.ToSql()}
-                """.Trim();
+
+                        CONSTRAINT {NormalizeName(fk.ConstraintName)} 
+                            FOREIGN KEY ({string.Join(
+                ", ",
+                fk.SourceColumns.Select(c => NormalizeName(c.ColumnName))
+            )}) 
+                                REFERENCES {GetSchemaQualifiedIdentifierName(
+                table.SchemaName,
+                fk.ReferencedTableName
+            )} ({string.Join(", ", fk.ReferencedColumns.Select(c => NormalizeName(c.ColumnName)))})
+                                    ON DELETE {fk.OnDelete.ToSql()}
+                                    ON UPDATE {fk.OnUpdate.ToSql()}
+            """.Trim();
     }
 
     #endregion // Table Strings
@@ -565,11 +573,13 @@ public abstract partial class DatabaseMethodsBase
         var schemaQualifiedTableName = GetSchemaQualifiedIdentifierName(schemaName, tableName);
 
         return $"""
-                
-                            ALTER TABLE {schemaQualifiedTableName}
-                                ADD CONSTRAINT {NormalizeName(constraintName)} DEFAULT {expression} FOR {NormalizeName(columnName)}
-                        
-                """;
+
+                        ALTER TABLE {schemaQualifiedTableName}
+                            ADD CONSTRAINT {NormalizeName(
+                constraintName
+            )} DEFAULT {expression} FOR {NormalizeName(columnName)}
+                    
+            """;
     }
 
     protected virtual string SqlDropDefaultConstraint(
@@ -592,16 +602,19 @@ public abstract partial class DatabaseMethodsBase
         bool supportsOrderedKeysInConstraints
     )
     {
+        var primaryKeyColumns = string.Join(
+            ", ",
+            columns.Select(c =>
+            {
+                var columnName = NormalizeName(c.ColumnName);
+                return c.Order == DxColumnOrder.Ascending ? columnName : $"{columnName} DESC";
+            })
+        );
         return $"""
-                ALTER TABLE {GetSchemaQualifiedIdentifierName(schemaName, tableName)} 
-                                    ADD CONSTRAINT {NormalizeName(constraintName)} 
-                                        PRIMARY KEY ({string.Join(", ", columns.Select(c => {
-                                            var columnName = NormalizeName(c.ColumnName);
-                                            return c.Order == DxColumnOrder.Ascending
-                                                ? columnName
-                                                : $"{columnName} DESC";
-                                        }))})
-                """;
+            ALTER TABLE {GetSchemaQualifiedIdentifierName(schemaName, tableName)} 
+                                ADD CONSTRAINT {NormalizeName(constraintName)} 
+                                    PRIMARY KEY ({primaryKeyColumns})
+            """;
     }
 
     protected virtual string SqlDropPrimaryKeyConstraint(
@@ -629,9 +642,12 @@ public abstract partial class DatabaseMethodsBase
                 : new DxOrderedColumn(NormalizeName(c.ColumnName)).ToString()
         );
         return $"""
-                ALTER TABLE {GetSchemaQualifiedIdentifierName(schemaName, tableName)}
-                                    ADD CONSTRAINT {NormalizeName(constraintName)} UNIQUE ({string.Join(", ", uniqueColumns)})
-                """;
+            ALTER TABLE {GetSchemaQualifiedIdentifierName(schemaName, tableName)}
+                                ADD CONSTRAINT {NormalizeName(constraintName)} UNIQUE ({string.Join(
+                ", ",
+                uniqueColumns
+            )})
+            """;
     }
 
     protected virtual string SqlDropUniqueConstraint(
@@ -665,15 +681,18 @@ public abstract partial class DatabaseMethodsBase
         var referencedColumnNames = referencedColumns.Select(c => NormalizeName(c.ColumnName));
 
         return $"""
-                
-                            ALTER TABLE {schemaQualifiedTableName}
-                                ADD CONSTRAINT {NormalizeName(constraintName)} 
-                                    FOREIGN KEY ({string.Join(", ", columnNames)})
-                                        REFERENCES {schemaQualifiedReferencedTableName} ({string.Join(", ", referencedColumnNames)})
-                                            ON DELETE {onDelete.ToSql()}
-                                            ON UPDATE {onUpdate.ToSql()}
-                        
-                """;
+
+                        ALTER TABLE {schemaQualifiedTableName}
+                            ADD CONSTRAINT {NormalizeName(constraintName)} 
+                                FOREIGN KEY ({string.Join(", ", columnNames)})
+                                    REFERENCES {schemaQualifiedReferencedTableName} ({string.Join(
+                ", ",
+                referencedColumnNames
+            )})
+                                        ON DELETE {onDelete.ToSql()}
+                                        ON UPDATE {onUpdate.ToSql()}
+                    
+            """;
     }
 
     protected virtual string SqlDropForeignKeyConstraint(
@@ -718,19 +737,22 @@ public abstract partial class DatabaseMethodsBase
     {
         var where = string.IsNullOrWhiteSpace(viewNameFilter) ? "" : ToLikeString(viewNameFilter);
 
-        var sql =
-            $"""
-             SELECT 
-                                 TABLE_NAME AS ViewName
-                             FROM 
-                                 INFORMATION_SCHEMA.VIEWS
-                             WHERE 
-                                 TABLE_NAME IS NOT NULL
-                                 {(string.IsNullOrWhiteSpace(schemaName) ? "" : " AND TABLE_SCHEMA = @schemaName")}
-                                 {(string.IsNullOrWhiteSpace(where) ? "" : " AND TABLE_NAME LIKE @where")}
-                             ORDER BY
-                                 TABLE_NAME
-             """;
+        var sql = $"""
+            SELECT 
+                                TABLE_NAME AS ViewName
+                            FROM 
+                                INFORMATION_SCHEMA.VIEWS
+                            WHERE 
+                                TABLE_NAME IS NOT NULL
+                                {(
+                string.IsNullOrWhiteSpace(schemaName) ? "" : " AND TABLE_SCHEMA = @schemaName"
+            )}
+                                {(
+                string.IsNullOrWhiteSpace(where) ? "" : " AND TABLE_NAME LIKE @where"
+            )}
+                            ORDER BY
+                                TABLE_NAME
+            """;
 
         return (sql, new { schemaName = NormalizeSchemaName(schemaName), where });
     }
@@ -742,21 +764,24 @@ public abstract partial class DatabaseMethodsBase
     {
         var where = string.IsNullOrWhiteSpace(viewNameFilter) ? "" : ToLikeString(viewNameFilter);
 
-        var sql =
-            $"""
-             SELECT 
-                                 TABLE_SCHEMA AS SchemaName
-                                 TABLE_NAME AS ViewName,
-                                 VIEW_DEFINITION AS Definition
-                             FROM 
-                                 INFORMATION_SCHEMA.VIEWS
-                             WHERE 
-                                 TABLE_NAME IS NOT NULL
-                                 {(string.IsNullOrWhiteSpace(schemaName) ? "" : " AND TABLE_SCHEMA = @schemaName")}
-                                 {(string.IsNullOrWhiteSpace(where) ? "" : " AND TABLE_NAME LIKE @where")}
-                             ORDER BY
-                                 TABLE_NAME
-             """;
+        var sql = $"""
+            SELECT 
+                                TABLE_SCHEMA AS SchemaName
+                                TABLE_NAME AS ViewName,
+                                VIEW_DEFINITION AS Definition
+                            FROM 
+                                INFORMATION_SCHEMA.VIEWS
+                            WHERE 
+                                TABLE_NAME IS NOT NULL
+                                {(
+                string.IsNullOrWhiteSpace(schemaName) ? "" : " AND TABLE_SCHEMA = @schemaName"
+            )}
+                                {(
+                string.IsNullOrWhiteSpace(where) ? "" : " AND TABLE_NAME LIKE @where"
+            )}
+                            ORDER BY
+                                TABLE_NAME
+            """;
 
         return (sql, new { schemaName = NormalizeSchemaName(schemaName), where });
     }

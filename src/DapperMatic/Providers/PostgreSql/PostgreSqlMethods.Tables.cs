@@ -22,35 +22,36 @@ public partial class PostgreSqlMethods
         // columns
         // we could use information_schema but it's SOOO SLOW! unbearable really,
         // so we will use pg_catalog instead
-        var columnsSql =
-            $"""
-             
-                         SELECT 
-                             schemas.nspname as schema_name,
-                             tables.relname as table_name,
-                             columns.attname as column_name,
-                             columns.attnum as column_ordinal,
-                             pg_get_expr(column_defs.adbin, column_defs.adrelid) as column_default,
-                             case when (coalesce(primarykeys.conname, '') = '') then 0 else 1 end AS is_primary_key,
-                             primarykeys.conname as pk_constraint_name,
-                             case when columns.attnotnull then 0 else 1 end AS is_nullable,
-                             case when (columns.attidentity = '') then 0 else 1 end as is_identity,
-                             types.typname as data_type,
-                         	format_type(columns.atttypid, columns.atttypmod) as data_type_ext
-                         FROM pg_catalog.pg_attribute AS columns
-                             join pg_catalog.pg_type as types on columns.atttypid = types.oid
-                             JOIN pg_catalog.pg_class AS tables ON columns.attrelid = tables.oid and tables.relkind = 'r' and tables.relpersistence = 'p'
-                             JOIN pg_catalog.pg_namespace AS schemas ON tables.relnamespace = schemas.oid
-                             left outer join pg_catalog.pg_attrdef as column_defs on columns.attrelid = column_defs.adrelid and columns.attnum = column_defs.adnum
-                             left outer join pg_catalog.pg_constraint as primarykeys on columns.attnum=ANY(primarykeys.conkey) AND primarykeys.conrelid = tables.oid and primarykeys.contype = 'p'
-                         where
-                             schemas.nspname not like 'pg_%' and schemas.nspname != 'information_schema' and columns.attnum > 0 and not columns.attisdropped
-                             AND lower(schemas.nspname) = @schemaName
-                             AND tables.relname NOT IN ('spatial_ref_sys', 'geometry_columns', 'geography_columns', 'raster_columns', 'raster_overviews')
-                             {(string.IsNullOrWhiteSpace(where) ? null : " AND lower(tables.relname) LIKE @where")}
-                         order by schema_name, table_name, column_ordinal;
-                     
-             """;
+        var columnsSql = $"""
+
+                        SELECT 
+                            schemas.nspname as schema_name,
+                            tables.relname as table_name,
+                            columns.attname as column_name,
+                            columns.attnum as column_ordinal,
+                            pg_get_expr(column_defs.adbin, column_defs.adrelid) as column_default,
+                            case when (coalesce(primarykeys.conname, '') = '') then 0 else 1 end AS is_primary_key,
+                            primarykeys.conname as pk_constraint_name,
+                            case when columns.attnotnull then 0 else 1 end AS is_nullable,
+                            case when (columns.attidentity = '') then 0 else 1 end as is_identity,
+                            types.typname as data_type,
+                        	format_type(columns.atttypid, columns.atttypmod) as data_type_ext
+                        FROM pg_catalog.pg_attribute AS columns
+                            join pg_catalog.pg_type as types on columns.atttypid = types.oid
+                            JOIN pg_catalog.pg_class AS tables ON columns.attrelid = tables.oid and tables.relkind = 'r' and tables.relpersistence = 'p'
+                            JOIN pg_catalog.pg_namespace AS schemas ON tables.relnamespace = schemas.oid
+                            left outer join pg_catalog.pg_attrdef as column_defs on columns.attrelid = column_defs.adrelid and columns.attnum = column_defs.adnum
+                            left outer join pg_catalog.pg_constraint as primarykeys on columns.attnum=ANY(primarykeys.conkey) AND primarykeys.conrelid = tables.oid and primarykeys.contype = 'p'
+                        where
+                            schemas.nspname not like 'pg_%' and schemas.nspname != 'information_schema' and columns.attnum > 0 and not columns.attisdropped
+                            AND lower(schemas.nspname) = @schemaName
+                            AND tables.relname NOT IN ('spatial_ref_sys', 'geometry_columns', 'geography_columns', 'raster_columns', 'raster_overviews')
+                            {(
+                string.IsNullOrWhiteSpace(where) ? null : " AND lower(tables.relname) LIKE @where"
+            )}
+                        order by schema_name, table_name, column_ordinal;
+                    
+            """;
         var columnResults = await QueryAsync<(
             string schema_name,
             string table_name,
@@ -78,55 +79,56 @@ public partial class PostgreSqlMethods
             .ConfigureAwait(false);
 
         // get primary key, unique key, foreign key and check constraints in a single query
-        var constraintsSql =
-            $"""
-             
-                         select 
-                             schemas.nspname as schema_name,
-                             tables.relname as table_name,
-                             r.conname as constraint_name,
-                             indexes.relname as supporting_index_name,
-                             case 
-                                 when r.contype = 'c' then 'CHECK'
-                                 when r.contype = 'f' then 'FOREIGN KEY'
-                                 when r.contype = 'p' then 'PRIMARY KEY'
-                                 when r.contype = 'u' then 'UNIQUE'
-                                 else 'OTHER'
-                             end as constraint_type,
-                             pg_catalog.pg_get_constraintdef(r.oid, true) as constraint_definition,
-                             referenced_tables.relname as referenced_table_name,
-                             array_to_string(r.conkey, ',') as column_ordinals_csv,
-                             array_to_string(r.confkey, ',') as referenced_column_ordinals_csv,
-                             case
-                                 when r.confdeltype = 'a' then 'NO ACTION'
-                                 when r.confdeltype = 'r' then 'RESTRICT'
-                                 when r.confdeltype = 'c' then 'CASCADE'
-                                 when r.confdeltype = 'n' then 'SET NULL'
-                                 when r.confdeltype = 'd' then 'SET DEFAULT'
-                                 else null
-                             end as delete_rule,
-                             case
-                                 when r.confupdtype = 'a' then 'NO ACTION'
-                                 when r.confupdtype = 'r' then 'RESTRICT'
-                                 when r.confupdtype = 'c' then 'CASCADE'
-                                 when r.confupdtype = 'n' then 'SET NULL'
-                                 when r.confupdtype = 'd' then 'SET DEFAULT'
-                                 else null
-                             end as update_rule	
-                         from pg_catalog.pg_constraint r
-                             join pg_catalog.pg_namespace AS schemas ON r.connamespace = schemas.oid
-                             join pg_class as tables on r.conrelid = tables.oid
-                             left outer join pg_class as indexes on r.conindid = indexes.oid
-                             left outer join pg_class as referenced_tables on r.confrelid = referenced_tables.oid
-                         where
-                             schemas.nspname not like 'pg_%' 
-                             and schemas.nspname != 'information_schema'
-                             and r.contype in ('c', 'f', 'p', 'u')
-                             and lower(schemas.nspname) = @schemaName
-                             {(string.IsNullOrWhiteSpace(where) ? null : " AND lower(tables.relname) LIKE @where")}
-                         order by schema_name, table_name, constraint_type, constraint_name
-                     
-             """;
+        var constraintsSql = $"""
+
+                        select 
+                            schemas.nspname as schema_name,
+                            tables.relname as table_name,
+                            r.conname as constraint_name,
+                            indexes.relname as supporting_index_name,
+                            case 
+                                when r.contype = 'c' then 'CHECK'
+                                when r.contype = 'f' then 'FOREIGN KEY'
+                                when r.contype = 'p' then 'PRIMARY KEY'
+                                when r.contype = 'u' then 'UNIQUE'
+                                else 'OTHER'
+                            end as constraint_type,
+                            pg_catalog.pg_get_constraintdef(r.oid, true) as constraint_definition,
+                            referenced_tables.relname as referenced_table_name,
+                            array_to_string(r.conkey, ',') as column_ordinals_csv,
+                            array_to_string(r.confkey, ',') as referenced_column_ordinals_csv,
+                            case
+                                when r.confdeltype = 'a' then 'NO ACTION'
+                                when r.confdeltype = 'r' then 'RESTRICT'
+                                when r.confdeltype = 'c' then 'CASCADE'
+                                when r.confdeltype = 'n' then 'SET NULL'
+                                when r.confdeltype = 'd' then 'SET DEFAULT'
+                                else null
+                            end as delete_rule,
+                            case
+                                when r.confupdtype = 'a' then 'NO ACTION'
+                                when r.confupdtype = 'r' then 'RESTRICT'
+                                when r.confupdtype = 'c' then 'CASCADE'
+                                when r.confupdtype = 'n' then 'SET NULL'
+                                when r.confupdtype = 'd' then 'SET DEFAULT'
+                                else null
+                            end as update_rule	
+                        from pg_catalog.pg_constraint r
+                            join pg_catalog.pg_namespace AS schemas ON r.connamespace = schemas.oid
+                            join pg_class as tables on r.conrelid = tables.oid
+                            left outer join pg_class as indexes on r.conindid = indexes.oid
+                            left outer join pg_class as referenced_tables on r.confrelid = referenced_tables.oid
+                        where
+                            schemas.nspname not like 'pg_%' 
+                            and schemas.nspname != 'information_schema'
+                            and r.contype in ('c', 'f', 'p', 'u')
+                            and lower(schemas.nspname) = @schemaName
+                            {(
+                string.IsNullOrWhiteSpace(where) ? null : " AND lower(tables.relname) LIKE @where"
+            )}
+                        order by schema_name, table_name, constraint_type, constraint_name
+                    
+            """;
         var constraintResults = await QueryAsync<(
             string schema_name,
             string table_name,
@@ -147,9 +149,8 @@ public partial class PostgreSqlMethods
             .Select(c => c.referenced_table_name.ToLowerInvariant())
             .Distinct()
             .ToArray();
-        var referencedColumnsSql =
-            """
-            
+        var referencedColumnsSql = """
+
                         SELECT 
                             schemas.nspname as schema_name,
                             tables.relname as table_name,
@@ -398,11 +399,12 @@ public partial class PostgreSqlMethods
                     )
                     ?.i;
 
-                var (dotnetType, length, precision, scale) = GetDotnetTypeFromSqlType(
-                    tableColumn.data_type.Length < tableColumn.data_type_ext.Length
-                        ? tableColumn.data_type_ext
-                        : tableColumn.data_type
-                );
+                var (dotnetType, length, precision, scale, otherSupportedTypes) =
+                    GetDotnetTypeFromSqlType(
+                        tableColumn.data_type.Length < tableColumn.data_type_ext.Length
+                            ? tableColumn.data_type_ext
+                            : tableColumn.data_type
+                    );
 
                 var column = new DxColumn(
                     tableColumn.schema_name,
@@ -490,46 +492,57 @@ public partial class PostgreSqlMethods
             ? null
             : ToLikeString(indexNameFilter);
 
-        var indexesSql =
-            $"""
-             
-                             select
-                                 schemas.nspname AS schema_name,
-                                 tables.relname AS table_name,
-                                 indexes.relname AS index_name,
-                                 case when i.indisunique then 1 else 0 end as is_unique,
-                                 array_to_string(array_agg (
-                                     a.attname 
-                                     || ' ' || CASE o.option & 1 WHEN 1 THEN 'DESC' ELSE 'ASC' END
-                                     || ' ' || CASE o.option & 2 WHEN 2 THEN 'NULLS FIRST' ELSE 'NULLS LAST' END
-                                     ORDER BY c.ordinality
-                                 ),',') AS columns_csv
-                             from 
-                                 pg_index AS i
-                                 JOIN pg_class AS tables ON tables.oid = i.indrelid
-                                 JOIN pg_namespace AS schemas ON tables.relnamespace = schemas.oid
-                                 JOIN pg_class AS indexes ON indexes.oid = i.indexrelid
-                                 CROSS JOIN LATERAL unnest (i.indkey) WITH ORDINALITY AS c (colnum, ordinality)
-                                 LEFT JOIN LATERAL unnest (i.indoption) WITH ORDINALITY AS o (option, ordinality)
-                                 ON c.ordinality = o.ordinality
-                                 JOIN pg_attribute AS a ON tables.oid = a.attrelid AND a.attnum = c.colnum
-                             where
-                                 schemas.nspname not like 'pg_%' 
-                                 and schemas.nspname != 'information_schema'
-                                 and i.indislive
-                                 and not i.indisprimary
-                                 {(string.IsNullOrWhiteSpace(whereSchemaLike) ? "" : " AND lower(schemas.nspname) LIKE @whereSchemaLike")}
-                                 {(string.IsNullOrWhiteSpace(whereTableLike) ? "" : " AND lower(tables.relname) LIKE @whereTableLike")}
-                                 {(string.IsNullOrWhiteSpace(whereIndexLike) ? "" : " AND lower(indexes.relname) LIKE @whereIndexLike")}
-                                 -- postgresql creates an index for primary key and unique constraints, so we don't need to include them in the results
-                                 and indexes.relname not in (select x.conname from pg_catalog.pg_constraint x 
-                                             join pg_catalog.pg_namespace AS x2 ON x.connamespace = x2.oid
-                                             join pg_class as x3 on x.conrelid = x3.oid
-                                             where x2.nspname = schemas.nspname and x3.relname = tables.relname)
-                             group by schemas.nspname, tables.relname, indexes.relname, i.indisunique
-                             order by schema_name, table_name, index_name
-                         
-             """;
+        var indexesSql = $"""
+
+                            select
+                                schemas.nspname AS schema_name,
+                                tables.relname AS table_name,
+                                indexes.relname AS index_name,
+                                case when i.indisunique then 1 else 0 end as is_unique,
+                                array_to_string(array_agg (
+                                    a.attname 
+                                    || ' ' || CASE o.option & 1 WHEN 1 THEN 'DESC' ELSE 'ASC' END
+                                    || ' ' || CASE o.option & 2 WHEN 2 THEN 'NULLS FIRST' ELSE 'NULLS LAST' END
+                                    ORDER BY c.ordinality
+                                ),',') AS columns_csv
+                            from 
+                                pg_index AS i
+                                JOIN pg_class AS tables ON tables.oid = i.indrelid
+                                JOIN pg_namespace AS schemas ON tables.relnamespace = schemas.oid
+                                JOIN pg_class AS indexes ON indexes.oid = i.indexrelid
+                                CROSS JOIN LATERAL unnest (i.indkey) WITH ORDINALITY AS c (colnum, ordinality)
+                                LEFT JOIN LATERAL unnest (i.indoption) WITH ORDINALITY AS o (option, ordinality)
+                                ON c.ordinality = o.ordinality
+                                JOIN pg_attribute AS a ON tables.oid = a.attrelid AND a.attnum = c.colnum
+                            where
+                                schemas.nspname not like 'pg_%' 
+                                and schemas.nspname != 'information_schema'
+                                and i.indislive
+                                and not i.indisprimary
+                                {(
+                string.IsNullOrWhiteSpace(whereSchemaLike)
+                    ? ""
+                    : " AND lower(schemas.nspname) LIKE @whereSchemaLike"
+            )}
+                                {(
+                string.IsNullOrWhiteSpace(whereTableLike)
+                    ? ""
+                    : " AND lower(tables.relname) LIKE @whereTableLike"
+            )}
+                                {(
+                string.IsNullOrWhiteSpace(whereIndexLike)
+                    ? ""
+                    : " AND lower(indexes.relname) LIKE @whereIndexLike"
+            )}
+                                -- postgresql creates an index for primary key and unique constraints, so we don't need to include them in the results
+                                and indexes.relname not in (select x.conname from pg_catalog.pg_constraint x 
+                                            join pg_catalog.pg_namespace AS x2 ON x.connamespace = x2.oid
+                                            join pg_class as x3 on x.conrelid = x3.oid
+                                            where x2.nspname = schemas.nspname and x3.relname = tables.relname)
+                            group by schemas.nspname, tables.relname, indexes.relname, i.indisunique
+                            order by schema_name, table_name, index_name
+                        
+            """;
 
         var indexResults = await QueryAsync<(
             string schema_name,

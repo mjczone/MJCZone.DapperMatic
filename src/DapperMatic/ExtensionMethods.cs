@@ -1,12 +1,30 @@
 using System.Diagnostics.CodeAnalysis;
 using System.Text;
+using System.Text.RegularExpressions;
 
 namespace DapperMatic;
 
 [SuppressMessage("ReSharper", "UnusedMember.Global")]
 [SuppressMessage("ReSharper", "MemberCanBePrivate.Global")]
-public static class ExtensionMethods
+public static partial class ExtensionMethods
 {
+    [GeneratedRegex(@"\d+")]
+    private static partial Regex ExtractNumbersRegex();
+
+    public static int[] ExtractNumbers(this string input)
+    {
+        MatchCollection matches = ExtractNumbersRegex().Matches(input);
+
+        var numbers = new List<int>();
+        foreach (Match match in matches)
+        {
+            if (int.TryParse(match.Value, out var number))
+                numbers.Add(number);
+        }
+
+        return [.. numbers];
+    }
+
     public static string ToQuotedIdentifier(
         this string prefix,
         char[] quoteChar,

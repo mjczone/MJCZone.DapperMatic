@@ -2,6 +2,7 @@ using System.Diagnostics.CodeAnalysis;
 using System.Text;
 using System.Text.RegularExpressions;
 using DapperMatic.Models;
+
 // ReSharper disable ForCanBeConvertedToForeach
 
 namespace DapperMatic.Providers.Sqlite;
@@ -48,7 +49,14 @@ public static partial class SqliteSqlParser
 
         bool IsColumnDefinitionClause(SqlClause clause)
         {
-            return !(clause.FindTokenIndex("CONSTRAINT") == 0 || clause.FindTokenIndex("PRIMARY KEY") == 0 || clause.FindTokenIndex("FOREIGN KEY") == 0 || clause.FindTokenIndex("UNIQUE") == 0 || clause.FindTokenIndex("CHECK") == 0 || clause.FindTokenIndex("DEFAULT") == 0);
+            return !(
+                clause.FindTokenIndex("CONSTRAINT") == 0
+                || clause.FindTokenIndex("PRIMARY KEY") == 0
+                || clause.FindTokenIndex("FOREIGN KEY") == 0
+                || clause.FindTokenIndex("UNIQUE") == 0
+                || clause.FindTokenIndex("CHECK") == 0
+                || clause.FindTokenIndex("DEFAULT") == 0
+            );
         }
 
         // based on the documentation of the CREATE TABLE statement, we know that column definitions appear before table constraint clauses,
@@ -82,9 +90,7 @@ public static partial class SqliteSqlParser
                 if (columnDefinition.Children.Count > 2)
                 {
                     var thirdChild = columnDefinition.GetChild<SqlCompoundClause>(2);
-                    if (
-                        thirdChild is { Children.Count: > 0 and <= 2 }
-                    )
+                    if (thirdChild is { Children.Count: > 0 and <= 2 })
                     {
                         switch (thirdChild.Children.Count)
                         {
@@ -125,17 +131,22 @@ public static partial class SqliteSqlParser
                     }
                 }
 
-                var providerTypeMap = SqliteProviderTypeMap.Instance;
-                var providerDataType = providerTypeMap.GetRecommendedDataTypeForSqlType(
-                    columnDataType
-                );
+                var providerTypeMap = SqliteProviderTypeMap.Instance.Value;
+
+                // if we don't recognize the column data type, we skip it
+                if (
+                    !providerTypeMap.TryGetRecommendedDotnetTypeMatchingSqlType(
+                        columnDataType,
+                        out var providerDataType
+                    ) || !providerDataType.HasValue
+                )
+                    continue;
 
                 var column = new DxColumn(
                     null,
                     tableName,
                     columnName,
-                    // ExtractDotnetTypeFromSqlType(columnDataType),
-                    providerDataType.PrimaryDotnetType,
+                    providerDataType.Value.dotnetType,
                     columnDataType,
                     length,
                     precision,
@@ -144,8 +155,9 @@ public static partial class SqliteSqlParser
                 table.Columns.Add(column);
 
                 // remaining words are optional in the column definition
-                if (columnDefinition.Children.Count <= remainingWordsIndex) continue;
-                
+                if (columnDefinition.Children.Count <= remainingWordsIndex)
+                    continue;
+
                 string? inlineConstraintName = null;
                 for (var i = remainingWordsIndex; i < columnDefinition.Children.Count; i++)
                 {
@@ -266,8 +278,7 @@ public static partial class SqliteSqlParser
                                     columnDefinition
                                         .GetChild<SqlClause>(i + 1)
                                         ?.ToString()
-                                        ?.Equals("DESC", StringComparison.OrdinalIgnoreCase)
-                                    == true
+                                        ?.Equals("DESC", StringComparison.OrdinalIgnoreCase) == true
                                 )
                                 {
                                     columnOrder = DxColumnOrder.Descending;
@@ -1044,25 +1055,27 @@ public static partial class SqliteSqlParser
         public TClause? GetChild<TClause>(int index)
             where TClause : SqlClause
         {
-            if (this is not SqlCompoundClause scc) return null;
-            
+            if (this is not SqlCompoundClause scc)
+                return null;
+
             if (index >= 0 && index < scc.Children.Count)
                 return scc.Children[index] as TClause;
-            
+
             return null;
         }
 
         public TClause? GetChild<TClause>(Func<TClause, bool> predicate)
             where TClause : SqlClause
         {
-            if (this is not SqlCompoundClause scc) return null;
-            
+            if (this is not SqlCompoundClause scc)
+                return null;
+
             foreach (var child in scc.Children)
             {
                 if (child is TClause tc && predicate(tc))
                     return tc;
             }
-            
+
             return null;
         }
     }
@@ -1100,14 +1113,13 @@ public static partial class SqliteSqlParser
         }
 
         public string Text { get; set; }
+
         // ReSharper disable once MemberCanBePrivate.Global
         public char[]? Quotes { get; set; }
 
         public override string ToString()
         {
-            return Quotes is not { Length: 2 }
-                ? Text
-                : $"{Quotes[0]}{Text}{Quotes[1]}";
+            return Quotes is not { Length: 2 } ? Text : $"{Quotes[0]}{Text}{Quotes[1]}";
         }
     }
 
@@ -1215,13 +1227,16 @@ public static partial class SqliteSqlParser
                 var c in _allCompoundClauses /*.Where(x => x.parenthesis)*/
             )
             {
-                if (c.Children.Count != 1) continue;
-                
-                var child = c.Children[0];
-                if (child is not SqlCompoundClause { Parenthesis: false } scc) continue;
+                if (c.Children.Count != 1)
+                    continue;
 
-                if (scc.Children.Count != 1) continue;
-                
+                var child = c.Children[0];
+                if (child is not SqlCompoundClause { Parenthesis: false } scc)
+                    continue;
+
+                if (scc.Children.Count != 1)
+                    continue;
+
                 // reduce indentation, reduce nesting
                 var gscc = scc.Children[0];
                 gscc.SetParent(c);
@@ -1231,8 +1246,9 @@ public static partial class SqliteSqlParser
 
         public static SqlClause ReduceNesting(SqlClause clause)
         {
-            if (clause is not SqlCompoundClause scc) return clause;
-            
+            if (clause is not SqlCompoundClause scc)
+                return clause;
+
             var children = new List<SqlClause>();
             // ReSharper disable once ForeachCanBeConvertedToQueryUsingAnotherGetEnumerator
             foreach (var child in scc.Children)
@@ -1249,16 +1265,16 @@ public static partial class SqliteSqlParser
             }
 
             return scc;
-
         }
     }
 
     // Regular expression patterns to match single-line and multi-line comments
     // const string singleLineCommentPattern = @"--.*?$";
     // const string multiLineCommentPattern = @"/\*.*?\*/";
-    
+
     [GeneratedRegex(@"/\*.*?\*/", RegexOptions.Singleline)]
     private static partial Regex MultiLineCommentRegex();
+
     [GeneratedRegex("--.*?$", RegexOptions.Multiline)]
     private static partial Regex SingleLineCommentRegex();
 
