@@ -39,14 +39,9 @@ public interface IDatabaseMethods
         CancellationToken cancellationToken = default
     );
 
-    (
-        Type dotnetType,
-        int? length,
-        int? precision,
-        int? scale,
-        Type[] otherSupportedTypes
-    ) GetDotnetTypeFromSqlType(string sqlType);
-    string GetSqlTypeFromDotnetType(Type type, int? length, int? precision, int? scale);
+    (Type dotnetType, int? length, int? precision, int? scale, bool? isAutoIncrementing, Type[] allSupportedTypes)
+        GetDotnetTypeFromSqlType(string sqlType);
+    string GetSqlTypeFromDotnetType(Type type, int? length, int? precision, int? scale, bool? autoIncrementing);
 
     string NormalizeName(string name);
 }

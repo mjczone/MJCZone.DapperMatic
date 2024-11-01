@@ -99,6 +99,16 @@ public static partial class ExtensionMethods
             )
         );
     }
+	
+    public static bool EqualsAlpha(this string text, string textToDetermineMatch, bool ignoreCase = true, string additionalAllowedCharacters = "")
+    {
+        return text.ToAlpha(additionalAllowedCharacters).Equals(textToDetermineMatch.ToAlpha(additionalAllowedCharacters), ignoreCase ? StringComparison.OrdinalIgnoreCase : StringComparison.Ordinal);
+    }
+
+    public static bool EqualsAlphaNumeric(this string text, string textToDetermineMatch, bool ignoreCase = true, string additionalAllowedCharacters = "")
+    {
+        return text.ToAlphaNumeric(additionalAllowedCharacters).Equals(textToDetermineMatch.ToAlphaNumeric(additionalAllowedCharacters), ignoreCase ? StringComparison.OrdinalIgnoreCase : StringComparison.Ordinal);
+    }
 
     /// <summary>
     /// Converts a string to snake case, e.g. "MyProperty" becomes "my_property", and "IOas_d_DEfH" becomes "i_oas_d_d_ef_h".

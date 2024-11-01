@@ -431,7 +431,7 @@ public partial class MySqlMethods
                     )
                     ?.i;
 
-                var (dotnetType, _, _, _, _) = GetDotnetTypeFromSqlType(
+                var (dotnetType, _, _, _, _, _) = GetDotnetTypeFromSqlType(
                     tableColumn.data_type_complete
                 );
 

@@ -1,47 +1,32 @@
-using DapperMatic.Models;
 using DapperMatic.Providers;
 
 namespace DapperMatic.Tests;
 
 public abstract partial class DatabaseMethodsTests
-{
+{    
     private static Type[] GetSupportedTypes(IProviderTypeMap dbTypeMap)
     {
-        Type[] supportedTypes = dbTypeMap
-            .GetProviderSqlTypes()
-            .SelectMany(t =>
-            {
-                var dotnetTypes = new List<Type>();
-                if (
-                    dbTypeMap.TryGetRecommendedDotnetTypeMatchingSqlType(
-                        t.SqlType,
-                        out var dotnetTypeInfo
-                    )
-                    && dotnetTypeInfo != null
-                )
-                {
-                    dotnetTypes.AddRange(dotnetTypeInfo.Value.otherSupportedTypes);
-                }
-                return dotnetTypes;
-            })
-            .Distinct()
-            .ToArray();
-
-        return supportedTypes;
-    }
-
-    public class TestClassDao
-    {
-        public Guid Id { get; set; }
-    }
-
-    [Fact]
-    protected virtual async Task Provider_type_map_supports_all_desired_dotnet_types()
-    {
-        using var db = await OpenConnectionAsync();
-
-        // desired supported types
-        Type[] desiredSupportedTypes =
+        // Type[] supportedTypes = dbTypeMap
+        //     .GetProviderSqlTypes()
+        //     .SelectMany(t =>
+        //     {
+        //         var dotnetTypes = new List<Type>();
+        //         if (
+        //             dbTypeMap.TryGetRecommendedDotnetTypeMatchingSqlType(
+        //                 t.SqlType,
+        //                 out var dotnetTypeInfo
+        //             )
+        //             && dotnetTypeInfo != null
+        //         )
+        //         {
+        //             dotnetTypes.AddRange(dotnetTypeInfo.Value.allSupportedTypes);
+        //         }
+        //         return dotnetTypes;
+        //     })
+        //     .Distinct()
+        //     .ToArray();
+        
+        Type[] typesToSupport =
         [
             typeof(byte),
             typeof(short),
@@ -90,14 +75,25 @@ public abstract partial class DatabaseMethodsTests
             // custom classes
             typeof(TestClassDao)
         ];
+        
+        return typesToSupport;
+    }
 
+    public class TestClassDao
+    {
+        public Guid Id { get; set; }
+    }
+
+    [Fact]
+    protected virtual async Task Provider_type_map_supports_all_desired_dotnet_types()
+    {
+        using var db = await OpenConnectionAsync();
         var dbTypeMap = db.GetProviderTypeMap();
-        var actualSupportedTypes = GetSupportedTypes(dbTypeMap);
-
-        foreach (var desiredType in desiredSupportedTypes)
+        foreach (var desiredType in GetSupportedTypes(dbTypeMap))
         {
             var exists = dbTypeMap.TryGetRecommendedSqlTypeMatchingDotnetType(
                 desiredType,
+                null, null, null, null,
                 out var sqlType
             );
 

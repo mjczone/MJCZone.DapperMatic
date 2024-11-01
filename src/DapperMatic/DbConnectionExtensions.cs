@@ -35,13 +35,7 @@ public static class DbConnectionExtensions
         return Database(db).ProviderTypeMap;
     }
 
-    public static (
-        Type dotnetType,
-        int? length,
-        int? precision,
-        int? scale,
-        Type[] otherSupportedTypes
-    ) GetDotnetTypeFromSqlType(this IDbConnection db, string sqlType)
+    public static (Type dotnetType, int? length, int? precision, int? scale, bool? autoIncrementing, Type[] allSupportedTypes) GetDotnetTypeFromSqlType(this IDbConnection db, string sqlType)
     {
         return Database(db).GetDotnetTypeFromSqlType(sqlType);
     }

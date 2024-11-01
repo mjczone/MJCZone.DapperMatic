@@ -2,32 +2,17 @@ namespace DapperMatic.Providers;
 
 public interface IProviderTypeMap
 {
-    public IReadOnlyList<ProviderSqlType> GetProviderSqlTypes();
-
-    bool TryAddOrUpdateProviderSqlType(ProviderSqlType providerSqlType);
-
-    void AddDotnetTypeToSqlTypeMap(Func<Type, string?> map);
-
-    void AddSqlTypeToDotnetTypeMap(
-        Func<
-            string,
-            (Type dotnetType, int? length, int? precision, int? scale, Type[] otherSupportedTypes)?
-        > map
-    );
-
-    public bool TryGetRecommendedDotnetTypeMatchingSqlType(
+    bool TryGetRecommendedDotnetTypeMatchingSqlType(
         string fullSqlType,
-        out (
-            Type dotnetType,
-            int? length,
-            int? precision,
-            int? scale,
-            Type[] otherSupportedTypes
-        )? recommendedDotnetType
+        out (Type dotnetType, int? length, int? precision, int? scale, bool? isAutoIncrementing, Type[] allSupportedTypes)? recommendedDotnetType
     );
 
-    public bool TryGetRecommendedSqlTypeMatchingDotnetType(
+    bool TryGetRecommendedSqlTypeMatchingDotnetType(
         Type dotnetType,
+        int? length,
+        int? precision,
+        int? scale,
+        bool? autoIncrement,
         out ProviderSqlType? recommendedSqlType
     );
 }

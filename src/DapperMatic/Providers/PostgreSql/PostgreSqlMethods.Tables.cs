@@ -399,7 +399,7 @@ public partial class PostgreSqlMethods
                     )
                     ?.i;
 
-                var (dotnetType, length, precision, scale, otherSupportedTypes) =
+                var (dotnetType, length, precision, scale, autoIncrementing, otherSupportedTypes) =
                     GetDotnetTypeFromSqlType(
                         tableColumn.data_type.Length < tableColumn.data_type_ext.Length
                             ? tableColumn.data_type_ext

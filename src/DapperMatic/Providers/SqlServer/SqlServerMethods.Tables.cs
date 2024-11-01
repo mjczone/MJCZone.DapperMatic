@@ -389,7 +389,7 @@ public partial class SqlServerMethods
                     )
                     ?.i;
 
-                var (dotnetType, _, _, _, _) = GetDotnetTypeFromSqlType(tableColumn.data_type);
+                var (dotnetType, _, _, _, _, _) = GetDotnetTypeFromSqlType(tableColumn.data_type);
 
                 var column = new DxColumn(
                     tableColumn.schema_name,

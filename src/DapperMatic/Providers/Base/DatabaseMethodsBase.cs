@@ -38,13 +38,8 @@ public abstract partial class DatabaseMethodsBase : IDatabaseMethods
 
     private ILogger Logger => DxLogger.CreateLogger(GetType());
 
-    public virtual (
-        Type dotnetType,
-        int? length,
-        int? precision,
-        int? scale,
-        Type[] otherSupportedTypes
-    ) GetDotnetTypeFromSqlType(string sqlType)
+    public virtual (Type dotnetType, int? length, int? precision, int? scale, bool? isAutoIncrementing, Type[]
+        allSupportedTypes) GetDotnetTypeFromSqlType(string sqlType)
     {
         if (
             !ProviderTypeMap.TryGetRecommendedDotnetTypeMatchingSqlType(
@@ -61,12 +56,17 @@ public abstract partial class DatabaseMethodsBase : IDatabaseMethods
         Type type,
         int? length = null,
         int? precision = null,
-        int? scale = null
+        int? scale = null,
+        bool? autoIncrementing = null
     )
     {
         if (
             !ProviderTypeMap.TryGetRecommendedSqlTypeMatchingDotnetType(
                 type,
+                length,
+                precision,
+                scale,
+                autoIncrementing,
                 out var providerDataType
             )
             || providerDataType == null
@@ -78,34 +78,31 @@ public abstract partial class DatabaseMethodsBase : IDatabaseMethods
             length ??= providerDataType.DefaultLength;
             if (length.HasValue)
             {
-                if (!string.IsNullOrWhiteSpace(providerDataType.SqlTypeWithLength))
-                    return
-                        length == int.MaxValue
-                        && !string.IsNullOrWhiteSpace(providerDataType.SqlTypeWithMaxLength)
-                        ? string.Format(providerDataType.SqlTypeWithMaxLength, length)
-                        : string.Format(providerDataType.SqlTypeWithLength, length);
+                if (!string.IsNullOrWhiteSpace(providerDataType.FormatWithLength))
+                    return string.Format(providerDataType.FormatWithLength, length);
             }
         }
-        else if (providerDataType.SupportsPrecision())
+        
+        if (providerDataType.SupportsPrecision())
         {
             precision ??= providerDataType.DefaultPrecision;
             scale ??= providerDataType.DefaultScale;
 
             if (
                 scale.HasValue
-                && !string.IsNullOrWhiteSpace(providerDataType.SqlTypeWithPrecisionAndScale)
+                && !string.IsNullOrWhiteSpace(providerDataType.FormatWithPrecisionAndScale)
             )
                 return string.Format(
-                    providerDataType.SqlTypeWithPrecisionAndScale,
+                    providerDataType.FormatWithPrecisionAndScale,
                     precision,
                     scale
                 );
 
-            if (!string.IsNullOrWhiteSpace(providerDataType.SqlTypeWithPrecision))
-                return string.Format(providerDataType.SqlTypeWithPrecision, precision);
+            if (!string.IsNullOrWhiteSpace(providerDataType.FormatWithPrecision))
+                return string.Format(providerDataType.FormatWithPrecision, precision);
         }
 
-        return providerDataType.SqlType;
+        return providerDataType.Name;
     }
 
     internal static readonly ConcurrentDictionary<
