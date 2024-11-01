@@ -113,4 +113,37 @@ public partial class SqliteMethods
             )
             .ConfigureAwait(false);
     }
+
+    public override async Task<bool> DropDefaultConstraintOnColumnIfExistsAsync(
+        IDbConnection db,
+        string? schemaName,
+        string tableName,
+        string columnName,
+        IDbTransaction? tx = null,
+        CancellationToken cancellationToken = default
+    )
+    {
+        var constraintName = await GetDefaultConstraintNameOnColumnAsync(
+                db,
+                schemaName,
+                tableName,
+                columnName,
+                tx,
+                cancellationToken
+            )
+            .ConfigureAwait(false);
+
+        if (string.IsNullOrWhiteSpace(constraintName))
+            return false;
+
+        return await DropDefaultConstraintIfExistsAsync(
+                db,
+                schemaName,
+                tableName,
+                constraintName,
+                tx,
+                cancellationToken
+            )
+            .ConfigureAwait(false);
+    }
 }

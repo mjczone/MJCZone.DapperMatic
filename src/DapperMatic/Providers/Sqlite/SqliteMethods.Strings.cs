@@ -1,3 +1,5 @@
+using DapperMatic.Models;
+
 namespace DapperMatic.Providers.Sqlite;
 
 public partial class SqliteMethods
@@ -6,6 +8,17 @@ public partial class SqliteMethods
     #endregion // Schema Strings
 
     #region Table Strings
+
+    protected override string SqlInlineColumnNameAndType(DxColumn column, Version dbVersion)
+    {
+        // IF the column is an autoincrement column, the type MUST be INTEGER
+        // https://www.sqlite.org/autoinc.html
+        if (column.IsAutoIncrement)
+        {
+            column.ProviderDataType = SqliteTypes.sql_integer;
+        }
+        return base.SqlInlineColumnNameAndType(column, dbVersion);
+    }
 
     protected override string SqlInlinePrimaryKeyAutoIncrementColumnConstraint()
     {
@@ -18,12 +31,12 @@ public partial class SqliteMethods
     )
     {
         const string sql = """
-                           SELECT COUNT(*)
-                           FROM sqlite_master
-                           WHERE 
-                               type = 'table'
-                               AND name = @tableName
-                           """;
+            SELECT COUNT(*)
+            FROM sqlite_master
+            WHERE 
+                type = 'table'
+                AND name = @tableName
+            """;
 
         return (
             sql,
@@ -42,17 +55,18 @@ public partial class SqliteMethods
     {
         var where = string.IsNullOrWhiteSpace(tableNameFilter) ? "" : ToLikeString(tableNameFilter);
 
-        var sql =
-            $"""
-             
-                             SELECT name
-                             FROM sqlite_master
-                             WHERE 
-                                 type = 'table' 
-                                 AND name NOT LIKE 'sqlite_%'
-                                 {(string.IsNullOrWhiteSpace(where) ? null : " AND name LIKE @where")}
-                             ORDER BY name
-             """;
+        var sql = $"""
+
+                            SELECT name
+                            FROM sqlite_master
+                            WHERE 
+                                type = 'table' 
+                                AND name NOT LIKE 'sqlite_%'
+                                {(
+                string.IsNullOrWhiteSpace(where) ? null : " AND name LIKE @where"
+            )}
+                            ORDER BY name
+            """;
 
         return (sql, new { schemaName = NormalizeSchemaName(schemaName), where });
     }
@@ -87,23 +101,25 @@ public partial class SqliteMethods
 
     protected override (string sql, object parameters) SqlGetViewNames(
         string? schemaName,
-        string? viewNameFilter = null)
+        string? viewNameFilter = null
+    )
     {
         var where = string.IsNullOrWhiteSpace(viewNameFilter) ? "" : ToLikeString(viewNameFilter);
 
-        var sql =
-            $"""
-             
-                             SELECT 
-                                 m.name AS ViewName
-                             FROM sqlite_master AS m
-                             WHERE
-                                 m.TYPE = 'view' 
-                                 AND m.name NOT LIKE 'sqlite_%'
-                                 {(string.IsNullOrWhiteSpace(where) ? "" : " AND m.name LIKE @where")}
-                             ORDER BY
-                                 m.name
-             """;
+        var sql = $"""
+
+                            SELECT 
+                                m.name AS ViewName
+                            FROM sqlite_master AS m
+                            WHERE
+                                m.TYPE = 'view' 
+                                AND m.name NOT LIKE 'sqlite_%'
+                                {(
+                string.IsNullOrWhiteSpace(where) ? "" : " AND m.name LIKE @where"
+            )}
+                            ORDER BY
+                                m.name
+            """;
 
         return (sql, new { schemaName = NormalizeSchemaName(schemaName), where });
     }
@@ -115,21 +131,22 @@ public partial class SqliteMethods
     {
         var where = string.IsNullOrWhiteSpace(viewNameFilter) ? "" : ToLikeString(viewNameFilter);
 
-        var sql =
-            $"""
-             
-                             SELECT 
-                                 NULL as SchemaName,
-                                 m.name AS ViewName, 
-                                 m.SQL AS Definition
-                             FROM sqlite_master AS m
-                             WHERE
-                                 m.TYPE = 'view' 
-                                 AND m.name NOT LIKE 'sqlite_%'
-                                 {(string.IsNullOrWhiteSpace(where) ? "" : " AND m.name LIKE @where")}
-                             ORDER BY
-                                 m.name
-             """;
+        var sql = $"""
+
+                            SELECT 
+                                NULL as SchemaName,
+                                m.name AS ViewName, 
+                                m.SQL AS Definition
+                            FROM sqlite_master AS m
+                            WHERE
+                                m.TYPE = 'view' 
+                                AND m.name NOT LIKE 'sqlite_%'
+                                {(
+                string.IsNullOrWhiteSpace(where) ? "" : " AND m.name LIKE @where"
+            )}
+                            ORDER BY
+                                m.name
+            """;
 
         return (sql, new { schemaName = NormalizeSchemaName(schemaName), where });
     }
@@ -144,12 +161,15 @@ public partial class SqliteMethods
         string? viewDefinition = null;
         for (var i = 0; i < definition.Length; i++)
         {
-            if (i <= 0
+            if (
+                i <= 0
                 || definition[i] != 'A'
                 || definition[i + 1] != 'S'
                 || !WhiteSpaceCharacters.Contains(definition[i - 1])
-                || !WhiteSpaceCharacters.Contains(definition[i + 2])) continue;
-            
+                || !WhiteSpaceCharacters.Contains(definition[i + 2])
+            )
+                continue;
+
             viewDefinition = definition[(i + 3)..].Trim();
             break;
         }
