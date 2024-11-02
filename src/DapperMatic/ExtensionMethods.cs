@@ -1,4 +1,5 @@
 using System.Diagnostics.CodeAnalysis;
+using System.Reflection;
 using System.Text;
 using System.Text.RegularExpressions;
 
@@ -8,6 +9,52 @@ namespace DapperMatic;
 [SuppressMessage("ReSharper", "MemberCanBePrivate.Global")]
 public static partial class ExtensionMethods
 {
+    public static TValue? GetFieldValue<TValue>(this object instance, string name)
+    {
+        var type = instance.GetType();
+        var field = type.GetFields(
+                BindingFlags.NonPublic | BindingFlags.Static | BindingFlags.Instance
+            )
+            .FirstOrDefault(e =>
+                typeof(TValue).IsAssignableFrom(e.FieldType)
+                && e.Name.Equals(name, StringComparison.OrdinalIgnoreCase)
+            );
+        return (TValue?)field?.GetValue(instance) ?? default;
+    }
+
+    public static TValue? GetPropertyValue<TValue>(this object instance, string name)
+    {
+        var type = instance.GetType();
+        var property = type.GetProperties(
+                BindingFlags.NonPublic | BindingFlags.Static | BindingFlags.Instance
+            )
+            .FirstOrDefault(e =>
+                typeof(TValue).IsAssignableFrom(e.PropertyType)
+                && e.Name.Equals(name, StringComparison.OrdinalIgnoreCase)
+            );
+        return (TValue?)property?.GetValue(instance);
+    }
+
+    public static bool TryGetFieldValue<TValue>(
+        this object instance,
+        string name,
+        out TValue? value
+    )
+    {
+        value = instance.GetFieldValue<TValue>(name);
+        return value != null;
+    }
+
+    public static bool TryGetPropertyValue<TValue>(
+        this object instance,
+        string name,
+        out TValue? value
+    )
+    {
+        value = instance.GetPropertyValue<TValue>(name);
+        return value != null;
+    }
+
     [GeneratedRegex(@"\d+")]
     private static partial Regex ExtractNumbersRegex();
 
@@ -99,15 +146,33 @@ public static partial class ExtensionMethods
             )
         );
     }
-	
-    public static bool EqualsAlpha(this string text, string textToDetermineMatch, bool ignoreCase = true, string additionalAllowedCharacters = "")
+
+    public static bool EqualsAlpha(
+        this string text,
+        string textToDetermineMatch,
+        bool ignoreCase = true,
+        string additionalAllowedCharacters = ""
+    )
     {
-        return text.ToAlpha(additionalAllowedCharacters).Equals(textToDetermineMatch.ToAlpha(additionalAllowedCharacters), ignoreCase ? StringComparison.OrdinalIgnoreCase : StringComparison.Ordinal);
+        return text.ToAlpha(additionalAllowedCharacters)
+            .Equals(
+                textToDetermineMatch.ToAlpha(additionalAllowedCharacters),
+                ignoreCase ? StringComparison.OrdinalIgnoreCase : StringComparison.Ordinal
+            );
     }
 
-    public static bool EqualsAlphaNumeric(this string text, string textToDetermineMatch, bool ignoreCase = true, string additionalAllowedCharacters = "")
+    public static bool EqualsAlphaNumeric(
+        this string text,
+        string textToDetermineMatch,
+        bool ignoreCase = true,
+        string additionalAllowedCharacters = ""
+    )
     {
-        return text.ToAlphaNumeric(additionalAllowedCharacters).Equals(textToDetermineMatch.ToAlphaNumeric(additionalAllowedCharacters), ignoreCase ? StringComparison.OrdinalIgnoreCase : StringComparison.Ordinal);
+        return text.ToAlphaNumeric(additionalAllowedCharacters)
+            .Equals(
+                textToDetermineMatch.ToAlphaNumeric(additionalAllowedCharacters),
+                ignoreCase ? StringComparison.OrdinalIgnoreCase : StringComparison.Ordinal
+            );
     }
 
     /// <summary>

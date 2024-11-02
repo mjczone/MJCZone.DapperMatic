@@ -8,8 +8,11 @@ namespace DapperMatic.Models;
 
 public static class DxTableFactory
 {
-    private static ConcurrentDictionary<Type, DxTable> _cache = new();
-    private static ConcurrentDictionary<Type, Dictionary<string, DxColumn>> _propertyCache = new();
+    private static readonly ConcurrentDictionary<Type, DxTable> _cache = new();
+    private static readonly ConcurrentDictionary<
+        Type,
+        Dictionary<string, DxColumn>
+    > _propertyCache = new();
 
     private static Action<Type, DxTable>? _customMappingAction;
 
@@ -95,14 +98,55 @@ public static class DxTableFactory
 
         foreach (var property in properties)
         {
-            var ignoreAttribute = property.GetCustomAttribute<DxIgnoreAttribute>();
-            if (ignoreAttribute != null)
+            var propertyAttributes = property.GetCustomAttributes();
+
+            var hasIgnoreAttribute = propertyAttributes.Any(pa =>
+            {
+                var paType = pa.GetType();
+                return pa is DxIgnoreAttribute
+                    // EF Core
+                    || pa is System.ComponentModel.DataAnnotations.Schema.NotMappedAttribute
+                    // ServiceStack.OrmLite
+                    || paType.Name == "IgnoreAttribute";
+            });
+
+            if (hasIgnoreAttribute)
                 continue;
 
             var columnAttribute = property.GetCustomAttribute<DxColumnAttribute>();
-            var columnName = string.IsNullOrWhiteSpace(tableAttribute?.TableName)
-                ? type.Name
-                : tableAttribute.TableName;
+            var columnName =
+                propertyAttributes
+                    .Select(pa =>
+                    {
+                        var paType = pa.GetType();
+                        if (pa is DxColumnAttribute dca)
+                            return dca.ColumnName;
+                        // EF Core
+                        if (pa is System.ComponentModel.DataAnnotations.Schema.ColumnAttribute ca)
+                            return ca.Name;
+                        // ServiceStack.OrmLite
+                        if (
+                            paType.Name == "AliasAttribute"
+                            && pa.TryGetPropertyValue<string>("Name", out var name)
+                        )
+                            return name;
+                        return null;
+                    })
+                    .FirstOrDefault(n => !string.IsNullOrWhiteSpace(n))
+                ?? columnAttribute?.ColumnName
+                ?? property.Name;
+
+            var isPrimaryKey =
+                columnAttribute?.IsPrimaryKey == true
+                || propertyAttributes.Any(pa =>
+                {
+                    var paType = pa.GetType();
+                    return pa is DxPrimaryKeyConstraintAttribute
+                        // EF Core
+                        || pa is KeyAttribute
+                        // ServiceStack.OrmLite
+                        || paType.Name == "PrimaryKeyAttribute";
+                });
 
             var column = new DxColumn(
                 schemaName,
@@ -173,6 +217,26 @@ public static class DxTableFactory
                     {
                         primaryKey.ConstraintName = columnPrimaryKeyAttribute.ConstraintName;
                     }
+                }
+            }
+            else if (isPrimaryKey)
+            {
+                column.IsPrimaryKey = true;
+                if (primaryKey == null)
+                {
+                    primaryKey = new DxPrimaryKeyConstraint(
+                        schemaName,
+                        tableName,
+                        string.Empty,
+                        [new(columnName)]
+                    );
+                }
+                else
+                {
+                    primaryKey.Columns =
+                    [
+                        .. new List<DxOrderedColumn>(primaryKey.Columns) { new(columnName) }
+                    ];
                 }
             }
 
@@ -313,10 +377,7 @@ public static class DxTableFactory
         {
             var constraintName = !string.IsNullOrWhiteSpace(cpa.ConstraintName)
                 ? cpa.ConstraintName
-                : ProviderUtils.GeneratePrimaryKeyConstraintName(
-                    tableName,
-                    cpa.Columns.Select(c => c.ColumnName).ToArray()
-                );
+                : string.Empty;
 
             primaryKey = new DxPrimaryKeyConstraint(
                 schemaName,
@@ -336,24 +397,27 @@ public static class DxTableFactory
             }
         }
 
+        if (primaryKey != null && string.IsNullOrWhiteSpace(primaryKey.ConstraintName))
+        {
+            primaryKey.ConstraintName = ProviderUtils.GeneratePrimaryKeyConstraintName(
+                tableName,
+                primaryKey.Columns.Select(c => c.ColumnName).ToArray()
+            );
+        }
+
         var ccas = type.GetCustomAttributes<DxCheckConstraintAttribute>();
         var ccaId = 1;
         foreach (var cca in ccas)
         {
-            if (string.IsNullOrWhiteSpace(cca.Expression)) continue;
-            
+            if (string.IsNullOrWhiteSpace(cca.Expression))
+                continue;
+
             var constraintName = !string.IsNullOrWhiteSpace(cca.ConstraintName)
                 ? cca.ConstraintName
                 : ProviderUtils.GenerateCheckConstraintName(tableName, $"{ccaId++}");
 
             checkConstraints.Add(
-                new DxCheckConstraint(
-                    schemaName,
-                    tableName,
-                    null,
-                    constraintName,
-                    cca.Expression
-                )
+                new DxCheckConstraint(schemaName, tableName, null, constraintName, cca.Expression)
             );
         }
 

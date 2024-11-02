@@ -797,13 +797,25 @@ public abstract class ProviderTypeMapBase : IProviderTypeMap
                         && t.Name.Equals("double", StringComparison.OrdinalIgnoreCase)
                     )
                     ?? ProviderSqlTypes.FirstOrDefault(t =>
-                        t.Affinity == ProviderSqlTypeAffinity.Integer
+                        t.Affinity == ProviderSqlTypeAffinity.Real
                         && t.Name.Contains("double", StringComparison.OrdinalIgnoreCase)
                     )
                     ?? ProviderSqlTypes.FirstOrDefault(t =>
-                        t.Affinity == ProviderSqlTypeAffinity.Integer
+                        t.Affinity == ProviderSqlTypeAffinity.Real
                         && t.MinValue.GetValueOrDefault(double.MinValue) <= double.MinValue
                         && t.MaxValue.GetValueOrDefault(double.MaxValue) >= double.MaxValue
+                    )
+                    ?? ProviderSqlTypes.FirstOrDefault(t =>
+                        t.Affinity == ProviderSqlTypeAffinity.Real
+                        && t.Name.Equals("float", StringComparison.OrdinalIgnoreCase)
+                    )
+                    ?? ProviderSqlTypes.FirstOrDefault(t =>
+                        t.Affinity == ProviderSqlTypeAffinity.Real
+                        && t.Name.Equals("numeric", StringComparison.OrdinalIgnoreCase)
+                    )
+                    ?? ProviderSqlTypes.FirstOrDefault(t =>
+                        t.Affinity == ProviderSqlTypeAffinity.Real
+                        && t.Name.Equals("decimal", StringComparison.OrdinalIgnoreCase)
                     );
                 break;
             case not null when dotnetType == typeof(float):
@@ -868,6 +880,18 @@ public abstract class ProviderTypeMapBase : IProviderTypeMap
                     ?? ProviderSqlTypes.FirstOrDefault(t =>
                         t.Affinity == ProviderSqlTypeAffinity.Integer
                         && t.MaxValue.GetValueOrDefault(ulong.MaxValue) >= ulong.MaxValue
+                    )
+                    ?? ProviderSqlTypes.FirstOrDefault(t =>
+                        t.Affinity == ProviderSqlTypeAffinity.Integer
+                        && t.MaxValue.GetValueOrDefault(ulong.MaxValue) >= ulong.MaxValue
+                    )
+                    ?? ProviderSqlTypes.FirstOrDefault(t =>
+                        t.Affinity == ProviderSqlTypeAffinity.Integer
+                        && t.MaxValue.GetValueOrDefault(uint.MaxValue) > uint.MaxValue
+                    )
+                    ?? ProviderSqlTypes.FirstOrDefault(t =>
+                        t.Affinity == ProviderSqlTypeAffinity.Integer
+                        && t.MaxValue.GetValueOrDefault(uint.MaxValue) >= uint.MaxValue
                     );
                 break;
             case not null when dotnetType == typeof(byte[]):
@@ -944,6 +968,15 @@ public abstract class ProviderTypeMapBase : IProviderTypeMap
                         t.Affinity == ProviderSqlTypeAffinity.Text && t.IsFixedLength != true
                     );
                 break;
+        }
+
+        if (recommendedSqlType == null)
+        {
+            // couldn't find the appropriate type, so we'll just use the first one that matches the requested type
+            // if such exists (NOT IDEAL!!)
+            recommendedSqlType = ProviderSqlTypes.FirstOrDefault(t =>
+                t.RecommendedDotnetType == dotnetType
+            );
         }
 
         return recommendedSqlType != null;
