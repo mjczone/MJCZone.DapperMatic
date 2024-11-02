@@ -825,13 +825,21 @@ public abstract class ProviderTypeMapBase : IProviderTypeMap
                         && t.Name.Equals("float", StringComparison.OrdinalIgnoreCase)
                     )
                     ?? ProviderSqlTypes.FirstOrDefault(t =>
-                        t.Affinity == ProviderSqlTypeAffinity.Integer
+                        t.Affinity == ProviderSqlTypeAffinity.Real
                         && t.Name.Contains("float", StringComparison.OrdinalIgnoreCase)
                     )
                     ?? ProviderSqlTypes.FirstOrDefault(t =>
-                        t.Affinity == ProviderSqlTypeAffinity.Integer
+                        t.Affinity == ProviderSqlTypeAffinity.Real
                         && t.MinValue.GetValueOrDefault(float.MinValue) <= float.MinValue
                         && t.MaxValue.GetValueOrDefault(float.MaxValue) >= float.MaxValue
+                    )
+                    ?? ProviderSqlTypes.FirstOrDefault(t =>
+                        t.Affinity == ProviderSqlTypeAffinity.Real
+                        && t.Name.Equals("numeric", StringComparison.OrdinalIgnoreCase)
+                    )
+                    ?? ProviderSqlTypes.FirstOrDefault(t =>
+                        t.Affinity == ProviderSqlTypeAffinity.Real
+                        && t.Name.Equals("decimal", StringComparison.OrdinalIgnoreCase)
                     );
                 break;
             case not null when dotnetType == typeof(DateTime):

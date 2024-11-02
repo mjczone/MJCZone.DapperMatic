@@ -13,13 +13,12 @@ public partial class PostgreSqlMethods
             ? ""
             : ToLikeString(schemaNameFilter);
 
-        var sql =
-            $"""
-             SELECT DISTINCT nspname
-             FROM pg_catalog.pg_namespace
-             {(string.IsNullOrWhiteSpace(where) ? "" : "WHERE lower(nspname) LIKE @where")}
-             ORDER BY nspname
-             """;
+        var sql = $"""
+            SELECT DISTINCT nspname
+            FROM pg_catalog.pg_namespace
+            {(string.IsNullOrWhiteSpace(where) ? "" : "WHERE lower(nspname) LIKE @where")}
+            ORDER BY nspname
+            """;
 
         return (sql, new { where });
     }
@@ -56,17 +55,17 @@ public partial class PostgreSqlMethods
         string tableName
     )
     {
-        var sql =
-            $"""
-             
-                         SELECT COUNT(*)
-                         FROM pg_class 
-                             JOIN pg_catalog.pg_namespace n ON n.oid = pg_class.relnamespace 
-                         WHERE 
-                             relkind = 'r'
-                             {(string.IsNullOrWhiteSpace(schemaName) ? "" : " AND lower(nspname) = @schemaName")}
-                             AND lower(relname) = @tableName
-             """;
+        var sql = $"""
+               SELECT COUNT(*)
+               FROM pg_class pgc
+                   JOIN pg_catalog.pg_namespace n ON n.oid = pgc.relnamespace 
+               WHERE 
+                   pgc.relkind = 'r'
+                   {(
+                        string.IsNullOrWhiteSpace(schemaName) ? "" : " AND lower(n.nspname) = @schemaName"
+                    )}
+                   AND lower(pgc.relname) = @tableName
+            """;
 
         return (
             sql,
@@ -85,18 +84,18 @@ public partial class PostgreSqlMethods
     {
         var where = string.IsNullOrWhiteSpace(tableNameFilter) ? "" : ToLikeString(tableNameFilter);
 
-        var sql =
-            $"""
-             
-                             SELECT TABLE_NAME
-                             FROM INFORMATION_SCHEMA.TABLES
-                             WHERE 
-                                 TABLE_TYPE = 'BASE TABLE' 
-                                 AND lower(TABLE_SCHEMA) = @schemaName
-                                 AND TABLE_NAME NOT IN ('spatial_ref_sys', 'geometry_columns', 'geography_columns', 'raster_columns', 'raster_overviews')
-                                 {(string.IsNullOrWhiteSpace(where) ? null : " AND lower(TABLE_NAME) LIKE @where")}
-                             ORDER BY TABLE_NAME
-             """;
+        var sql = $"""
+                    SELECT TABLE_NAME
+                    FROM INFORMATION_SCHEMA.TABLES
+                    WHERE 
+                        TABLE_TYPE = 'BASE TABLE' 
+                        AND lower(TABLE_SCHEMA) = @schemaName
+                        AND TABLE_NAME NOT IN ('spatial_ref_sys', 'geometry_columns', 'geography_columns', 'raster_columns', 'raster_overviews')
+                        {(
+                            string.IsNullOrWhiteSpace(where) ? null : " AND lower(TABLE_NAME) LIKE @where"
+                        )}
+                        ORDER BY TABLE_NAME
+            """;
 
         return (
             sql,
@@ -132,11 +131,11 @@ public partial class PostgreSqlMethods
         var schemaQualifiedTableName = GetSchemaQualifiedIdentifierName(schemaName, tableName);
 
         return $"""
-                
-                            ALTER TABLE {schemaQualifiedTableName}
-                                ALTER COLUMN {NormalizeName(columnName)} SET DEFAULT {expression}
-                        
-                """;
+
+                        ALTER TABLE {schemaQualifiedTableName}
+                            ALTER COLUMN {NormalizeName(columnName)} SET DEFAULT {expression}
+                    
+            """;
     }
 
     protected override string SqlDropDefaultConstraint(
@@ -170,25 +169,27 @@ public partial class PostgreSqlMethods
 
     protected override (string sql, object parameters) SqlGetViewNames(
         string? schemaName,
-        string? viewNameFilter = null)
+        string? viewNameFilter = null
+    )
     {
         var where = string.IsNullOrWhiteSpace(viewNameFilter) ? "" : ToLikeString(viewNameFilter);
 
-        var sql =
-            $"""
-             
-                             SELECT
-                                 v.viewname as ViewName
-                             from pg_views as v
-                             where 
-                                 v.schemaname not like 'pg_%' 
-                                 and v.schemaname != 'information_schema'
-                                 and v.viewname not in ('geography_columns', 'geometry_columns', 'raster_columns', 'raster_overviews')
-                                 and lower(v.schemaname) = @schemaName
-                                 {(string.IsNullOrWhiteSpace(where) ? "" : " AND lower(v.viewname) LIKE @where")}
-                             ORDER BY
-                                 v.schemaname, v.viewname
-             """;
+        var sql = $"""
+
+                            SELECT
+                                v.viewname as ViewName
+                            from pg_views as v
+                            where 
+                                v.schemaname not like 'pg_%' 
+                                and v.schemaname != 'information_schema'
+                                and v.viewname not in ('geography_columns', 'geometry_columns', 'raster_columns', 'raster_overviews')
+                                and lower(v.schemaname) = @schemaName
+                                {(
+                string.IsNullOrWhiteSpace(where) ? "" : " AND lower(v.viewname) LIKE @where"
+            )}
+                            ORDER BY
+                                v.schemaname, v.viewname
+            """;
 
         return (
             sql,
@@ -207,23 +208,24 @@ public partial class PostgreSqlMethods
     {
         var where = string.IsNullOrWhiteSpace(viewNameFilter) ? "" : ToLikeString(viewNameFilter);
 
-        var sql =
-            $"""
-             
-                             SELECT 
-                                 v.schemaname as SchemaName,
-                                 v.viewname as ViewName,
-                                 v.definition as Definition
-                             from pg_views as v
-                             where 
-                                 v.schemaname not like 'pg_%' 
-                                 and v.schemaname != 'information_schema'     
-                                 and v.viewname not in ('geography_columns', 'geometry_columns', 'raster_columns', 'raster_overviews')       
-                                 and lower(v.schemaname) = @schemaName
-                                 {(string.IsNullOrWhiteSpace(where) ? "" : " AND lower(v.viewname) LIKE @where")}
-                             ORDER BY
-                                 v.schemaname, v.viewname
-             """;
+        var sql = $"""
+
+                            SELECT 
+                                v.schemaname as SchemaName,
+                                v.viewname as ViewName,
+                                v.definition as Definition
+                            from pg_views as v
+                            where 
+                                v.schemaname not like 'pg_%' 
+                                and v.schemaname != 'information_schema'     
+                                and v.viewname not in ('geography_columns', 'geometry_columns', 'raster_columns', 'raster_overviews')       
+                                and lower(v.schemaname) = @schemaName
+                                {(
+                string.IsNullOrWhiteSpace(where) ? "" : " AND lower(v.viewname) LIKE @where"
+            )}
+                            ORDER BY
+                                v.schemaname, v.viewname
+            """;
 
         return (
             sql,

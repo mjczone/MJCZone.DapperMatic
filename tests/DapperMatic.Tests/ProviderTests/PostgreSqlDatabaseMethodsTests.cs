@@ -53,6 +53,16 @@ public abstract class PostgreSqlDatabaseMethodsTests<TDatabaseFixture>(
         var db = new NpgsqlConnection(fixture.ConnectionString);
         await db.OpenAsync();
         await db.ExecuteAsync("CREATE EXTENSION IF NOT EXISTS \"uuid-ossp\";");
+        await db.ExecuteAsync("CREATE EXTENSION IF NOT EXISTS \"hstore\";");
+        if (
+            await db.ExecuteScalarAsync<int>(
+                @"select count(*) from pg_extension where extname = 'postgis'"
+            ) > 0
+        )
+        {
+            await db.ExecuteAsync("CREATE EXTENSION IF NOT EXISTS \"postgis\";");
+            await db.ExecuteAsync("CREATE EXTENSION IF NOT EXISTS \"postgis_topology\";");
+        }
         return db;
     }
 }

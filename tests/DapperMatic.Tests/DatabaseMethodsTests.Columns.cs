@@ -59,7 +59,7 @@ public abstract partial class DatabaseMethodsTests
         }
 
         // Create table with a column with an expression
-        await db.CreateTableIfNotExistsAsync(
+        var tableCreated = await db.CreateTableIfNotExistsAsync(
             schemaName,
             tableName,
             [
@@ -80,9 +80,10 @@ public abstract partial class DatabaseMethodsTests
                 )
             ]
         );
+        Assert.True(tableCreated);
 
         // Add a column with a default expression after the table is created
-        await db.CreateColumnIfNotExistsAsync(
+        var columnCreated = await db.CreateColumnIfNotExistsAsync(
             new DxColumn(
                 schemaName,
                 tableName,
@@ -91,11 +92,12 @@ public abstract partial class DatabaseMethodsTests
                 defaultExpression: defaultDateTimeSql
             )
         );
+        Assert.True(columnCreated);
 
         if (defaultGuidSql != null)
         {
             // Add a column with a default expression after the table is created
-            await db.CreateColumnIfNotExistsAsync(
+            columnCreated = await db.CreateColumnIfNotExistsAsync(
                 new DxColumn(
                     schemaName,
                     tableName,
@@ -104,23 +106,58 @@ public abstract partial class DatabaseMethodsTests
                     defaultExpression: defaultGuidSql
                 )
             );
+            Assert.True(columnCreated);
         }
 
         // Add a column with a default expression after the table is created
-        await db.CreateColumnIfNotExistsAsync(
+        columnCreated = await db.CreateColumnIfNotExistsAsync(
             new DxColumn(schemaName, tableName, columnName4, typeof(short), defaultExpression: "4")
         );
-        await db.CreateColumnIfNotExistsAsync(
-            new DxColumn(schemaName, tableName, columnName5, typeof(bool), defaultExpression: "1")
-        );
+        Assert.True(columnCreated);
+
+        if (db.GetDbProviderType() == DbProviderType.PostgreSql)
+        {
+            columnCreated = await db.CreateColumnIfNotExistsAsync(
+                new DxColumn(
+                    schemaName,
+                    tableName,
+                    columnName5,
+                    typeof(bool),
+                    defaultExpression: "true"
+                )
+            );
+            Assert.True(columnCreated);
+        }
+        else
+        {
+            // other databases take an integer
+            columnCreated = await db.CreateColumnIfNotExistsAsync(
+                new DxColumn(
+                    schemaName,
+                    tableName,
+                    columnName5,
+                    typeof(bool),
+                    defaultExpression: "1"
+                )
+            );
+            Assert.True(columnCreated);
+        }
 
         // Now check to make sure the default expressions are set
         var table = await db.GetTableAsync(schemaName, tableName);
         var columns = await db.GetColumnsAsync(schemaName, tableName);
-        var column1 = columns.SingleOrDefault(c => c.ColumnName == columnName1);
-        var column2 = columns.SingleOrDefault(c => c.ColumnName == columnName2);
-        var column4 = columns.SingleOrDefault(c => c.ColumnName == columnName4);
-        var column5 = columns.SingleOrDefault(c => c.ColumnName == columnName5);
+        var column1 = columns.SingleOrDefault(c =>
+            c.ColumnName.Equals(columnName1, StringComparison.OrdinalIgnoreCase)
+        );
+        var column2 = columns.SingleOrDefault(c =>
+            c.ColumnName.Equals(columnName2, StringComparison.OrdinalIgnoreCase)
+        );
+        var column4 = columns.SingleOrDefault(c =>
+            c.ColumnName.Equals(columnName4, StringComparison.OrdinalIgnoreCase)
+        );
+        var column5 = columns.SingleOrDefault(c =>
+            c.ColumnName.Equals(columnName5, StringComparison.OrdinalIgnoreCase)
+        );
 
         Assert.NotNull(column1);
         Assert.NotNull(column1.DefaultExpression);
@@ -140,7 +177,9 @@ public abstract partial class DatabaseMethodsTests
 
         if (defaultGuidSql != null)
         {
-            var column3 = columns.SingleOrDefault(c => c.ColumnName == columnName3);
+            var column3 = columns.SingleOrDefault(c =>
+                c.ColumnName.Equals(columnName3, StringComparison.OrdinalIgnoreCase)
+            );
             Assert.NotNull(column3);
             Assert.NotNull(column3.DefaultExpression);
             Assert.NotEmpty(column3.DefaultExpression);
@@ -170,8 +209,12 @@ public abstract partial class DatabaseMethodsTests
         {
             var table2 = await db.GetTableAsync(schemaName, tableName);
             columns = await db.GetColumnsAsync(schemaName, tableName);
-            column1 = columns.SingleOrDefault(c => c.ColumnName == columnName1);
-            column2 = columns.SingleOrDefault(c => c.ColumnName == columnName2);
+            column1 = columns.SingleOrDefault(c =>
+                c.ColumnName.Equals(columnName1, StringComparison.OrdinalIgnoreCase)
+            );
+            column2 = columns.SingleOrDefault(c =>
+                c.ColumnName.Equals(columnName2, StringComparison.OrdinalIgnoreCase)
+            );
 
             Assert.Equal(table!.DefaultConstraints.Count - 2, table2!.DefaultConstraints.Count);
 
