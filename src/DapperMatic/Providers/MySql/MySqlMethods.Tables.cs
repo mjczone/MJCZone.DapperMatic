@@ -22,7 +22,6 @@ public partial class MySqlMethods
 
         // columns
         var columnsSql = $"""
-
                         SELECT
                             t.TABLE_SCHEMA AS schema_name,
                             t.TABLE_NAME AS table_name,
@@ -55,7 +54,7 @@ public partial class MySqlMethods
                         ORDER BY t.TABLE_SCHEMA, t.TABLE_NAME, c.ORDINAL_POSITION
                     
             """;
-        var columnResults = await QueryAsync<(
+        List<(
             string schema_name,
             string table_name,
             string column_name,
@@ -68,16 +67,43 @@ public partial class MySqlMethods
             bool is_nullable,
             string data_type,
             string data_type_complete,
-            int? max_length,
+            long? max_length,
             int? numeric_precision,
             int? numeric_scale,
             string? extra
-        )>(db, columnsSql, new { schemaName, where }, tx: tx)
-            .ConfigureAwait(false);
+        )> columnResults = [];
+        try
+        {
+            columnResults = await QueryAsync<(
+                string schema_name,
+                string table_name,
+                string column_name,
+                string table_collation,
+                int column_ordinal,
+                string column_default,
+                bool is_primary_key,
+                bool is_unique,
+                bool is_indexed,
+                bool is_nullable,
+                string data_type,
+                string data_type_complete,
+                long? max_length,
+                int? numeric_precision,
+                int? numeric_scale,
+                string? extra
+            )>(db, columnsSql, new { schemaName, where }, tx: tx)
+                .ConfigureAwait(false);
+        }
+        catch (Exception e)
+        {
+            var rows = await QueryAsync<object>(db, columnsSql, new { schemaName, where }, tx: tx)
+                .ConfigureAwait(false);
+            Console.WriteLine(e.Message);
+            throw;
+        }
 
         // get primary key, unique key in a single query
         var constraintsSql = $"""
-
                             SELECT
                                 tc.table_schema AS schema_name,
                                 tc.table_name AS table_name,
@@ -441,7 +467,13 @@ public partial class MySqlMethods
                     tableColumn.column_name,
                     dotnetType,
                     tableColumn.data_type_complete,
-                    tableColumn.max_length,
+                    tableColumn.max_length.HasValue
+                        ? (
+                            tableColumn.max_length.Value > int.MaxValue
+                                ? int.MaxValue
+                                : (int)tableColumn.max_length.Value
+                        )
+                        : null,
                     tableColumn.numeric_precision,
                     tableColumn.numeric_scale,
                     checkConstraints

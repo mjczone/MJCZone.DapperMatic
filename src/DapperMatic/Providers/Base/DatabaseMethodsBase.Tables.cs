@@ -246,10 +246,7 @@ public abstract partial class DatabaseMethodsBase
 
         // When creating a single table, we can add the foreign keys inline.
         // We assume that the referenced table already exists.
-        if (
-            afterAllTablesConstraints == null
-            && table.ForeignKeyConstraints.Count > 0
-        )
+        if (afterAllTablesConstraints == null && table.ForeignKeyConstraints.Count > 0)
         {
             foreach (var fk in table.ForeignKeyConstraints)
             {
@@ -433,18 +430,20 @@ public abstract partial class DatabaseMethodsBase
                 .ConfigureAwait(false);
         }
 
-        foreach (var cc in table.CheckConstraints)
-        {
-            await DropCheckConstraintIfExistsAsync(
-                    db,
-                    schemaName,
-                    tableName,
-                    cc.ConstraintName,
-                    tx,
-                    cancellationToken
-                )
-                .ConfigureAwait(false);
-        }
+        // USUALLY, this is done by the database provider, and
+        // it's not necessary to do it here.
+        // foreach (var cc in table.CheckConstraints)
+        // {
+        //     await DropCheckConstraintIfExistsAsync(
+        //             db,
+        //             schemaName,
+        //             tableName,
+        //             cc.ConstraintName,
+        //             tx,
+        //             cancellationToken
+        //         )
+        //         .ConfigureAwait(false);
+        // }
 
         // USUALLY, this is done by the database provider, and
         // it's not necessary to do it here.

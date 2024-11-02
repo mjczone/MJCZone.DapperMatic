@@ -268,6 +268,15 @@ public abstract partial class DatabaseMethodsBase
         CancellationToken cancellationToken = default
     )
     {
+        if (string.IsNullOrWhiteSpace(tableName))
+            throw new ArgumentException("Table name is required.", nameof(tableName));
+
+        if (string.IsNullOrWhiteSpace(columnName))
+            throw new ArgumentException("Column name is required.", nameof(columnName));
+
+        if (!await SupportsCheckConstraintsAsync(db, tx, cancellationToken).ConfigureAwait(false))
+            return false;
+
         var constraintName = await GetCheckConstraintNameOnColumnAsync(
             db,
             schemaName,
