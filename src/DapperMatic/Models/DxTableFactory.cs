@@ -1,5 +1,6 @@
 using System.Collections.Concurrent;
 using System.ComponentModel.DataAnnotations;
+using System.Data;
 using System.Reflection;
 using DapperMatic.DataAnnotations;
 using DapperMatic.Providers;
@@ -73,16 +74,60 @@ public static class DxTableFactory
         Dictionary<string, DxColumn> propertyMappings
     )
     {
+        var classAttributes = type.GetCustomAttributes();
+
         var tableAttribute =
             type.GetCustomAttribute<DxTableAttribute>() ?? new DxTableAttribute(null, type.Name);
 
-        var schemaName = string.IsNullOrWhiteSpace(tableAttribute.SchemaName)
-            ? null
-            : tableAttribute.SchemaName;
+        var schemaName =
+            classAttributes
+                .Select(ca =>
+                {
+                    var paType = ca.GetType();
+                    if (ca is DxTableAttribute dca && !string.IsNullOrWhiteSpace(dca.SchemaName))
+                        return dca.SchemaName;
+                    // EF Core
+                    if (
+                        ca is System.ComponentModel.DataAnnotations.Schema.TableAttribute ta
+                        && !string.IsNullOrWhiteSpace(ta.Schema)
+                    )
+                        return ta.Schema;
+                    // ServiceStack.OrmLite
+                    if (
+                        paType.Name == "SchemaAttribute"
+                        && ca.TryGetPropertyValue<string>("Name", out var name)
+                    )
+                        return name;
+                    return null;
+                })
+                .FirstOrDefault(n => !string.IsNullOrWhiteSpace(n))
+            ?? tableAttribute?.SchemaName
+            ?? null;
 
-        var tableName = string.IsNullOrWhiteSpace(tableAttribute.TableName)
-            ? type.Name
-            : tableAttribute.TableName;
+        var tableName =
+            classAttributes
+                .Select(ca =>
+                {
+                    var paType = ca.GetType();
+                    if (ca is DxTableAttribute dca && !string.IsNullOrWhiteSpace(dca.TableName))
+                        return dca.TableName;
+                    // EF Core
+                    if (
+                        ca is System.ComponentModel.DataAnnotations.Schema.TableAttribute ta
+                        && !string.IsNullOrWhiteSpace(ta.Name)
+                    )
+                        return ta.Name;
+                    // ServiceStack.OrmLite
+                    if (
+                        paType.Name == "AliasAttribute"
+                        && ca.TryGetPropertyValue<string>("Name", out var name)
+                    )
+                        return name;
+                    return null;
+                })
+                .FirstOrDefault(n => !string.IsNullOrWhiteSpace(n))
+            ?? tableAttribute?.TableName
+            ?? type.Name;
 
         // columns must bind to public properties that can be both read and written
         var properties = type.GetProperties(BindingFlags.Public | BindingFlags.Instance)
@@ -148,6 +193,16 @@ public static class DxTableFactory
                         || paType.Name == "PrimaryKeyAttribute";
                 });
 
+            var isRequired = propertyAttributes.Any(pa =>
+            {
+                var paType = pa.GetType();
+                return
+                    // EF Core
+                    pa is System.ComponentModel.DataAnnotations.RequiredAttribute
+                    // ServiceStack.OrmLite
+                    || paType.Name == "RequiredAttribute";
+            });
+
             var column = new DxColumn(
                 schemaName,
                 tableName,
@@ -163,7 +218,7 @@ public static class DxTableFactory
                 string.IsNullOrWhiteSpace(columnAttribute?.DefaultExpression)
                     ? null
                     : columnAttribute.DefaultExpression,
-                columnAttribute?.IsNullable ?? true,
+                !isRequired && (columnAttribute?.IsNullable ?? true),
                 columnAttribute?.IsPrimaryKey ?? false,
                 columnAttribute?.IsAutoIncrement ?? false,
                 columnAttribute?.IsUnique ?? false,
@@ -187,6 +242,14 @@ public static class DxTableFactory
                 if (stringLengthAttribute != null)
                 {
                     column.Length = stringLengthAttribute.MaximumLength;
+                }
+                else
+                {
+                    var maxLengthAttribute = property.GetCustomAttribute<MaxLengthAttribute>();
+                    if (maxLengthAttribute != null)
+                    {
+                        column.Length = maxLengthAttribute.Length;
+                    }
                 }
             }
 
@@ -315,6 +378,36 @@ public static class DxTableFactory
                 if (index.IsUnique)
                     column.IsUnique = true;
             }
+            else
+            {
+                var indexAttribute = propertyAttributes.FirstOrDefault(pa =>
+                    pa.GetType().FullName == "Microsoft.EntityFrameworkCore.IndexAttribute"
+                );
+                if (indexAttribute != null)
+                {
+                    var isUnique =
+                        indexAttribute.TryGetPropertyValue<bool>("IsUnique", out var u) && u;
+                    var indexName =
+                        (
+                            indexAttribute.TryGetPropertyValue<string>("Name", out var n)
+                            && !string.IsNullOrWhiteSpace(n)
+                        )
+                            ? n
+                            : ProviderUtils.GenerateIndexName(tableName, columnName);
+                    var index = new DxIndex(
+                        schemaName,
+                        tableName,
+                        indexName,
+                        [new(columnName)],
+                        isUnique
+                    );
+                    indexes.Add(index);
+
+                    column.IsIndexed = true;
+                    if (index.IsUnique)
+                        column.IsUnique = true;
+                }
+            }
 
             // set foreign key constraint if present
             var columnForeignKeyConstraintAttribute =
@@ -352,6 +445,47 @@ public static class DxTableFactory
                         [new(referencedColumnNames[0])],
                         onDelete ?? DxForeignKeyAction.NoAction,
                         onUpdate ?? DxForeignKeyAction.NoAction
+                    );
+                    foreignKeyConstraints.Add(foreignKeyConstraint);
+
+                    column.IsForeignKey = true;
+                    column.ReferencedTableName = referencedTableName;
+                    column.ReferencedColumnName = referencedColumnNames[0];
+                    column.OnDelete = onDelete;
+                    column.OnUpdate = onUpdate;
+                }
+            }
+            else
+            {
+                var foreignKeyAttribute =
+                    property.GetCustomAttribute<System.ComponentModel.DataAnnotations.Schema.ForeignKeyAttribute>();
+                if (foreignKeyAttribute != null)
+                {
+                    var inversePropertyAttribute =
+                        property.GetCustomAttribute<System.ComponentModel.DataAnnotations.Schema.InversePropertyAttribute>();
+                    var referencedTableName = foreignKeyAttribute.Name;
+                    // TODO: figure out a way to derive the referenced column name
+                    var referencedColumnNames = new[]
+                    {
+                        inversePropertyAttribute?.Property ?? "id"
+                    };
+                    var onDelete = DxForeignKeyAction.NoAction;
+                    var onUpdate = DxForeignKeyAction.NoAction;
+                    var constraintName = ProviderUtils.GenerateForeignKeyConstraintName(
+                        tableName,
+                        columnName,
+                        referencedTableName,
+                        referencedColumnNames[0]
+                    );
+                    var foreignKeyConstraint = new DxForeignKeyConstraint(
+                        schemaName,
+                        tableName,
+                        constraintName,
+                        [new(columnName)],
+                        referencedTableName,
+                        [new(referencedColumnNames[0])],
+                        onDelete,
+                        onUpdate
                     );
                     foreignKeyConstraints.Add(foreignKeyConstraint);
 
