@@ -1,5 +1,4 @@
 using System.Collections.Concurrent;
-using System.ComponentModel.DataAnnotations;
 using System.Data;
 using System.Reflection;
 using DapperMatic.DataAnnotations;
@@ -188,7 +187,7 @@ public static class DxTableFactory
                     var paType = pa.GetType();
                     return pa is DxPrimaryKeyConstraintAttribute
                         // EF Core
-                        || pa is KeyAttribute
+                        || pa is System.ComponentModel.DataAnnotations.KeyAttribute
                         // ServiceStack.OrmLite
                         || paType.Name == "PrimaryKeyAttribute";
                 });
@@ -203,12 +202,57 @@ public static class DxTableFactory
                     || paType.Name == "RequiredAttribute";
             });
 
+            // Format of provider data types: {mysql:varchar(255),sqlserver:nvarchar(255)}
+            var providerDataTypes = new Dictionary<DbProviderType, string>();
+            if (!string.IsNullOrWhiteSpace(columnAttribute?.ProviderDataType))
+            {
+                var pdts = columnAttribute
+                    .ProviderDataType.Trim('{', '}', '[', ']', ' ')
+                    .Split([',', ';']);
+                foreach (var pdt in pdts)
+                {
+                    var pdtParts = pdt.Split(':');
+                    if (
+                        pdtParts.Length == 2
+                        && !string.IsNullOrWhiteSpace(pdtParts[0])
+                        && !string.IsNullOrWhiteSpace(pdtParts[1])
+                    )
+                    {
+                        if (
+                            pdtParts[0].Contains("mysql", StringComparison.OrdinalIgnoreCase)
+                            || pdtParts[0].Contains("maria", StringComparison.OrdinalIgnoreCase)
+                        )
+                        {
+                            providerDataTypes.Add(DbProviderType.MySql, pdtParts[1]);
+                        }
+                        else if (
+                            pdtParts[0].Contains("pg", StringComparison.OrdinalIgnoreCase)
+                            || pdtParts[0].Contains("postgres", StringComparison.OrdinalIgnoreCase)
+                        )
+                        {
+                            providerDataTypes.Add(DbProviderType.PostgreSql, pdtParts[1]);
+                        }
+                        else if (pdtParts[0].Contains("sqlite", StringComparison.OrdinalIgnoreCase))
+                        {
+                            providerDataTypes.Add(DbProviderType.Sqlite, pdtParts[1]);
+                        }
+                        else if (
+                            pdtParts[0].Contains("sqlserver", StringComparison.OrdinalIgnoreCase)
+                            || pdtParts[0].Contains("mssql", StringComparison.OrdinalIgnoreCase)
+                        )
+                        {
+                            providerDataTypes.Add(DbProviderType.SqlServer, pdtParts[1]);
+                        }
+                    }
+                }
+            }
+
             var column = new DxColumn(
                 schemaName,
                 tableName,
                 columnName,
                 property.PropertyType,
-                columnAttribute?.ProviderDataType,
+                providerDataTypes.Count != 0 ? providerDataTypes : null,
                 columnAttribute?.Length,
                 columnAttribute?.Precision,
                 columnAttribute?.Scale,
@@ -238,14 +282,16 @@ public static class DxTableFactory
 
             if (column.Length == null)
             {
-                var stringLengthAttribute = property.GetCustomAttribute<StringLengthAttribute>();
+                var stringLengthAttribute =
+                    property.GetCustomAttribute<System.ComponentModel.DataAnnotations.StringLengthAttribute>();
                 if (stringLengthAttribute != null)
                 {
                     column.Length = stringLengthAttribute.MaximumLength;
                 }
                 else
                 {
-                    var maxLengthAttribute = property.GetCustomAttribute<MaxLengthAttribute>();
+                    var maxLengthAttribute =
+                        property.GetCustomAttribute<System.ComponentModel.DataAnnotations.MaxLengthAttribute>();
                     if (maxLengthAttribute != null)
                     {
                         column.Length = maxLengthAttribute.Length;
@@ -314,7 +360,7 @@ public static class DxTableFactory
                     columnName,
                     !string.IsNullOrWhiteSpace(columnCheckConstraintAttribute.ConstraintName)
                         ? columnCheckConstraintAttribute.ConstraintName
-                        : ProviderUtils.GenerateCheckConstraintName(tableName, columnName),
+                        : DbProviderUtils.GenerateCheckConstraintName(tableName, columnName),
                     columnCheckConstraintAttribute.Expression
                 );
                 checkConstraints.Add(checkConstraint);
@@ -333,7 +379,7 @@ public static class DxTableFactory
                     columnName,
                     !string.IsNullOrWhiteSpace(columnDefaultConstraintAttribute.ConstraintName)
                         ? columnDefaultConstraintAttribute.ConstraintName
-                        : ProviderUtils.GenerateDefaultConstraintName(tableName, columnName),
+                        : DbProviderUtils.GenerateDefaultConstraintName(tableName, columnName),
                     columnDefaultConstraintAttribute.Expression
                 );
                 defaultConstraints.Add(defaultConstraint);
@@ -351,7 +397,7 @@ public static class DxTableFactory
                     tableName,
                     !string.IsNullOrWhiteSpace(columnUniqueConstraintAttribute.ConstraintName)
                         ? columnUniqueConstraintAttribute.ConstraintName
-                        : ProviderUtils.GenerateUniqueConstraintName(tableName, columnName),
+                        : DbProviderUtils.GenerateUniqueConstraintName(tableName, columnName),
                     [new(columnName)]
                 );
                 uniqueConstraints.Add(uniqueConstraint);
@@ -368,7 +414,7 @@ public static class DxTableFactory
                     tableName,
                     !string.IsNullOrWhiteSpace(columnIndexAttribute.IndexName)
                         ? columnIndexAttribute.IndexName
-                        : ProviderUtils.GenerateIndexName(tableName, columnName),
+                        : DbProviderUtils.GenerateIndexName(tableName, columnName),
                     [new(columnName)],
                     isUnique: columnIndexAttribute.IsUnique
                 );
@@ -393,7 +439,7 @@ public static class DxTableFactory
                             && !string.IsNullOrWhiteSpace(n)
                         )
                             ? n
-                            : ProviderUtils.GenerateIndexName(tableName, columnName);
+                            : DbProviderUtils.GenerateIndexName(tableName, columnName);
                     var index = new DxIndex(
                         schemaName,
                         tableName,
@@ -430,7 +476,7 @@ public static class DxTableFactory
                         columnForeignKeyConstraintAttribute.ConstraintName
                     )
                         ? columnForeignKeyConstraintAttribute.ConstraintName
-                        : ProviderUtils.GenerateForeignKeyConstraintName(
+                        : DbProviderUtils.GenerateForeignKeyConstraintName(
                             tableName,
                             columnName,
                             referencedTableName,
@@ -471,7 +517,7 @@ public static class DxTableFactory
                     };
                     var onDelete = DxForeignKeyAction.NoAction;
                     var onUpdate = DxForeignKeyAction.NoAction;
-                    var constraintName = ProviderUtils.GenerateForeignKeyConstraintName(
+                    var constraintName = DbProviderUtils.GenerateForeignKeyConstraintName(
                         tableName,
                         columnName,
                         referencedTableName,
@@ -533,7 +579,7 @@ public static class DxTableFactory
 
         if (primaryKey != null && string.IsNullOrWhiteSpace(primaryKey.ConstraintName))
         {
-            primaryKey.ConstraintName = ProviderUtils.GeneratePrimaryKeyConstraintName(
+            primaryKey.ConstraintName = DbProviderUtils.GeneratePrimaryKeyConstraintName(
                 tableName,
                 primaryKey.Columns.Select(c => c.ColumnName).ToArray()
             );
@@ -548,7 +594,7 @@ public static class DxTableFactory
 
             var constraintName = !string.IsNullOrWhiteSpace(cca.ConstraintName)
                 ? cca.ConstraintName
-                : ProviderUtils.GenerateCheckConstraintName(tableName, $"{ccaId++}");
+                : DbProviderUtils.GenerateCheckConstraintName(tableName, $"{ccaId++}");
 
             checkConstraints.Add(
                 new DxCheckConstraint(schemaName, tableName, null, constraintName, cca.Expression)
@@ -563,7 +609,7 @@ public static class DxTableFactory
 
             var constraintName = !string.IsNullOrWhiteSpace(uca.ConstraintName)
                 ? uca.ConstraintName
-                : ProviderUtils.GenerateUniqueConstraintName(
+                : DbProviderUtils.GenerateUniqueConstraintName(
                     tableName,
                     uca.Columns.Select(c => c.ColumnName).ToArray()
                 );
@@ -593,7 +639,7 @@ public static class DxTableFactory
 
             var indexName = !string.IsNullOrWhiteSpace(cia.IndexName)
                 ? cia.IndexName
-                : ProviderUtils.GenerateIndexName(
+                : DbProviderUtils.GenerateIndexName(
                     tableName,
                     cia.Columns.Select(c => c.ColumnName).ToArray()
                 );
@@ -634,7 +680,7 @@ public static class DxTableFactory
 
             var constraintName = !string.IsNullOrWhiteSpace(cfk.ConstraintName)
                 ? cfk.ConstraintName
-                : ProviderUtils.GenerateForeignKeyConstraintName(
+                : DbProviderUtils.GenerateForeignKeyConstraintName(
                     tableName,
                     cfk.SourceColumnNames,
                     cfk.ReferencedTableName,

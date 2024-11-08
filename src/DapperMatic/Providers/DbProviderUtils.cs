@@ -2,7 +2,7 @@ using System.Text.RegularExpressions;
 
 namespace DapperMatic.Providers;
 
-public static partial class ProviderUtils
+public static partial class DbProviderUtils
 {
     public static string GenerateCheckConstraintName(string tableName, string columnName)
     {
@@ -54,6 +54,7 @@ public static partial class ProviderUtils
 
     [GeneratedRegex(@"\d+(\.\d+)+")]
     private static partial Regex VersionPatternRegex();
+
     private static readonly Regex VersionPattern = VersionPatternRegex();
 
     internal static Version ExtractVersionFromVersionString(string versionString)

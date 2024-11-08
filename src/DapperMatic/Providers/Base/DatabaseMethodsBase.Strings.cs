@@ -149,13 +149,13 @@ public abstract partial class DatabaseMethodsBase
             )
         )
         {
-            var pkConstraintName = ProviderUtils.GeneratePrimaryKeyConstraintName(
+            var pkConstraintName = DbProviderUtils.GeneratePrimaryKeyConstraintName(
                 tableName,
                 columnName
             );
             var pkInlineSql = SqlInlinePrimaryKeyColumnConstraint(
+                column,
                 pkConstraintName,
-                column.IsAutoIncrement,
                 out var useTableConstraint
             );
             if (!string.IsNullOrWhiteSpace(pkInlineSql))
@@ -190,7 +190,7 @@ public abstract partial class DatabaseMethodsBase
             )
         )
         {
-            var defConstraintName = ProviderUtils.GenerateDefaultConstraintName(
+            var defConstraintName = DbProviderUtils.GenerateDefaultConstraintName(
                 tableName,
                 columnName
             );
@@ -223,7 +223,10 @@ public abstract partial class DatabaseMethodsBase
             )
         )
         {
-            var ckConstraintName = ProviderUtils.GenerateCheckConstraintName(tableName, columnName);
+            var ckConstraintName = DbProviderUtils.GenerateCheckConstraintName(
+                tableName,
+                columnName
+            );
             var ckInlineSql = SqlInlineCheckColumnConstraint(
                 ckConstraintName,
                 column.CheckExpression,
@@ -257,7 +260,7 @@ public abstract partial class DatabaseMethodsBase
             )
         )
         {
-            var ucConstraintName = ProviderUtils.GenerateUniqueConstraintName(
+            var ucConstraintName = DbProviderUtils.GenerateUniqueConstraintName(
                 tableName,
                 columnName
             );
@@ -293,7 +296,7 @@ public abstract partial class DatabaseMethodsBase
             )
         )
         {
-            var fkConstraintName = ProviderUtils.GenerateForeignKeyConstraintName(
+            var fkConstraintName = DbProviderUtils.GenerateForeignKeyConstraintName(
                 tableName,
                 columnName,
                 NormalizeName(column.ReferencedTableName),
@@ -338,7 +341,7 @@ public abstract partial class DatabaseMethodsBase
             )
         )
         {
-            var indexName = ProviderUtils.GenerateIndexName(tableName, columnName);
+            var indexName = DbProviderUtils.GenerateIndexName(tableName, columnName);
             tableConstraints.Indexes.Add(
                 new DxIndex(
                     schemaName,
@@ -355,37 +358,48 @@ public abstract partial class DatabaseMethodsBase
 
     protected virtual string SqlInlineColumnNameAndType(DxColumn column, Version dbVersion)
     {
-        var columnType = string.IsNullOrWhiteSpace(column.ProviderDataType)
-            ? GetSqlTypeFromDotnetType(
-                column.DotnetType,
-                column.Length,
-                column.Precision,
-                column.Scale
-            )
-            : column.ProviderDataType;
+        var descriptor = new DbProviderDotnetTypeDescriptor(
+            column.DotnetType,
+            column.Length,
+            column.Precision,
+            column.Scale,
+            column.IsAutoIncrement,
+            column.IsUnicode
+        );
+
+        var columnType = string.IsNullOrWhiteSpace(column.GetProviderDataType(ProviderType))
+            ? GetSqlTypeFromDotnetType(descriptor)
+            : column.GetProviderDataType(ProviderType);
+
+        if (string.IsNullOrWhiteSpace(columnType))
+            throw new InvalidOperationException(
+                $"Could not determine the SQL type for column {column.ColumnName} of type {column.DotnetType.Name}"
+            );
 
         // set the type on the column so that it can be used in other methods
-        column.ProviderDataType = columnType;
+        column.SetProviderDataType(ProviderType, columnType);
 
         return $"{NormalizeName(column.ColumnName)} {columnType}";
     }
 
     protected virtual string SqlInlineColumnNullable(DxColumn column)
     {
-        return column.IsNullable ? " NULL" : " NOT NULL";
+        return column.IsNullable && !column.IsUnique && !column.IsPrimaryKey
+            ? " NULL"
+            : " NOT NULL";
     }
 
     protected virtual string SqlInlinePrimaryKeyColumnConstraint(
+        DxColumn column,
         string constraintName,
-        bool isAutoIncrement,
         out bool useTableConstraint
     )
     {
         useTableConstraint = false;
-        return $"CONSTRAINT {NormalizeName(constraintName)} PRIMARY KEY {(isAutoIncrement ? SqlInlinePrimaryKeyAutoIncrementColumnConstraint() : "")}".Trim();
+        return $"CONSTRAINT {NormalizeName(constraintName)} PRIMARY KEY {(column.IsAutoIncrement ? SqlInlinePrimaryKeyAutoIncrementColumnConstraint(column) : "")}".Trim();
     }
 
-    protected virtual string SqlInlinePrimaryKeyAutoIncrementColumnConstraint()
+    protected virtual string SqlInlinePrimaryKeyAutoIncrementColumnConstraint(DxColumn column)
     {
         return "IDENTITY(1,1)";
     }
@@ -448,7 +462,7 @@ public abstract partial class DatabaseMethodsBase
         var pkColumnNames = primaryKeyConstraint.Columns.Select(c => c.ColumnName).ToArray();
         var pkConstrainName = !string.IsNullOrWhiteSpace(primaryKeyConstraint.ConstraintName)
             ? primaryKeyConstraint.ConstraintName
-            : ProviderUtils.GeneratePrimaryKeyConstraintName(
+            : DbProviderUtils.GeneratePrimaryKeyConstraintName(
                 table.TableName,
                 pkColumnNames.ToArray()
             );
@@ -461,11 +475,11 @@ public abstract partial class DatabaseMethodsBase
         var ckConstraintName = !string.IsNullOrWhiteSpace(check.ConstraintName)
             ? check.ConstraintName
             : string.IsNullOrWhiteSpace(check.ColumnName)
-                ? ProviderUtils.GenerateCheckConstraintName(
+                ? DbProviderUtils.GenerateCheckConstraintName(
                     table.TableName,
                     DateTime.Now.Ticks.ToString()
                 )
-                : ProviderUtils.GenerateCheckConstraintName(table.TableName, check.ColumnName);
+                : DbProviderUtils.GenerateCheckConstraintName(table.TableName, check.ColumnName);
 
         return $"CONSTRAINT {NormalizeName(ckConstraintName)} CHECK ({check.Expression})";
     }
@@ -494,7 +508,7 @@ public abstract partial class DatabaseMethodsBase
     {
         var ucConstraintName = !string.IsNullOrWhiteSpace(uc.ConstraintName)
             ? uc.ConstraintName
-            : ProviderUtils.GenerateUniqueConstraintName(
+            : DbProviderUtils.GenerateUniqueConstraintName(
                 table.TableName,
                 uc.Columns.Select(c => NormalizeName(c.ColumnName)).ToArray()
             );

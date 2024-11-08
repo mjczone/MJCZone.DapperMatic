@@ -8,7 +8,7 @@ public partial class SqlServerMethods : DatabaseMethodsBase, IDatabaseMethods
 {
     public override DbProviderType ProviderType => DbProviderType.SqlServer;
 
-    public override IProviderTypeMap ProviderTypeMap => SqlServerProviderTypeMap.Instance.Value;
+    public override IDbProviderTypeMap ProviderTypeMap => SqlServerProviderTypeMap.Instance.Value;
 
     private static string _defaultSchema = "dbo";
     protected override string DefaultSchema => _defaultSchema;
@@ -36,7 +36,7 @@ public partial class SqlServerMethods : DatabaseMethodsBase, IDatabaseMethods
         const string sql = "SELECT SERVERPROPERTY('Productversion')";
         var versionString =
             await ExecuteScalarAsync<string>(db, sql, tx: tx).ConfigureAwait(false) ?? "";
-        return ProviderUtils.ExtractVersionFromVersionString(versionString);
+        return DbProviderUtils.ExtractVersionFromVersionString(versionString);
     }
 
     public override char[] QuoteChars => ['[', ']'];

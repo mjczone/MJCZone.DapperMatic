@@ -145,7 +145,7 @@ public abstract partial class DatabaseMethodsBase
         if (table.PrimaryKeyConstraint == null && table.Columns.Count(c => c.IsPrimaryKey) > 1)
         {
             var pkColumns = table.Columns.Where(c => c.IsPrimaryKey).ToArray();
-            var pkConstraintName = ProviderUtils.GeneratePrimaryKeyConstraintName(
+            var pkConstraintName = DbProviderUtils.GeneratePrimaryKeyConstraintName(
                 table.TableName,
                 pkColumns.Select(c => c.ColumnName).ToArray()
             );
@@ -185,7 +185,7 @@ public abstract partial class DatabaseMethodsBase
                     )
                 )
                 {
-                    var fkConstraintName = ProviderUtils.GenerateForeignKeyConstraintName(
+                    var fkConstraintName = DbProviderUtils.GenerateForeignKeyConstraintName(
                         tableName,
                         column.ColumnName,
                         column.ReferencedTableName,
@@ -257,7 +257,17 @@ public abstract partial class DatabaseMethodsBase
         }
 
         sql.AppendLine();
-        sql.Append(");");
+        sql.Append(")");
+
+        // TODO: for MySQL, we need to add the ENGINE=InnoDB; at the end of the CREATE TABLE statement
+        if (ProviderType == DbProviderType.MySql)
+        {
+            sql.Append(
+                " DEFAULT CHARACTER SET utf8mb4 COLLATE `utf8mb4_unicode_ci` ENGINE = InnoDB"
+            );
+        }
+
+        sql.Append(';');
 
         var sqlStatement = sql.ToString();
 

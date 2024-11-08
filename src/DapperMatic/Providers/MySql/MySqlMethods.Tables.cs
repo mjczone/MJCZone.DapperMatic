@@ -167,7 +167,7 @@ public partial class MySqlMethods
                     DefaultSchema,
                     c.table_name,
                     c.column_name,
-                    ProviderUtils.GenerateDefaultConstraintName(c.table_name, c.column_name),
+                    DbProviderUtils.GenerateDefaultConstraintName(c.table_name, c.column_name),
                     c.column_default.Trim('(', ')')
                 );
             })
@@ -182,7 +182,7 @@ public partial class MySqlMethods
                 return new DxPrimaryKeyConstraint(
                     DefaultSchema,
                     t.table_name,
-                    ProviderUtils.GeneratePrimaryKeyConstraintName(t.table_name, columnNames),
+                    DbProviderUtils.GeneratePrimaryKeyConstraintName(t.table_name, columnNames),
                     columnNames
                         .Select(
                             (c, i) =>
@@ -457,16 +457,17 @@ public partial class MySqlMethods
                     )
                     ?.i;
 
-                var (dotnetType, _, _, _, _, _) = GetDotnetTypeFromSqlType(
-                    tableColumn.data_type_complete
-                );
+                var dotnetTypeDescriptor = GetDotnetTypeFromSqlType(tableColumn.data_type_complete);
 
                 var column = new DxColumn(
                     tableColumn.schema_name,
                     tableColumn.table_name,
                     tableColumn.column_name,
-                    dotnetType,
-                    tableColumn.data_type_complete,
+                    dotnetTypeDescriptor.DotnetType,
+                    new Dictionary<DbProviderType, string>
+                    {
+                        { ProviderType, tableColumn.data_type_complete }
+                    },
                     tableColumn.max_length.HasValue
                         ? (
                             tableColumn.max_length.Value > int.MaxValue

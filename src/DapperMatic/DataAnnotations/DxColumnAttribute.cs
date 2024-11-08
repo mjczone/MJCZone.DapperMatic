@@ -45,6 +45,10 @@ public class DxColumnAttribute : Attribute
     }
 
     public string? ColumnName { get; }
+
+    /// <summary>
+    /// /// Format of provider data types: {mysql:varchar(255),sqlserver:nvarchar(255)}
+    /// </summary>
     public string? ProviderDataType { get; }
     public int? Length { get; }
     public int? Precision { get; }

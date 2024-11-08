@@ -12,7 +12,7 @@ public abstract partial class DatabaseMethodsBase : IDatabaseMethods
 {
     public abstract DbProviderType ProviderType { get; }
 
-    public abstract IProviderTypeMap ProviderTypeMap { get; }
+    public abstract IDbProviderTypeMap ProviderTypeMap { get; }
 
     protected abstract string DefaultSchema { get; }
 
@@ -38,51 +38,74 @@ public abstract partial class DatabaseMethodsBase : IDatabaseMethods
 
     private ILogger Logger => DxLogger.CreateLogger(GetType());
 
-    public virtual (Type dotnetType, int? length, int? precision, int? scale, bool? isAutoIncrementing, Type[]
-        allSupportedTypes) GetDotnetTypeFromSqlType(string sqlType)
+    public virtual DbProviderDotnetTypeDescriptor GetDotnetTypeFromSqlType(string sqlType)
     {
         if (
-            !ProviderTypeMap.TryGetRecommendedDotnetTypeMatchingSqlType(
+            !ProviderTypeMap.TryGetDotnetTypeDescriptorMatchingFullSqlTypeName(
                 sqlType,
-                out var providerDataType
-            ) || !providerDataType.HasValue
+                out var dotnetTypeDescriptor
+            )
+            || dotnetTypeDescriptor == null
         )
             throw new NotSupportedException($"SQL type {sqlType} is not supported.");
 
-        return providerDataType.Value;
+        return dotnetTypeDescriptor;
     }
 
-    public string GetSqlTypeFromDotnetType(
-        Type type,
-        int? length = null,
-        int? precision = null,
-        int? scale = null,
-        bool? autoIncrementing = null
-    )
+    public string GetSqlTypeFromDotnetType(DbProviderDotnetTypeDescriptor descriptor)
     {
+        var tmb = ProviderTypeMap as DbProviderTypeMapBase;
+
         if (
-            !ProviderTypeMap.TryGetRecommendedSqlTypeMatchingDotnetType(
-                type,
-                length,
-                precision,
-                scale,
-                autoIncrementing,
+            !ProviderTypeMap.TryGetProviderSqlTypeMatchingDotnetType(
+                descriptor,
                 out var providerDataType
             )
             || providerDataType == null
         )
-            throw new NotSupportedException($"No provider data type found for .NET type {type}.");
+        {
+            if (tmb != null)
+                return tmb.SqTypeForUnknownDotnetType;
+
+            throw new NotSupportedException(
+                $"No provider data type found for .NET type {descriptor}."
+            );
+        }
+
+        var length = descriptor.Length;
+        var precision = descriptor.Precision;
+        var scale = descriptor.Scale;
 
         if (providerDataType.SupportsLength())
         {
-            length ??= providerDataType.DefaultLength;
+            if (!length.HasValue && descriptor.DotnetType == typeof(Guid))
+                length = 36;
+            if (!length.HasValue && descriptor.DotnetType == typeof(char))
+                length = 1;
+            if (!length.HasValue)
+                length = providerDataType.DefaultLength;
+
             if (length.HasValue)
             {
+                if (
+                    tmb != null
+                    && length >= 8000
+                    && providerDataType.Affinity == DbProviderSqlTypeAffinity.Text
+                )
+                    return tmb.SqTypeForStringLengthMax;
+
+                if (
+                    tmb != null
+                    && length >= 8000
+                    && providerDataType.Affinity == DbProviderSqlTypeAffinity.Binary
+                )
+                    return tmb.SqTypeForBinaryLengthMax;
+
                 if (!string.IsNullOrWhiteSpace(providerDataType.FormatWithLength))
                     return string.Format(providerDataType.FormatWithLength, length);
             }
         }
-        
+
         if (providerDataType.SupportsPrecision())
         {
             precision ??= providerDataType.DefaultPrecision;
@@ -105,10 +128,8 @@ public abstract partial class DatabaseMethodsBase : IDatabaseMethods
         return providerDataType.Name;
     }
 
-    internal static readonly ConcurrentDictionary<
-        string,
-        (string sql, object? parameters)
-    > LastSqls = new();
+    internal readonly ConcurrentDictionary<string, (string sql, object? parameters)> LastSqls =
+        new();
 
     public abstract Task<Version> GetDatabaseVersionAsync(
         IDbConnection db,
@@ -126,7 +147,7 @@ public abstract partial class DatabaseMethodsBase : IDatabaseMethods
         return LastSqls.TryGetValue(db.ConnectionString, out var sql) ? sql : ("", null);
     }
 
-    private static void SetLastSql(IDbConnection db, string sql, object? param = null)
+    private void SetLastSql(IDbConnection db, string sql, object? param = null)
     {
         LastSqls.AddOrUpdate(db.ConnectionString, (sql, param), (_, _) => (sql, param));
     }
@@ -143,7 +164,7 @@ public abstract partial class DatabaseMethodsBase : IDatabaseMethods
         try
         {
             Log(
-                LogLevel.Information,
+                LogLevel.Debug,
                 "[{provider}] Executing SQL query: {sql}, with parameters {parameters}",
                 ProviderType,
                 sql,
@@ -161,10 +182,12 @@ public abstract partial class DatabaseMethodsBase : IDatabaseMethods
             Log(
                 LogLevel.Error,
                 ex,
-                "An error occurred while executing SQL query: {sql}, with parameters {parameters}.\n{message}",
+                "An error occurred while executing {provider} SQL query with map {providerMap}: \n{message}\n{sql}, with parameters {parameters}.",
+                ProviderType,
+                ProviderTypeMap.GetType().Name,
+                ex.Message,
                 sql,
-                param == null ? "{}" : JsonSerializer.Serialize(param),
-                ex.Message
+                param == null ? "{}" : JsonSerializer.Serialize(param)
             );
             throw;
         }
@@ -182,7 +205,7 @@ public abstract partial class DatabaseMethodsBase : IDatabaseMethods
         try
         {
             Log(
-                LogLevel.Information,
+                LogLevel.Debug,
                 "[{provider}] Executing SQL scalar: {sql}, with parameters {parameters}",
                 ProviderType,
                 sql,
@@ -203,10 +226,12 @@ public abstract partial class DatabaseMethodsBase : IDatabaseMethods
             Log(
                 LogLevel.Error,
                 ex,
-                "An error occurred while executing SQL scalar query: {sql}, with parameters {parameters}.\n{message}",
+                "An error occurred while executing {provider} SQL scalar query with map {providerMap}: \n{message}\n{sql}, with parameters {parameters}.",
+                ProviderType,
+                ProviderTypeMap.GetType().Name,
+                ex.Message,
                 sql,
-                param == null ? "{}" : JsonSerializer.Serialize(param),
-                ex.Message
+                param == null ? "{}" : JsonSerializer.Serialize(param)
             );
             throw;
         }
@@ -224,7 +249,7 @@ public abstract partial class DatabaseMethodsBase : IDatabaseMethods
         try
         {
             Log(
-                LogLevel.Information,
+                LogLevel.Debug,
                 "[{provider}] Executing SQL statement: {sql}, with parameters {parameters}",
                 ProviderType,
                 sql,
@@ -239,10 +264,12 @@ public abstract partial class DatabaseMethodsBase : IDatabaseMethods
             Log(
                 LogLevel.Error,
                 ex,
-                "An error occurred while executing SQL statement: {sql}, with parameters {parameters}.\n{message}",
+                "An error occurred while executing {provider} SQL statement with map {providerMap}: \n{message}\n{sql}, with parameters {parameters}.",
+                ProviderType,
+                ProviderTypeMap.GetType().Name,
+                ex.Message,
                 sql,
-                param == null ? "{}" : JsonSerializer.Serialize(param),
-                ex.Message
+                param == null ? "{}" : JsonSerializer.Serialize(param)
             );
             throw;
         }

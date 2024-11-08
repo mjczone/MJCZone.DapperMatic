@@ -30,12 +30,15 @@ public static class DbConnectionExtensions
         return await Database(db).GetDatabaseVersionAsync(db, tx, cancellationToken);
     }
 
-    public static IProviderTypeMap GetProviderTypeMap(this IDbConnection db)
+    public static IDbProviderTypeMap GetProviderTypeMap(this IDbConnection db)
     {
         return Database(db).ProviderTypeMap;
     }
 
-    public static (Type dotnetType, int? length, int? precision, int? scale, bool? autoIncrementing, Type[] allSupportedTypes) GetDotnetTypeFromSqlType(this IDbConnection db, string sqlType)
+    public static DbProviderDotnetTypeDescriptor GetDotnetTypeFromSqlType(
+        this IDbConnection db,
+        string sqlType
+    )
     {
         return Database(db).GetDotnetTypeFromSqlType(sqlType);
     }

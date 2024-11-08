@@ -399,22 +399,24 @@ public partial class PostgreSqlMethods
                     )
                     ?.i;
 
-                var (dotnetType, length, precision, scale, autoIncrementing, otherSupportedTypes) =
-                    GetDotnetTypeFromSqlType(
-                        tableColumn.data_type.Length < tableColumn.data_type_ext.Length
-                            ? tableColumn.data_type_ext
-                            : tableColumn.data_type
-                    );
+                var dotnetTypeDescriptor = GetDotnetTypeFromSqlType(
+                    tableColumn.data_type.Length < tableColumn.data_type_ext.Length
+                        ? tableColumn.data_type_ext
+                        : tableColumn.data_type
+                );
 
                 var column = new DxColumn(
                     tableColumn.schema_name,
                     tableColumn.table_name,
                     tableColumn.column_name,
-                    dotnetType,
-                    tableColumn.data_type,
-                    length,
-                    precision,
-                    scale,
+                    dotnetTypeDescriptor.DotnetType,
+                    new Dictionary<DbProviderType, string>
+                    {
+                        { ProviderType, tableColumn.data_type }
+                    },
+                    dotnetTypeDescriptor.Length,
+                    dotnetTypeDescriptor.Precision,
+                    dotnetTypeDescriptor.Scale,
                     tableCheckConstraints
                         .FirstOrDefault(c =>
                             !string.IsNullOrWhiteSpace(c.ColumnName)

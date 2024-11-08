@@ -8,7 +8,7 @@ public partial class MySqlMethods : DatabaseMethodsBase, IDatabaseMethods
 {
     public override DbProviderType ProviderType => DbProviderType.MySql;
 
-    public override IProviderTypeMap ProviderTypeMap => MySqlProviderTypeMap.Instance.Value;
+    public override IDbProviderTypeMap ProviderTypeMap => MySqlProviderTypeMap.Instance.Value;
 
     protected override string DefaultSchema => "";
 
@@ -21,7 +21,7 @@ public partial class MySqlMethods : DatabaseMethodsBase, IDatabaseMethods
         var versionStr =
             await ExecuteScalarAsync<string>(db, "SELECT VERSION()", tx: tx).ConfigureAwait(false)
             ?? "";
-        var version = ProviderUtils.ExtractVersionFromVersionString(versionStr);
+        var version = DbProviderUtils.ExtractVersionFromVersionString(versionStr);
         return (
                 versionStr.Contains("MariaDB", StringComparison.OrdinalIgnoreCase)
                 && version > new Version(10, 2, 1)
@@ -50,7 +50,7 @@ public partial class MySqlMethods : DatabaseMethodsBase, IDatabaseMethods
         var sql = @"SELECT VERSION()";
         var versionString =
             await ExecuteScalarAsync<string>(db, sql, tx: tx).ConfigureAwait(false) ?? "";
-        return ProviderUtils.ExtractVersionFromVersionString(versionString);
+        return DbProviderUtils.ExtractVersionFromVersionString(versionString);
     }
 
     public override char[] QuoteChars => ['`'];

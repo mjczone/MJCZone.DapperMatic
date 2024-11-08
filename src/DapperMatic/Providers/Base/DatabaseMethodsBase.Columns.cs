@@ -16,7 +16,7 @@ public abstract partial class DatabaseMethodsBase
     )
     {
         return await GetColumnAsync(db, schemaName, tableName, columnName, tx, cancellationToken)
-            .ConfigureAwait(false) != null;
+                .ConfigureAwait(false) != null;
     }
 
     public virtual async Task<bool> CreateColumnIfNotExistsAsync(
@@ -175,7 +175,12 @@ public abstract partial class DatabaseMethodsBase
                     tableName,
                     columnName,
                     dotnetType,
-                    providerDataType,
+                    providerDataType == null
+                        ? null
+                        : new Dictionary<DbProviderType, string>
+                        {
+                            { ProviderType, providerDataType }
+                        },
                     length,
                     precision,
                     scale,
@@ -408,10 +413,10 @@ public abstract partial class DatabaseMethodsBase
         await ExecuteAsync(
                 db,
                 $"""
-                 ALTER TABLE {schemaQualifiedTableName} 
-                                     RENAME COLUMN {columnName}
-                                             TO {newColumnName}
-                 """,
+                ALTER TABLE {schemaQualifiedTableName} 
+                                    RENAME COLUMN {columnName}
+                                            TO {newColumnName}
+                """,
                 tx: tx
             )
             .ConfigureAwait(false);

@@ -12,11 +12,6 @@ public partial class MySqlMethods
 
     protected override string SqlInlineColumnNameAndType(DxColumn column, Version dbVersion)
     {
-        if (column.DotnetType == typeof(Guid) && string.IsNullOrWhiteSpace(column.ProviderDataType))
-        {
-            column.ProviderDataType = "varchar(36)";
-        }
-
         var nameAndType = base.SqlInlineColumnNameAndType(column, dbVersion);
 
         if (
@@ -32,11 +27,12 @@ public partial class MySqlMethods
             || dbVersion.Major == 11;
         // || (dbVersion.Major == 10 && dbVersion < new Version(10, 5, 25));
 
-        if (!doNotAddUtf8Mb4)
+        if (!doNotAddUtf8Mb4 && column.IsUnicode)
         {
             // make it unicode by default
             nameAndType += " CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci";
         }
+
         return nameAndType;
     }
 
@@ -44,19 +40,19 @@ public partial class MySqlMethods
     // MySQL DOES NOT ALLOW a named constraint in the column definition, so we HAVE to create
     // the primary key constraint in the table constraints section
     protected override string SqlInlinePrimaryKeyColumnConstraint(
+        DxColumn column,
         string constraintName,
-        bool isAutoIncrement,
         out bool useTableConstraint
     )
     {
         useTableConstraint = true;
-        return isAutoIncrement ? "AUTO_INCREMENT" : "";
+        return column.IsAutoIncrement ? "AUTO_INCREMENT" : "";
 
         // the following code doesn't work because MySQL doesn't allow named constraints in the column definition
-        // return $"CONSTRAINT {NormalizeName(constraintName)} {(isAutoIncrement ? $"{SqlInlinePrimaryKeyAutoIncrementColumnConstraint()} " : "")}PRIMARY KEY".Trim();
+        // return $"CONSTRAINT {NormalizeName(constraintName)} {(column.IsAutoIncrement ? $"{SqlInlinePrimaryKeyAutoIncrementColumnConstraint(column)} " : "")}PRIMARY KEY".Trim();
     }
 
-    protected override string SqlInlinePrimaryKeyAutoIncrementColumnConstraint()
+    protected override string SqlInlinePrimaryKeyAutoIncrementColumnConstraint(DxColumn column)
     {
         return "AUTO_INCREMENT";
     }

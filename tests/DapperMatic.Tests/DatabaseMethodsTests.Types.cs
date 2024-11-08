@@ -3,8 +3,8 @@ using DapperMatic.Providers;
 namespace DapperMatic.Tests;
 
 public abstract partial class DatabaseMethodsTests
-{    
-    private static Type[] GetSupportedTypes(IProviderTypeMap dbTypeMap)
+{
+    private static Type[] GetSupportedTypes(IDbProviderTypeMap dbTypeMap)
     {
         // Type[] supportedTypes = dbTypeMap
         //     .GetProviderSqlTypes()
@@ -25,24 +25,31 @@ public abstract partial class DatabaseMethodsTests
         //     })
         //     .Distinct()
         //     .ToArray();
-        
+
         Type[] typesToSupport =
         [
+            typeof(bool),
             typeof(byte),
+            typeof(sbyte),
             typeof(short),
             typeof(int),
             typeof(long),
-            typeof(bool),
             typeof(float),
             typeof(double),
             typeof(decimal),
+            typeof(char),
+            typeof(string),
+            typeof(char[]),
+            typeof(ReadOnlyMemory<byte>[]),
+            typeof(Stream),
+            typeof(Guid),
             typeof(DateTime),
             typeof(DateTimeOffset),
             typeof(TimeSpan),
+            typeof(DateOnly),
+            typeof(TimeOnly),
             typeof(byte[]),
             typeof(object),
-            typeof(string),
-            typeof(Guid),
             // generic definitions
             typeof(IDictionary<,>),
             typeof(Dictionary<,>),
@@ -75,7 +82,7 @@ public abstract partial class DatabaseMethodsTests
             // custom classes
             typeof(TestClassDao)
         ];
-        
+
         return typesToSupport;
     }
 
@@ -91,9 +98,8 @@ public abstract partial class DatabaseMethodsTests
         var dbTypeMap = db.GetProviderTypeMap();
         foreach (var desiredType in GetSupportedTypes(dbTypeMap))
         {
-            var exists = dbTypeMap.TryGetRecommendedSqlTypeMatchingDotnetType(
-                desiredType,
-                null, null, null, null,
+            var exists = dbTypeMap.TryGetProviderSqlTypeMatchingDotnetType(
+                new DbProviderDotnetTypeDescriptor(desiredType),
                 out var sqlType
             );
 

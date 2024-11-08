@@ -8,7 +8,7 @@ public partial class SqliteMethods : DatabaseMethodsBase, IDatabaseMethods
 {
     public override DbProviderType ProviderType => DbProviderType.Sqlite;
 
-    public override IProviderTypeMap ProviderTypeMap => SqliteProviderTypeMap.Instance.Value;
+    public override IDbProviderTypeMap ProviderTypeMap => SqliteProviderTypeMap.Instance.Value;
 
     protected override string DefaultSchema => "";
 
@@ -24,7 +24,7 @@ public partial class SqliteMethods : DatabaseMethodsBase, IDatabaseMethods
         const string sql = "SELECT sqlite_version()";
         var versionString =
             await ExecuteScalarAsync<string>(db, sql, tx: tx).ConfigureAwait(false) ?? "";
-        return ProviderUtils.ExtractVersionFromVersionString(versionString);
+        return DbProviderUtils.ExtractVersionFromVersionString(versionString);
     }
 
     public override char[] QuoteChars => ['"'];

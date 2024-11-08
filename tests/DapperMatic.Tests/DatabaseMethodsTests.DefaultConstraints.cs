@@ -24,7 +24,7 @@ public abstract partial class DatabaseMethodsTests
         );
 
         // in MySQL, default constraints are not named, so this MUST use the ProviderUtils method which is what DapperMatic uses internally
-        var constraintName = ProviderUtils.GenerateDefaultConstraintName(
+        var constraintName = DbProviderUtils.GenerateDefaultConstraintName(
             testTableName,
             testColumnName
         );

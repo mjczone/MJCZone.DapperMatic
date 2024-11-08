@@ -16,7 +16,7 @@ public interface IDatabaseMethods
         IDatabaseViewMethods
 {
     DbProviderType ProviderType { get; }
-    IProviderTypeMap ProviderTypeMap { get; }
+    IDbProviderTypeMap ProviderTypeMap { get; }
 
     bool SupportsSchemas { get; }
 
@@ -39,9 +39,8 @@ public interface IDatabaseMethods
         CancellationToken cancellationToken = default
     );
 
-    (Type dotnetType, int? length, int? precision, int? scale, bool? isAutoIncrementing, Type[] allSupportedTypes)
-        GetDotnetTypeFromSqlType(string sqlType);
-    string GetSqlTypeFromDotnetType(Type type, int? length, int? precision, int? scale, bool? autoIncrementing);
+    DbProviderDotnetTypeDescriptor GetDotnetTypeFromSqlType(string sqlType);
+    string GetSqlTypeFromDotnetType(DbProviderDotnetTypeDescriptor descriptor);
 
     string NormalizeName(string name);
 }

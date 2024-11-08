@@ -1,4 +1,6 @@
 using System.Diagnostics.CodeAnalysis;
+using System.Runtime.CompilerServices;
+using System.Text.Json;
 
 namespace DapperMatic.Models;
 
@@ -16,7 +18,7 @@ public class DxColumn
         string tableName,
         string columnName,
         Type dotnetType,
-        string? providerDataType = null,
+        Dictionary<DbProviderType, string>? providerDataTypes = null,
         int? length = null,
         int? precision = null,
         int? scale = null,
@@ -38,13 +40,8 @@ public class DxColumn
         TableName = tableName;
         ColumnName = columnName;
         DotnetType = dotnetType;
-        ProviderDataType = providerDataType;
-        Length =
-            dotnetType == typeof(string)
-            && string.IsNullOrWhiteSpace(providerDataType)
-            && !length.HasValue
-                ? 255 /* a sensible default */
-                : length;
+        ProviderDataTypes = providerDataTypes ?? [];
+        Length = length;
         Precision = precision;
         Scale = scale;
         CheckExpression = checkExpression;
@@ -73,7 +70,7 @@ public class DxColumn
     /// <remarks>
     /// The provider data type should include the length, precision, and scale if applicable.
     /// </remarks>
-    public string? ProviderDataType { get; set; }
+    public Dictionary<DbProviderType, string> ProviderDataTypes { get; } = new();
     public int? Length { get; set; }
     public int? Precision { get; set; }
     public int? Scale { get; set; }
@@ -82,6 +79,7 @@ public class DxColumn
     public bool IsNullable { get; set; }
     public bool IsPrimaryKey { get; set; }
     public bool IsAutoIncrement { get; set; }
+    public bool IsUnicode { get; set; }
 
     /// <summary>
     /// Is either part of a single column unique constraint or a single column unique index.
@@ -193,7 +191,7 @@ public class DxColumn
     // ToString override to display column definition
     public override string ToString()
     {
-        return $"{ColumnName} ({ProviderDataType}) {(IsNullable ? "NULL" : "NOT NULL")}"
+        return $"{ColumnName} ({JsonSerializer.Serialize(ProviderDataTypes)}) {(IsNullable ? "NULL" : "NOT NULL")}"
             + $"{(IsPrimaryKey ? " PRIMARY KEY" : "")}"
             + $"{(IsUnique ? " UNIQUE" : "")}"
             + $"{(IsIndexed ? " INDEXED" : "")}"
@@ -201,5 +199,18 @@ public class DxColumn
             + $"{(IsAutoIncrement ? " AUTOINCREMENT" : "")}"
             + $"{(!string.IsNullOrWhiteSpace(CheckExpression) ? $" CHECK ({CheckExpression})" : "")}"
             + $"{(!string.IsNullOrWhiteSpace(DefaultExpression) ? $" DEFAULT {(DefaultExpression.Contains(' ') ? $"({DefaultExpression})" : DefaultExpression)}" : "")}";
+    }
+
+    public string? GetProviderDataType(DbProviderType providerType)
+    {
+        return ProviderDataTypes.TryGetValue(providerType, out var providerDataType)
+            ? providerDataType
+            : null;
+    }
+
+    public DxColumn SetProviderDataType(DbProviderType providerType, string providerDataType)
+    {
+        ProviderDataTypes[providerType] = providerDataType;
+        return this;
     }
 }

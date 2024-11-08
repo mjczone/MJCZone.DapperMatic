@@ -1,6 +1,6 @@
-﻿namespace DapperMatic.Providers;
+﻿namespace DapperMatic;
 
-public enum ProviderSqlTypeAffinity
+public enum DbProviderSqlTypeAffinity
 {
     Integer,
     Real,

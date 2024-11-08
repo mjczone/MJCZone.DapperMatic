@@ -1,3 +1,5 @@
+using DapperMatic.Models;
+
 namespace DapperMatic.Providers.SqlServer;
 
 public partial class SqlServerMethods
@@ -41,26 +43,26 @@ public partial class SqlServerMethods
 
     protected override (string sql, object parameters) SqlGetViewNames(
         string? schemaName,
-        string? viewNameFilter = null)
+        string? viewNameFilter = null
+    )
     {
         var where = string.IsNullOrWhiteSpace(viewNameFilter) ? "" : ToLikeString(viewNameFilter);
 
-        var sql =
-            $"""
-             
-                         SELECT
-                             v.[name] AS ViewName
-                         FROM sys.objects v
-                             INNER JOIN sys.sql_modules m ON v.object_id = m.object_id
-                         WHERE
-                             v.[type] = 'V'
-                             AND v.is_ms_shipped = 0                
-                             AND SCHEMA_NAME(v.schema_id) = @schemaName
-                             {(string.IsNullOrWhiteSpace(where) ? "" : " AND v.[name] LIKE @where")}
-                         ORDER BY
-                             SCHEMA_NAME(v.schema_id),
-                             v.[name]
-             """;
+        var sql = $"""
+
+                        SELECT
+                            v.[name] AS ViewName
+                        FROM sys.objects v
+                            INNER JOIN sys.sql_modules m ON v.object_id = m.object_id
+                        WHERE
+                            v.[type] = 'V'
+                            AND v.is_ms_shipped = 0                
+                            AND SCHEMA_NAME(v.schema_id) = @schemaName
+                            {(string.IsNullOrWhiteSpace(where) ? "" : " AND v.[name] LIKE @where")}
+                        ORDER BY
+                            SCHEMA_NAME(v.schema_id),
+                            v.[name]
+            """;
 
         return (sql, new { schemaName = NormalizeSchemaName(schemaName), where });
     }
@@ -72,24 +74,23 @@ public partial class SqlServerMethods
     {
         var where = string.IsNullOrWhiteSpace(viewNameFilter) ? "" : ToLikeString(viewNameFilter);
 
-        var sql =
-            $"""
-             
-                         SELECT
-                             SCHEMA_NAME(v.schema_id) AS SchemaName,
-                             v.[name] AS ViewName,
-                             m.definition AS Definition
-                         FROM sys.objects v
-                             INNER JOIN sys.sql_modules m ON v.object_id = m.object_id
-                         WHERE
-                             v.[type] = 'V'
-                             AND v.is_ms_shipped = 0                
-                             AND SCHEMA_NAME(v.schema_id) = @schemaName
-                             {(string.IsNullOrWhiteSpace(where) ? "" : " AND v.[name] LIKE @where")}
-                         ORDER BY
-                             SCHEMA_NAME(v.schema_id),
-                             v.[name]
-             """;
+        var sql = $"""
+
+                        SELECT
+                            SCHEMA_NAME(v.schema_id) AS SchemaName,
+                            v.[name] AS ViewName,
+                            m.definition AS Definition
+                        FROM sys.objects v
+                            INNER JOIN sys.sql_modules m ON v.object_id = m.object_id
+                        WHERE
+                            v.[type] = 'V'
+                            AND v.is_ms_shipped = 0                
+                            AND SCHEMA_NAME(v.schema_id) = @schemaName
+                            {(string.IsNullOrWhiteSpace(where) ? "" : " AND v.[name] LIKE @where")}
+                        ORDER BY
+                            SCHEMA_NAME(v.schema_id),
+                            v.[name]
+            """;
 
         return (sql, new { schemaName = NormalizeSchemaName(schemaName), where });
     }
@@ -109,12 +110,14 @@ public partial class SqlServerMethods
             if (i == definition.Length - 2)
                 break;
 
-            if (!WhiteSpaceCharacters.Contains(definition[i - 1])
+            if (
+                !WhiteSpaceCharacters.Contains(definition[i - 1])
                 || char.ToUpperInvariant(definition[i]) != 'A'
                 || char.ToUpperInvariant(definition[i + 1]) != 'S'
-                || !WhiteSpaceCharacters.Contains(definition[i + 2])) 
+                || !WhiteSpaceCharacters.Contains(definition[i + 2])
+            )
                 continue;
-            
+
             indexOfAs = i;
             break;
         }

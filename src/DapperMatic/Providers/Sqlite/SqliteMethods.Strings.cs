@@ -15,12 +15,13 @@ public partial class SqliteMethods
         // https://www.sqlite.org/autoinc.html
         if (column.IsAutoIncrement)
         {
-            column.ProviderDataType = SqliteTypes.sql_integer;
+            column.SetProviderDataType(ProviderType, SqliteTypes.sql_integer);
         }
+
         return base.SqlInlineColumnNameAndType(column, dbVersion);
     }
 
-    protected override string SqlInlinePrimaryKeyAutoIncrementColumnConstraint()
+    protected override string SqlInlinePrimaryKeyAutoIncrementColumnConstraint(DxColumn column)
     {
         return "AUTOINCREMENT";
     }

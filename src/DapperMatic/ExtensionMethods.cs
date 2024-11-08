@@ -9,6 +9,24 @@ namespace DapperMatic;
 [SuppressMessage("ReSharper", "MemberCanBePrivate.Global")]
 public static partial class ExtensionMethods
 {
+    public static string GetFriendlyName(this Type type)
+    {
+        if (type == null)
+            return "(Unknown Type)";
+
+        if (!type.IsGenericType)
+            return type.Name;
+
+        var genericTypeName = type.GetGenericTypeDefinition().Name;
+        var friendlyGenericTypeName = genericTypeName[..genericTypeName.LastIndexOf("`")];
+
+        var genericArguments = type.GetGenericArguments();
+        var genericArgumentNames = genericArguments.Select(GetFriendlyName).ToArray();
+        var genericTypeArgumentsString = string.Join(", ", genericArgumentNames);
+
+        return $"{friendlyGenericTypeName}<{genericTypeArgumentsString}>";
+    }
+
     public static TValue? GetFieldValue<TValue>(this object instance, string name)
     {
         var type = instance.GetType();
@@ -70,6 +88,22 @@ public static partial class ExtensionMethods
         }
 
         return [.. numbers];
+    }
+
+    public static string DiscardLengthPrecisionAndScaleFromSqlTypeName(this string sqlTypeName)
+    {
+        // extract the type name from the sql type name where a sqlTypeName might be "time(5, 2) without time zone" and the return value would be "time without time zone",
+        // it could also be "time (  122, 2 ) without time zone" and the return value would be "time without time zone
+        var openIndex = sqlTypeName.IndexOf('(');
+        var closeIndex = sqlTypeName.IndexOf(')');
+        var txt = (
+            openIndex > 0 && closeIndex > 0
+                ? sqlTypeName.Remove(openIndex, closeIndex - openIndex + 1)
+                : sqlTypeName
+        ).Trim();
+        while (txt.Contains("  "))
+            txt = txt.Replace("  ", " ");
+        return txt;
     }
 
     public static string ToQuotedIdentifier(

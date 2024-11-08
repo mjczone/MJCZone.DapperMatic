@@ -8,7 +8,7 @@ public partial class PostgreSqlMethods : DatabaseMethodsBase, IDatabaseMethods
 {
     public override DbProviderType ProviderType => DbProviderType.PostgreSql;
 
-    public override IProviderTypeMap ProviderTypeMap => PostgreSqlProviderTypeMap.Instance.Value;
+    public override IDbProviderTypeMap ProviderTypeMap => PostgreSqlProviderTypeMap.Instance.Value;
 
     private static string _defaultSchema = "public";
     protected override string DefaultSchema => _defaultSchema;
@@ -39,7 +39,7 @@ public partial class PostgreSqlMethods : DatabaseMethodsBase, IDatabaseMethods
         const string sql = "SELECT VERSION()";
         var versionString =
             await ExecuteScalarAsync<string>(db, sql, tx: tx).ConfigureAwait(false) ?? "";
-        return ProviderUtils.ExtractVersionFromVersionString(versionString);
+        return DbProviderUtils.ExtractVersionFromVersionString(versionString);
     }
 
     public override char[] QuoteChars => ['"'];

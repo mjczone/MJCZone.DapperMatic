@@ -135,10 +135,11 @@ public static partial class SqliteSqlParser
 
                 // if we don't recognize the column data type, we skip it
                 if (
-                    !providerTypeMap.TryGetRecommendedDotnetTypeMatchingSqlType(
+                    !providerTypeMap.TryGetDotnetTypeDescriptorMatchingFullSqlTypeName(
                         columnDataType,
-                        out var providerDataType
-                    ) || !providerDataType.HasValue
+                        out var dotnetTypeDescriptor
+                    )
+                    || dotnetTypeDescriptor == null
                 )
                     continue;
 
@@ -146,8 +147,11 @@ public static partial class SqliteSqlParser
                     null,
                     tableName,
                     columnName,
-                    providerDataType.Value.dotnetType,
-                    columnDataType,
+                    dotnetTypeDescriptor.DotnetType,
+                    new Dictionary<DbProviderType, string>
+                    {
+                        { DbProviderType.Sqlite, columnDataType }
+                    },
                     length,
                     precision,
                     scale
@@ -196,7 +200,7 @@ public static partial class SqliteSqlParser
                                     // add the default constraint to the table
                                     var defaultConstraintName =
                                         inlineConstraintName
-                                        ?? ProviderUtils.GenerateDefaultConstraintName(
+                                        ?? DbProviderUtils.GenerateDefaultConstraintName(
                                             tableName,
                                             columnName
                                         );
@@ -218,7 +222,7 @@ public static partial class SqliteSqlParser
                                 // add the default constraint to the table
                                 var uniqueConstraintName =
                                     inlineConstraintName
-                                    ?? ProviderUtils.GenerateUniqueConstraintName(
+                                    ?? DbProviderUtils.GenerateUniqueConstraintName(
                                         tableName,
                                         columnName
                                     );
@@ -247,7 +251,7 @@ public static partial class SqliteSqlParser
                                     // add the default constraint to the table
                                     var checkConstraintName =
                                         inlineConstraintName
-                                        ?? ProviderUtils.GenerateCheckConstraintName(
+                                        ?? DbProviderUtils.GenerateCheckConstraintName(
                                             tableName,
                                             columnName
                                         );
@@ -269,7 +273,7 @@ public static partial class SqliteSqlParser
                                 // add the default constraint to the table
                                 var pkConstraintName =
                                     inlineConstraintName
-                                    ?? ProviderUtils.GeneratePrimaryKeyConstraintName(
+                                    ?? DbProviderUtils.GeneratePrimaryKeyConstraintName(
                                         tableName,
                                         columnName
                                     );
@@ -323,7 +327,7 @@ public static partial class SqliteSqlParser
 
                                 var constraintName =
                                     inlineConstraintName
-                                    ?? ProviderUtils.GenerateForeignKeyConstraintName(
+                                    ?? DbProviderUtils.GenerateForeignKeyConstraintName(
                                         tableName,
                                         columnName,
                                         referencedTableName,
@@ -433,7 +437,7 @@ public static partial class SqliteSqlParser
                                     null,
                                     tableName,
                                     inlineConstraintName
-                                        ?? ProviderUtils.GeneratePrimaryKeyConstraintName(
+                                        ?? DbProviderUtils.GeneratePrimaryKeyConstraintName(
                                             tableName,
                                             pkColumnNames
                                         ),
@@ -472,7 +476,7 @@ public static partial class SqliteSqlParser
                                     null,
                                     tableName,
                                     inlineConstraintName
-                                        ?? ProviderUtils.GenerateUniqueConstraintName(
+                                        ?? DbProviderUtils.GenerateUniqueConstraintName(
                                             tableName,
                                             ucColumnNames
                                         ),
@@ -502,7 +506,7 @@ public static partial class SqliteSqlParser
                                     // add the default constraint to the table
                                     var checkConstraintName =
                                         inlineConstraintName
-                                        ?? ProviderUtils.GenerateCheckConstraintName(
+                                        ?? DbProviderUtils.GenerateCheckConstraintName(
                                             tableName,
                                             table.CheckConstraints.Count > 0
                                                 ? $"{table.CheckConstraints.Count}"
@@ -564,7 +568,7 @@ public static partial class SqliteSqlParser
 
                                 var constraintName =
                                     inlineConstraintName
-                                    ?? ProviderUtils.GenerateForeignKeyConstraintName(
+                                    ?? DbProviderUtils.GenerateForeignKeyConstraintName(
                                         tableName,
                                         fkSourceColumnNames,
                                         referencedTableName,

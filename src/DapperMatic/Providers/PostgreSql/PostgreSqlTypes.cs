@@ -19,7 +19,7 @@ public static class PostgreSqlTypes
     public const string sql_int8 = "int8";
     public const string sql_bigserial = "bigserial";
     public const string sql_serial8 = "serial8";
-    
+
     // real
     public const string sql_float4 = "float4";
     public const string sql_real = "real";
@@ -28,7 +28,7 @@ public static class PostgreSqlTypes
     public const string sql_money = "money";
     public const string sql_numeric = "numeric";
     public const string sql_decimal = "decimal";
-    
+
     // bool
     public const string sql_bool = "bool";
     public const string sql_boolean = "boolean";
@@ -44,7 +44,7 @@ public static class PostgreSqlTypes
     public const string sql_timestamp = "timestamp";
     public const string sql_timestamp_with_time_zone = "timestamp with time zone";
     public const string sql_timestamptz = "timestamptz";
-    
+
     // text
     public const string sql_bit = "bit";
     public const string sql_bit_varying = "bit varying";
@@ -61,10 +61,10 @@ public static class PostgreSqlTypes
     public const string sql_jsonb = "jsonb";
     public const string sql_jsonpath = "jsonpath";
     public const string sql_xml = "xml";
-    
+
     // binary
     public const string sql_bytea = "bytea";
-    
+
     // geometry
     public const string sql_box = "box";
     public const string sql_circle = "circle";
