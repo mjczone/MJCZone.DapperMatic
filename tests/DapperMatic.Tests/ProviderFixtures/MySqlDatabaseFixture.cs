@@ -18,23 +18,17 @@ public class MySql_57_DatabaseFixture : MySqlDatabaseFixture
 {
     public MySql_57_DatabaseFixture()
         : base("mysql:5.7") { }
-}
 
-public class MariaDb_11_2_DatabaseFixture : MySqlDatabaseFixture
-{
-    public MariaDb_11_2_DatabaseFixture()
-        : base("mariadb:11.2") { }
-}
-
-public class MariaDb_10_11_DatabaseFixture : MySqlDatabaseFixture
-{
-    public MariaDb_10_11_DatabaseFixture()
-        : base("mariadb:10.11") { }
+    public override bool IgnoreSqlType(string sqlType)
+    {
+        return sqlType.Equals("geomcollection", StringComparison.OrdinalIgnoreCase)
+            || base.IgnoreSqlType(sqlType);
+    }
 }
 
 public abstract class MySqlDatabaseFixture(string imageName) : DatabaseFixtureBase<MySqlContainer>
 {
-    private readonly MySqlContainer container = new MySqlBuilder()
+    private readonly MySqlContainer _container = new MySqlBuilder()
         .WithImage(imageName)
         .WithPassword("Strong_password_123!")
         .WithAutoRemove(true)
@@ -43,6 +37,6 @@ public abstract class MySqlDatabaseFixture(string imageName) : DatabaseFixtureBa
 
     public override MySqlContainer Container
     {
-        get { return container; }
+        get { return _container; }
     }
 }

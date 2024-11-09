@@ -13,4 +13,6 @@ public abstract class DatabaseFixtureBase<TContainer> : IDatabaseFixture, IAsync
     public virtual Task InitializeAsync() => Container.StartAsync();
 
     public virtual Task DisposeAsync() => Container.DisposeAsync().AsTask();
+    
+    public virtual bool IgnoreSqlType(string sqlType) => false;
 }
