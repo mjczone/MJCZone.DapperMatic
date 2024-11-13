@@ -10,18 +10,12 @@ public class DbProviderDotnetTypeDescriptor
         int? length = null,
         int? precision = null,
         int? scale = null,
-        bool? autoIncrement = false,
-        bool? unicode = false,
+        bool? autoIncrement = null,
+        bool? unicode = null,
         Type[]? otherSupportedTypes = null
     )
     {
-        DotnetType =
-            (
-                dotnetType.IsGenericType
-                && dotnetType.GetGenericTypeDefinition() == typeof(Nullable<>)
-            )
-                ? Nullable.GetUnderlyingType(dotnetType)!
-                : dotnetType;
+        DotnetType = dotnetType.OrUnderlyingTypeIfNullable();
         Length = length;
         Precision = precision;
         Scale = scale;
@@ -41,29 +35,32 @@ public class DbProviderDotnetTypeDescriptor
     public bool? Unicode { get; init; }
 
     private Type[] otherSupportedTypes = [];
-    public Type[] AllSupportedTypes
+    public Type[] SupportedTypes
     {
         get => [DotnetType, .. otherSupportedTypes.Where(t => t != DotnetType).Distinct()];
         set => otherSupportedTypes = value;
     }
 
+    /// <summary>
+    /// Describes the object as a string
+    /// </summary>
     public override string ToString()
     {
         var sb = new StringBuilder();
         sb.Append(DotnetType.GetFriendlyName());
-        if (Length.HasValue)
+        if (Length.GetValueOrDefault(0) > 0)
         {
             sb.Append($" LENGTH({Length})");
         }
-        if (Precision.HasValue)
+        if (Precision.GetValueOrDefault(0) > 0)
         {
             sb.Append($" PRECISION({Precision})");
         }
-        if (AutoIncrement.HasValue)
+        if (AutoIncrement.GetValueOrDefault(false) == true)
         {
             sb.Append(" AUTO_INCREMENT");
         }
-        if (Unicode.HasValue)
+        if (Unicode.GetValueOrDefault(false) == true)
         {
             sb.Append(" UNICODE");
         }

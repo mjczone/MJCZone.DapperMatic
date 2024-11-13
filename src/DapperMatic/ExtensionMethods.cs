@@ -7,8 +7,44 @@ namespace DapperMatic;
 
 [SuppressMessage("ReSharper", "UnusedMember.Global")]
 [SuppressMessage("ReSharper", "MemberCanBePrivate.Global")]
-public static partial class ExtensionMethods
+internal static partial class ExtensionMethods
 {
+    public static Type OrUnderlyingTypeIfNullable(this Type type)
+    {
+        return (type.IsGenericType && type.GetGenericTypeDefinition() == typeof(Nullable<>))
+            ? Nullable.GetUnderlyingType(type)!
+            : type;
+    }
+
+    public static IDictionary<string, object?> ToObjectDictionary(this object source)
+    {
+        if (source is IDictionary<string, object?> dict2)
+        {
+            return dict2;
+        }
+
+        // If source is already a dictionary, return it as-is
+        if (source is IDictionary<string, object> dict)
+        {
+#pragma warning disable CS8619 // Nullability of reference types in value doesn't match target type.
+            return dict;
+#pragma warning restore CS8619 // Nullability of reference types in value doesn't match target type.
+        }
+        // Otherwise use reflection to convert the object into a dictionary
+        else
+        {
+            var type = source.GetType();
+            if (type == null)
+                return new Dictionary<string, object?>();
+
+            return type.GetProperties()
+                .ToDictionary(
+                    propInfo => propInfo.Name,
+                    propInfo => propInfo.GetValue(source, null)
+                );
+        }
+    }
+
     public static string GetFriendlyName(this Type type)
     {
         if (type == null)

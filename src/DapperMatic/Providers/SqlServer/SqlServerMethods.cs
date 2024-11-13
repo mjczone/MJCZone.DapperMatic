@@ -1,10 +1,9 @@
 using System.Data;
-using DapperMatic.Interfaces;
 using DapperMatic.Providers.Base;
 
 namespace DapperMatic.Providers.SqlServer;
 
-public partial class SqlServerMethods : DatabaseMethodsBase, IDatabaseMethods
+public partial class SqlServerMethods : DatabaseMethodsBase<SqlServerMethods>, ISqlServerMethods
 {
     public override DbProviderType ProviderType => DbProviderType.SqlServer;
 

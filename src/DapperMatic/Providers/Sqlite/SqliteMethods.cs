@@ -1,10 +1,9 @@
 using System.Data;
-using DapperMatic.Interfaces;
 using DapperMatic.Providers.Base;
 
 namespace DapperMatic.Providers.Sqlite;
 
-public partial class SqliteMethods : DatabaseMethodsBase, IDatabaseMethods
+public partial class SqliteMethods : DatabaseMethodsBase<SqliteMethods>, ISqliteMethods
 {
     public override DbProviderType ProviderType => DbProviderType.Sqlite;
 

@@ -23,7 +23,7 @@ public abstract partial class DatabaseMethodsTests : TestBase
         // run a statement with many sql statements at the same time
         await db.ExecuteAsync(
             """
-            
+
                         CREATE TABLE test (id INT PRIMARY KEY);
                         INSERT INTO test VALUES (1);
                         INSERT INTO test VALUES (2);
@@ -37,7 +37,7 @@ public abstract partial class DatabaseMethodsTests : TestBase
         // run multiple select statements and read multiple result sets
         var result = await db.QueryMultipleAsync(
             """
-            
+
                         SELECT id FROM test WHERE id = 1;
                         SELECT id FROM test WHERE id = 2;
                         SELECT id FROM test;
@@ -67,41 +67,5 @@ public abstract partial class DatabaseMethodsTests : TestBase
         Assert.True(version.Major > 0);
 
         Output.WriteLine("Database version: {0}", version);
-    }
-
-    [Theory]
-    [InlineData(null)]
-    [InlineData("my_app")]
-    protected virtual async Task GetLastSqlWithParamsAsync_ReturnsLastSqlWithParams(
-        string? schemaName
-    )
-    {
-        using var db = await OpenConnectionAsync();
-        await InitFreshSchemaAsync(db, schemaName);
-
-        var tableNames = await db.GetTableNamesAsync(schemaName, "testing*");
-
-        var (lastSql, lastParams) = db.GetLastSqlWithParams();
-        Assert.NotEmpty(lastSql);
-        Assert.NotNull(lastParams);
-
-        Output.WriteLine("Last SQL: {0}", lastSql);
-        Output.WriteLine("Last Parameters: {0}", JsonConvert.SerializeObject(lastParams));
-    }
-
-    [Theory]
-    [InlineData(null)]
-    [InlineData("my_app")]
-    protected virtual async Task GetLastSqlAsync_ReturnsLastSql(string? schemaName)
-    {
-        using var db = await OpenConnectionAsync();
-        await InitFreshSchemaAsync(db, schemaName);
-
-        var tableNames = await db.GetTableNamesAsync(schemaName, "testing*");
-
-        var lastSql = db.GetLastSql();
-        Assert.NotEmpty(lastSql);
-
-        Output.WriteLine("Last SQL: {0}", lastSql);
     }
 }

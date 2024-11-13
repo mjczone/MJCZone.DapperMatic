@@ -1,7 +1,4 @@
 using System.Data;
-using DapperMatic.Logging;
-using DapperMatic.Tests.Logging;
-using Microsoft.Extensions.Logging;
 using Xunit.Abstractions;
 
 namespace DapperMatic.Tests;
@@ -13,12 +10,6 @@ public abstract class TestBase : IDisposable
     protected TestBase(ITestOutputHelper output)
     {
         Output = output;
-
-        var loggerFactory = LoggerFactory.Create(builder =>
-        {
-            builder.AddProvider(new TestLoggerProvider(output));
-        });
-        DxLogger.SetLoggerFactory(loggerFactory);
     }
 
     protected async Task InitFreshSchemaAsync(IDbConnection db, string? schemaName)
@@ -47,7 +38,7 @@ public abstract class TestBase : IDisposable
 
     public virtual void Dispose()
     {
-        DxLogger.SetLoggerFactory(LoggerFactory.Create(builder => builder.ClearProviders()));
+        // nothing to dispose
     }
 
     protected void Log(string message)

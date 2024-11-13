@@ -1,4 +1,5 @@
 using System.Data;
+using DapperMatic.Models;
 using DapperMatic.Providers;
 
 namespace DapperMatic.Interfaces;
@@ -30,9 +31,6 @@ public interface IDatabaseMethods
         IDbTransaction? tx = null,
         CancellationToken cancellationToken = default
     );
-
-    string GetLastSql(IDbConnection db);
-    (string sql, object? parameters) GetLastSqlWithParams(IDbConnection db);
     Task<Version> GetDatabaseVersionAsync(
         IDbConnection db,
         IDbTransaction? tx = null,
@@ -40,6 +38,7 @@ public interface IDatabaseMethods
     );
 
     DbProviderDotnetTypeDescriptor GetDotnetTypeFromSqlType(string sqlType);
+
     string GetSqlTypeFromDotnetType(DbProviderDotnetTypeDescriptor descriptor);
 
     string NormalizeName(string name);

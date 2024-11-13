@@ -1,10 +1,9 @@
 using System.Data;
-using DapperMatic.Interfaces;
 using DapperMatic.Providers.Base;
 
 namespace DapperMatic.Providers.MySql;
 
-public partial class MySqlMethods : DatabaseMethodsBase, IDatabaseMethods
+public partial class MySqlMethods : DatabaseMethodsBase<MySqlMethods>, IMySqlMethods
 {
     public override DbProviderType ProviderType => DbProviderType.MySql;
 

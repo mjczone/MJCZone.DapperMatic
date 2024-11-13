@@ -11,14 +11,9 @@ namespace DapperMatic;
 public static class DbConnectionExtensions
 {
     #region IDatabaseMethods
-    public static string GetLastSql(this IDbConnection db)
+    public static DbProviderType GetDbProviderType(this IDbConnection db)
     {
-        return Database(db).GetLastSql(db);
-    }
-
-    public static (string sql, object? parameters) GetLastSqlWithParams(this IDbConnection db)
-    {
-        return Database(db).GetLastSqlWithParams(db);
+        return Database(db).ProviderType;
     }
 
     public static async Task<Version> GetDatabaseVersionAsync(
@@ -43,16 +38,24 @@ public static class DbConnectionExtensions
         return Database(db).GetDotnetTypeFromSqlType(sqlType);
     }
 
-    public static string NormalizeName(this IDbConnection db, string name)
+    public static string GetSqlTypeFromDotnetType(
+        this IDbConnection db,
+        DbProviderDotnetTypeDescriptor descriptor
+    )
     {
-        return Database(db).NormalizeName(name);
+        return Database(db).GetSqlTypeFromDotnetType(descriptor);
     }
+
+    // public static string NormalizeName(this IDbConnection db, string name)
+    // {
+    //     return Database(db).NormalizeName(name);
+    // }
     #endregion // IDatabaseMethods
 
     #region Private static methods
     private static IDatabaseMethods Database(this IDbConnection db)
     {
-        return DatabaseMethodsFactory.GetDatabaseMethods(db);
+        return DatabaseMethodsProvider.GetMethods(db);
     }
     #endregion // Private static methods
 

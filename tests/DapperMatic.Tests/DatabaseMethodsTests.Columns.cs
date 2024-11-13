@@ -1,5 +1,6 @@
 using DapperMatic.Models;
 using DapperMatic.Providers;
+using Npgsql;
 
 namespace DapperMatic.Tests;
 
@@ -115,7 +116,7 @@ public abstract partial class DatabaseMethodsTests
         );
         Assert.True(columnCreated);
 
-        if (db.GetDbProviderType() == DbProviderType.PostgreSql)
+        if (db is NpgsqlConnection)
         {
             columnCreated = await db.CreateColumnIfNotExistsAsync(
                 new DxColumn(

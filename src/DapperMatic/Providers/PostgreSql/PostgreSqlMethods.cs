@@ -1,10 +1,9 @@
 using System.Data;
-using DapperMatic.Interfaces;
 using DapperMatic.Providers.Base;
 
 namespace DapperMatic.Providers.PostgreSql;
 
-public partial class PostgreSqlMethods : DatabaseMethodsBase, IDatabaseMethods
+public partial class PostgreSqlMethods : DatabaseMethodsBase<PostgreSqlMethods>, IPostgreSqlMethods
 {
     public override DbProviderType ProviderType => DbProviderType.PostgreSql;
 

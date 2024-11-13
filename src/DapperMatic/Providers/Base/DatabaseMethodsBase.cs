@@ -1,12 +1,62 @@
-using System.Collections.Concurrent;
 using System.Data;
-using System.Text.Json;
 using Dapper;
 using DapperMatic.Interfaces;
-using DapperMatic.Logging;
-using Microsoft.Extensions.Logging;
+using DapperMatic.Models;
 
 namespace DapperMatic.Providers.Base;
+
+public abstract class DatabaseMethodsBase<TMethodsImpl> : DatabaseMethodsBase
+{
+    protected override async Task<List<TOutput>> QueryAsync<TOutput>(
+        IDbConnection db,
+        string sql,
+        object? param = null,
+        IDbTransaction? tx = null,
+        int? commandTimeout = null,
+        CommandType? commandType = null,
+        CancellationToken cancellationToken = default
+    )
+    {
+        return (
+            await db.QueryAsync<TOutput>(sql, param, tx, commandTimeout, commandType)
+                .ConfigureAwait(false)
+        ).AsList();
+    }
+
+    protected override async Task<TOutput?> ExecuteScalarAsync<TOutput>(
+        IDbConnection db,
+        string sql,
+        object? param = null,
+        IDbTransaction? tx = null,
+        int? commandTimeout = null,
+        CommandType? commandType = null,
+        CancellationToken cancellationToken = default
+    )
+        where TOutput : default
+    {
+        var result = await db.ExecuteScalarAsync<TOutput>(
+            sql,
+            param,
+            tx,
+            commandTimeout,
+            commandType
+        );
+        return result;
+    }
+
+    protected override async Task<int> ExecuteAsync(
+        IDbConnection db,
+        string sql,
+        object? param = null,
+        IDbTransaction? tx = null,
+        int? commandTimeout = null,
+        CommandType? commandType = null,
+        CancellationToken cancellationToken = default
+    )
+    {
+        return await db.ExecuteAsync(sql, param, tx, commandTimeout, commandType);
+    }
+}
 
 public abstract partial class DatabaseMethodsBase : IDatabaseMethods
 {
@@ -35,8 +85,6 @@ public abstract partial class DatabaseMethodsBase : IDatabaseMethods
         IDbTransaction? tx = null,
         CancellationToken cancellationToken = default
     ) => Task.FromResult(true);
-
-    private ILogger Logger => DxLogger.CreateLogger(GetType());
 
     public virtual DbProviderDotnetTypeDescriptor GetDotnetTypeFromSqlType(string sqlType)
     {
@@ -128,152 +176,41 @@ public abstract partial class DatabaseMethodsBase : IDatabaseMethods
         return providerDataType.Name;
     }
 
-    internal readonly ConcurrentDictionary<string, (string sql, object? parameters)> LastSqls =
-        new();
-
     public abstract Task<Version> GetDatabaseVersionAsync(
         IDbConnection db,
         IDbTransaction? tx = null,
         CancellationToken cancellationToken = default
     );
 
-    public string GetLastSql(IDbConnection db)
-    {
-        return LastSqls.TryGetValue(db.ConnectionString, out var sql) ? sql.sql : "";
-    }
-
-    public (string sql, object? parameters) GetLastSqlWithParams(IDbConnection db)
-    {
-        return LastSqls.TryGetValue(db.ConnectionString, out var sql) ? sql : ("", null);
-    }
-
-    private void SetLastSql(IDbConnection db, string sql, object? param = null)
-    {
-        LastSqls.AddOrUpdate(db.ConnectionString, (sql, param), (_, _) => (sql, param));
-    }
-
-    protected virtual async Task<List<TOutput>> QueryAsync<TOutput>(
+    protected abstract Task<List<TOutput>> QueryAsync<TOutput>(
         IDbConnection db,
         string sql,
         object? param = null,
         IDbTransaction? tx = null,
         int? commandTimeout = null,
-        CommandType? commandType = null
-    )
-    {
-        try
-        {
-            Log(
-                LogLevel.Debug,
-                "[{provider}] Executing SQL query: {sql}, with parameters {parameters}",
-                ProviderType,
-                sql,
-                param == null ? "{}" : JsonSerializer.Serialize(param)
-            );
+        CommandType? commandType = null,
+        CancellationToken cancellationToken = default
+    );
 
-            SetLastSql(db, sql, param);
-            return (
-                await db.QueryAsync<TOutput>(sql, param, tx, commandTimeout, commandType)
-                    .ConfigureAwait(false)
-            ).AsList();
-        }
-        catch (Exception ex)
-        {
-            Log(
-                LogLevel.Error,
-                ex,
-                "An error occurred while executing {provider} SQL query with map {providerMap}: \n{message}\n{sql}, with parameters {parameters}.",
-                ProviderType,
-                ProviderTypeMap.GetType().Name,
-                ex.Message,
-                sql,
-                param == null ? "{}" : JsonSerializer.Serialize(param)
-            );
-            throw;
-        }
-    }
-
-    protected virtual async Task<TOutput?> ExecuteScalarAsync<TOutput>(
+    protected abstract Task<TOutput?> ExecuteScalarAsync<TOutput>(
         IDbConnection db,
         string sql,
         object? param = null,
         IDbTransaction? tx = null,
         int? commandTimeout = null,
-        CommandType? commandType = null
-    )
-    {
-        try
-        {
-            Log(
-                LogLevel.Debug,
-                "[{provider}] Executing SQL scalar: {sql}, with parameters {parameters}",
-                ProviderType,
-                sql,
-                param == null ? "{}" : JsonSerializer.Serialize(param)
-            );
+        CommandType? commandType = null,
+        CancellationToken cancellationToken = default
+    );
 
-            SetLastSql(db, sql, param);
-            return await db.ExecuteScalarAsync<TOutput>(
-                sql,
-                param,
-                tx,
-                commandTimeout,
-                commandType
-            );
-        }
-        catch (Exception ex)
-        {
-            Log(
-                LogLevel.Error,
-                ex,
-                "An error occurred while executing {provider} SQL scalar query with map {providerMap}: \n{message}\n{sql}, with parameters {parameters}.",
-                ProviderType,
-                ProviderTypeMap.GetType().Name,
-                ex.Message,
-                sql,
-                param == null ? "{}" : JsonSerializer.Serialize(param)
-            );
-            throw;
-        }
-    }
-
-    protected virtual async Task<int> ExecuteAsync(
+    protected abstract Task<int> ExecuteAsync(
         IDbConnection db,
         string sql,
         object? param = null,
         IDbTransaction? tx = null,
         int? commandTimeout = null,
-        CommandType? commandType = null
-    )
-    {
-        try
-        {
-            Log(
-                LogLevel.Debug,
-                "[{provider}] Executing SQL statement: {sql}, with parameters {parameters}",
-                ProviderType,
-                sql,
-                param == null ? "{}" : JsonSerializer.Serialize(param)
-            );
-
-            SetLastSql(db, sql, param);
-            return await db.ExecuteAsync(sql, param, tx, commandTimeout, commandType);
-        }
-        catch (Exception ex)
-        {
-            Log(
-                LogLevel.Error,
-                ex,
-                "An error occurred while executing {provider} SQL statement with map {providerMap}: \n{message}\n{sql}, with parameters {parameters}.",
-                ProviderType,
-                ProviderTypeMap.GetType().Name,
-                ex.Message,
-                sql,
-                param == null ? "{}" : JsonSerializer.Serialize(param)
-            );
-            throw;
-        }
-    }
+        CommandType? commandType = null,
+        CancellationToken cancellationToken = default
+    );
 
     public abstract char[] QuoteChars { get; }
 
@@ -354,42 +291,5 @@ public abstract partial class DatabaseMethodsBase : IDatabaseMethods
             identifierName = NormalizeName(identifierName);
 
         return (schemaName, tableName ?? "", identifierName ?? "");
-    }
-
-    // ReSharper disable once MemberCanBePrivate.Global
-    protected void Log(LogLevel logLevel, string message, params object?[] args)
-    {
-        if (!Logger.IsEnabled(logLevel))
-            return;
-
-        try
-        {
-            Logger.Log(logLevel, message, args);
-        }
-        catch (Exception ex)
-        {
-            Console.WriteLine(ex);
-        }
-    }
-
-    // ReSharper disable once MemberCanBePrivate.Global
-    protected void Log(
-        LogLevel logLevel,
-        Exception exception,
-        string message,
-        params object?[] args
-    )
-    {
-        if (!Logger.IsEnabled(logLevel))
-            return;
-
-        try
-        {
-            Logger.Log(logLevel, exception, message, args);
-        }
-        catch (Exception ex)
-        {
-            Console.WriteLine(ex);
-        }
     }
 }

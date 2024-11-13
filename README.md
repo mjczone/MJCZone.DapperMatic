@@ -7,7 +7,9 @@
 Additional extensions leveraging Dapper
 
 - [DapperMatic](#dappermatic)
-  - [Supported Providers](#supported-providers)
+  - [Method Providers](#method-providers)
+    - [Built-in Providers](#built-in-providers)
+    - [Custom Providers](#custom-providers)
   - [Models](#models)
     - [Model related factory methods](#model-related-factory-methods)
   - [`IDbConnection` CRUD extension methods](#idbconnection-crud-extension-methods)
@@ -25,8 +27,11 @@ Additional extensions leveraging Dapper
   - [Testing](#testing)
   - [Reference](#reference)
     - [Provider documentation links](#provider-documentation-links)
+    - [Future plans (t.b.d.)](#future-plans-tbd)
 
-## Supported Providers
+## Method Providers
+
+### Built-in Providers
 
 Unit tests against versions in parenthesis.
 
@@ -37,6 +42,63 @@ Unit tests against versions in parenthesis.
 - [x] SQL Server (v2017, v2019, v2022)
 - [ ] Oracle
 - [ ] IBM DB2
+
+### Custom Providers
+
+To register a custom provider, first override the `IDatabaseMethods`, and `IDatabaseMethodsFactory` interfaces:
+
+```csharp
+namespace PestControl.Foundry;
+
+public class CentipedeDbConnection: System.Data.Common.DbConnection
+{
+    // ...
+}
+
+public class CentipedeDbMethods: DapperMatic.Interfaces.IDatabaseMethods
+{
+    // ...
+}
+
+public class CentipedeDbMethodsFactory : DapperMatic.Providers.DatabaseMethodsFactoryBase
+{
+    public override bool SupportsConnection(IDbConnection db)
+        => connection.GetType().Name == nameof(CentipedeDbConnection);
+
+    protected override IDatabaseMethods CreateMethodsCore()
+        => new CentipedeDbMethods();
+}
+```
+
+Then register the provider:
+
+```csharp
+DatabaseMethodsProvider.RegisterFactory("CentipedeDb", new PestControl.Foundry.CentipedeDbMethodsFactory());
+```
+
+### Extending an existing Provider Factory
+
+You may want to use a library that wraps an existing `IDbConnection` (e.g., ProfiledDbConnection with MiniProfiler). In that case, you can simply extend
+a built-in factory and register your new factory implementation with DapperMatic.
+
+Your factory class would like like this.
+
+```csharp
+public class ProfiledPostgreSqlMethodsFactory: PostgreSqlMethodsFactory
+{
+    public override bool SupportsConnectionCustom(IDbConnection db)
+    {
+        return (db is ProfiledDbConnection pdc) ? base.SupportsConnectionCustom(pdc.InnerConnection): false; 
+    }
+}
+```
+
+Then register the factory as follows.
+
+```csharp
+DatabaseMethodsProvider.RegisterFactory(
+    "ProfiledDbConnection.PostgreSql", new ProfiledPostgreSqlMethodsFactory());
+```
 
 ## Models
 
@@ -73,9 +135,11 @@ DxView view = DxViewFactory.GetView(typeof(vw_onboarded_employees))
 
 All methods are async and support an optional transaction (recommended), and cancellation token.
 
-The schema name is nullable on all methods, as many database providers don't support schemas (e.g., SQLite and MySql). If a database supports schemas, and the schema name passed in is `null` or an empty string, then a default schema name is used for that database provider.
+### About `Schemas`
 
-The following default schemas apply:
+The schema name parameter is nullable in all methods, as many database providers don't support schemas (e.g., SQLite and MySql). If a database supports schemas, and the schema name passed in is `null` or an empty string, then a default schema name is used for that database provider.
+
+The following default schema names apply:
 
 - SqLite: "" (empty string)
 - MySql: "" (empty string)
@@ -88,10 +152,21 @@ The following default schemas apply:
 using var db = await connectionFactory.OpenConnectionAsync();
 using var tx = db.BeginTransaction();
 
+// Get the version of the database (e.g., 3.46.1 for a SQLite database)
 Version version = await db.GetDatabaseVersionAsync(tx, cancellationToken);
 
-// Check to see if the database supports schemas
-var supportsSchemas = db.SupportsSchemas();
+// Get a .NET type descriptor for a provider specific sql type
+DbProviderDotnetTypeDescriptor descriptor = db.GetDotnetTypeFromSqlType("nvarchar(255)");
+// descriptor.AutoIncrement -> False
+// descriptor.DotnetType -> typeof (String)
+// descriptor.Length -> 255
+// descriptor.Precision -> null
+// descriptor.Scale -> null
+// descriptor.Unicode -> True
+
+// Get a .NET type descriptor for a provider specific sql type
+string sqlType = db.GetSqlTypeFromDotnetType(new DbProviderDotnetTypeDescriptor(typeof(string), 47, unicode: true));
+// sqlType => nvarchar(47)
 
 // Get the mapped .NET type matching a specific provider sql data type (e.g., varchar(255), decimal(15,4))
 var (/* Type */ dotnetType, /* int? */ length, /* int? */ precision, /* int? */ scale) = db.GetDotnetTypeFromSqlType(string sqlType);
@@ -109,6 +184,9 @@ var lastSql = db.GetLastSql();
 ```cs
 using var db = await connectionFactory.OpenConnectionAsync();
 using var tx = db.BeginTransaction();
+
+// Check to see if the database supports schemas
+var supportsSchemas = db.SupportsSchemas();
 
 // EXISTS: Check to see if a database schema exists
 bool exists = await db.DoesSchemaExistAsync("app", tx, cancellationToken);

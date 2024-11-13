@@ -57,8 +57,8 @@ public abstract class DbProviderTypeMapBase : IDbProviderTypeMap
 
         // perform some detective reasoning to pinpoint a recommended type
         var numbers = fullSqlType.ExtractNumbers();
-        var isAutoIncrementing = providerSqlType.AutoIncrementsAutomatically;
-        var unicode = providerSqlType.IsUnicode;
+        var isAutoIncrementing = providerSqlType.AutoIncrementsAutomatically ? (bool?)true : null;
+        var unicode = providerSqlType.IsUnicode ? (bool?)true : null;
 
         switch (providerSqlType.Affinity)
         {
@@ -225,6 +225,13 @@ public abstract class DbProviderTypeMapBase : IDbProviderTypeMap
                 int? length = numbers.Length > 0 ? numbers[0] : null;
                 if (length >= 8000)
                     length = int.MaxValue;
+                if (unicode != true)
+                {
+                    unicode =
+                        fullSqlType.Contains("nchar", StringComparison.OrdinalIgnoreCase)
+                        || fullSqlType.Contains("nvarchar", StringComparison.OrdinalIgnoreCase)
+                        || fullSqlType.Contains("ntext", StringComparison.OrdinalIgnoreCase);
+                }
                 descriptor = new(
                     typeof(string),
                     length: length,
