@@ -3,11 +3,12 @@ using DapperMatic.Providers.Base;
 
 namespace DapperMatic.Providers.SqlServer;
 
-public partial class SqlServerMethods : DatabaseMethodsBase<SqlServerMethods>, ISqlServerMethods
+public partial class SqlServerMethods
+    : DatabaseMethodsBase<SqlServerProviderTypeMap>,
+        ISqlServerMethods
 {
-    public override DbProviderType ProviderType => DbProviderType.SqlServer;
-
-    public override IDbProviderTypeMap ProviderTypeMap => SqlServerProviderTypeMap.Instance.Value;
+    internal SqlServerMethods()
+        : base(DbProviderType.SqlServer) { }
 
     private static string _defaultSchema = "dbo";
     protected override string DefaultSchema => _defaultSchema;
@@ -16,8 +17,6 @@ public partial class SqlServerMethods : DatabaseMethodsBase<SqlServerMethods>, I
     {
         _defaultSchema = schema;
     }
-
-    internal SqlServerMethods() { }
 
     public override async Task<Version> GetDatabaseVersionAsync(
         IDbConnection db,

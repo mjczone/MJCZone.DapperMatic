@@ -30,7 +30,7 @@ public static class DbConnectionExtensions
         return Database(db).ProviderTypeMap;
     }
 
-    public static DbProviderDotnetTypeDescriptor GetDotnetTypeFromSqlType(
+    public static DotnetTypeDescriptor GetDotnetTypeFromSqlType(
         this IDbConnection db,
         string sqlType
     )
@@ -40,7 +40,7 @@ public static class DbConnectionExtensions
 
     public static string GetSqlTypeFromDotnetType(
         this IDbConnection db,
-        DbProviderDotnetTypeDescriptor descriptor
+        DotnetTypeDescriptor descriptor
     )
     {
         return Database(db).GetSqlTypeFromDotnetType(descriptor);

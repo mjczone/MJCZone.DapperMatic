@@ -3,11 +3,9 @@ using DapperMatic.Providers.Base;
 
 namespace DapperMatic.Providers.MySql;
 
-public partial class MySqlMethods : DatabaseMethodsBase<MySqlMethods>, IMySqlMethods
+public partial class MySqlMethods : DatabaseMethodsBase<MySqlProviderTypeMap>, IMySqlMethods
 {
-    public override DbProviderType ProviderType => DbProviderType.MySql;
-
-    public override IDbProviderTypeMap ProviderTypeMap => MySqlProviderTypeMap.Instance.Value;
+    internal MySqlMethods(): base(DbProviderType.MySql) { }
 
     protected override string DefaultSchema => "";
 
@@ -36,8 +34,6 @@ public partial class MySqlMethods : DatabaseMethodsBase<MySqlMethods>, IMySqlMet
     {
         return Task.FromResult(false);
     }
-
-    internal MySqlMethods() { }
 
     public override async Task<Version> GetDatabaseVersionAsync(
         IDbConnection db,

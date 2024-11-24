@@ -2,434 +2,739 @@ using System.Collections;
 using System.Collections.Immutable;
 using System.Collections.ObjectModel;
 using System.Collections.Specialized;
+using System.Numerics;
 using System.Text.Json;
 using System.Text.Json.Nodes;
+using System.Xml.Linq;
 
 namespace DapperMatic.Providers.MySql;
 
-public sealed class MySqlProviderTypeMap : DbProviderTypeMapBase
+// See:
+// https://dev.mysql.com/doc/connector-net/en/
+// https://stackoverflow.com/questions/67101765/c-sharp-mysql-dapper-mysqlgeometry
+public sealed class MySqlProviderTypeMap : DbProviderTypeMapBase<MySqlProviderTypeMap>
 {
-    internal static readonly Lazy<MySqlProviderTypeMap> Instance =
-        new(() => new MySqlProviderTypeMap());
-
-    private MySqlProviderTypeMap()
-        : base() { }
-
-    protected override DbProviderType ProviderType => DbProviderType.MySql;
-
-    public override string SqTypeForStringLengthMax => "text(65535)";
-
-    public override string SqTypeForBinaryLengthMax => "blob(65535)";
-
-    public override string SqlTypeForJson => "text(65535)";
-
-    /// <summary>
-    /// IMPORTANT!! The order within an affinity group matters, as the first possible match will be used as the recommended sql type for a dotnet type
-    /// </summary>
-    protected override DbProviderSqlType[] ProviderSqlTypes =>
-        [
-            new(
-                DbProviderSqlTypeAffinity.Integer,
-                MySqlTypes.sql_tinyint,
-                formatWithPrecision: "tinyint({0})",
-                defaultPrecision: 4,
-                canUseToAutoIncrement: true,
-                minValue: -128,
-                maxValue: 128
-            ),
-            new(
-                DbProviderSqlTypeAffinity.Integer,
-                MySqlTypes.sql_tinyint_unsigned,
-                formatWithPrecision: "tinyint({0}) unsigned",
-                defaultPrecision: 4,
-                canUseToAutoIncrement: true,
-                minValue: 0,
-                maxValue: 255
-            ),
-            new(
-                DbProviderSqlTypeAffinity.Integer,
-                MySqlTypes.sql_smallint,
-                formatWithPrecision: "smallint({0})",
-                defaultPrecision: 5,
-                canUseToAutoIncrement: true,
-                minValue: -32768,
-                maxValue: 32767
-            ),
-            new(
-                DbProviderSqlTypeAffinity.Integer,
-                MySqlTypes.sql_smallint_unsigned,
-                formatWithPrecision: "smallint({0}) unsigned",
-                defaultPrecision: 5,
-                canUseToAutoIncrement: true,
-                minValue: 0,
-                maxValue: 65535
-            ),
-            new(
-                DbProviderSqlTypeAffinity.Integer,
-                MySqlTypes.sql_mediumint,
-                formatWithPrecision: "mediumint({0})",
-                defaultPrecision: 7,
-                canUseToAutoIncrement: true,
-                minValue: -8388608,
-                maxValue: 8388607
-            ),
-            new(
-                DbProviderSqlTypeAffinity.Integer,
-                MySqlTypes.sql_mediumint_unsigned,
-                formatWithPrecision: "mediumint({0}) unsigned",
-                defaultPrecision: 7,
-                canUseToAutoIncrement: true,
-                minValue: 0,
-                maxValue: 16777215
-            ),
-            new(
-                DbProviderSqlTypeAffinity.Integer,
-                MySqlTypes.sql_integer,
-                formatWithPrecision: "integer({0})",
-                defaultPrecision: 11,
-                canUseToAutoIncrement: true,
-                minValue: -2147483648,
-                maxValue: 2147483647
-            ),
-            new(
-                DbProviderSqlTypeAffinity.Integer,
-                MySqlTypes.sql_integer_unsigned,
-                formatWithPrecision: "integer({0}) unsigned",
-                defaultPrecision: 11,
-                canUseToAutoIncrement: true,
-                minValue: 0,
-                maxValue: 4294967295
-            ),
-            new(
-                DbProviderSqlTypeAffinity.Integer,
-                MySqlTypes.sql_int,
-                aliasOf: "integer",
-                formatWithPrecision: "int({0})",
-                defaultPrecision: 11,
-                canUseToAutoIncrement: true,
-                minValue: -2147483648,
-                maxValue: 2147483647
-            ),
-            new(
-                DbProviderSqlTypeAffinity.Integer,
-                MySqlTypes.sql_int_unsigned,
-                formatWithPrecision: "int({0}) unsigned",
-                defaultPrecision: 11,
-                canUseToAutoIncrement: true,
-                minValue: 0,
-                maxValue: 4294967295
-            ),
-            new(
-                DbProviderSqlTypeAffinity.Integer,
-                MySqlTypes.sql_bigint,
-                formatWithPrecision: "bigint({0})",
-                defaultPrecision: 19,
-                canUseToAutoIncrement: true,
-                minValue: -Math.Pow(2, 63),
-                maxValue: Math.Pow(2, 63) - 1
-            ),
-            new(
-                DbProviderSqlTypeAffinity.Integer,
-                MySqlTypes.sql_bigint_unsigned,
-                formatWithPrecision: "bigint({0}) unsigned",
-                defaultPrecision: 19,
-                canUseToAutoIncrement: true,
-                minValue: 0,
-                maxValue: Math.Pow(2, 64) - 1
-            ),
-            new(
-                DbProviderSqlTypeAffinity.Integer,
-                MySqlTypes.sql_serial,
-                aliasOf: "bigint unsigned",
-                canUseToAutoIncrement: true,
-                autoIncrementsAutomatically: true,
-                minValue: 0,
-                maxValue: Math.Pow(2, 64) - 1
-            ),
-            new(
-                DbProviderSqlTypeAffinity.Integer,
-                MySqlTypes.sql_bit,
-                formatWithPrecision: "bit({0})",
-                defaultPrecision: 1,
-                minValue: 0,
-                maxValue: long.MaxValue
-            ),
-            new(
-                DbProviderSqlTypeAffinity.Real,
-                MySqlTypes.sql_decimal,
-                formatWithPrecision: "decimal({0})",
-                formatWithPrecisionAndScale: "decimal({0},{1})",
-                defaultPrecision: 12,
-                defaultScale: 2
-            ),
-            new(
-                DbProviderSqlTypeAffinity.Real,
-                MySqlTypes.sql_dec,
-                aliasOf: "decimal",
-                formatWithPrecision: "dec({0})",
-                formatWithPrecisionAndScale: "dec({0},{1})",
-                defaultPrecision: 12,
-                defaultScale: 2
-            ),
-            new(
-                DbProviderSqlTypeAffinity.Real,
-                MySqlTypes.sql_numeric,
-                formatWithPrecision: "numeric({0})",
-                formatWithPrecisionAndScale: "numeric({0},{1})",
-                defaultPrecision: 12,
-                defaultScale: 2
-            ),
-            new(
-                DbProviderSqlTypeAffinity.Real,
-                MySqlTypes.sql_fixed,
-                aliasOf: "decimal",
-                formatWithPrecision: "fixed({0})",
-                formatWithPrecisionAndScale: "fixed({0},{1})",
-                defaultPrecision: 12,
-                defaultScale: 2
-            ),
-            new(
-                DbProviderSqlTypeAffinity.Real,
-                MySqlTypes.sql_float
-            // formatWithPrecision: "float({0})",
-            // formatWithPrecisionAndScale: "float({0},{1})",
-            // defaultPrecision: 12,
-            // defaultScale: 2
-            ),
-            new(
-                DbProviderSqlTypeAffinity.Real,
-                MySqlTypes.sql_real
-            // aliasOf: "double",
-            // formatWithPrecisionAndScale: "real({0},{1})",
-            // defaultPrecision: 12,
-            // defaultScale: 2
-            ),
-            new(
-                DbProviderSqlTypeAffinity.Real,
-                MySqlTypes.sql_double_precision
-            // aliasOf: "double",
-            // formatWithPrecisionAndScale: "double precision({0},{1})",
-            // defaultPrecision: 12,
-            // defaultScale: 2
-            ),
-            new(
-                DbProviderSqlTypeAffinity.Real,
-                MySqlTypes.sql_double_precision_unsigned,
-                aliasOf: "double unsigned"
-            // formatWithPrecisionAndScale: "double precision({0},{1}) unsigned",
-            // defaultPrecision: 12,
-            // defaultScale: 2
-            ),
-            new(
-                DbProviderSqlTypeAffinity.Real,
-                MySqlTypes.sql_double
-            // formatWithPrecisionAndScale: "double({0},{1})",
-            // defaultPrecision: 12,
-            // defaultScale: 2
-            ),
-            new(
-                DbProviderSqlTypeAffinity.Real,
-                MySqlTypes.sql_double_unsigned
-            // formatWithPrecisionAndScale: "double({0},{1}) unsigned",
-            // defaultPrecision: 12,
-            // defaultScale: 2
-            ),
-            new(DbProviderSqlTypeAffinity.Boolean, MySqlTypes.sql_bool, aliasOf: "tinyint(1)"),
-            new(DbProviderSqlTypeAffinity.Boolean, MySqlTypes.sql_boolean, aliasOf: "tinyint(1)"),
-            new(DbProviderSqlTypeAffinity.DateTime, MySqlTypes.sql_datetime),
-            new(DbProviderSqlTypeAffinity.DateTime, MySqlTypes.sql_timestamp),
-            new(
-                DbProviderSqlTypeAffinity.DateTime,
-                MySqlTypes.sql_time,
-                formatWithPrecision: "time({0})",
-                defaultPrecision: 6,
-                isTimeOnly: true
-            ),
-            new(DbProviderSqlTypeAffinity.DateTime, MySqlTypes.sql_date, isDateOnly: true),
-            new(DbProviderSqlTypeAffinity.DateTime, MySqlTypes.sql_year, isYearOnly: true),
-            new(
-                DbProviderSqlTypeAffinity.Text,
-                MySqlTypes.sql_char,
-                formatWithLength: "char({0})",
-                defaultLength: DefaultLength,
-                isFixedLength: true
-            ),
-            new(
-                DbProviderSqlTypeAffinity.Text,
-                MySqlTypes.sql_varchar,
-                formatWithLength: "varchar({0})",
-                defaultLength: DefaultLength
-            ),
-            new(
-                DbProviderSqlTypeAffinity.Text,
-                MySqlTypes.sql_text,
-                formatWithLength: "text({0})",
-                defaultLength: 65535
-            ),
-            new(DbProviderSqlTypeAffinity.Text, MySqlTypes.sql_long_varchar, aliasOf: "mediumtext"),
-            new(DbProviderSqlTypeAffinity.Text, MySqlTypes.sql_tinytext),
-            new(DbProviderSqlTypeAffinity.Text, MySqlTypes.sql_mediumtext),
-            new(DbProviderSqlTypeAffinity.Text, MySqlTypes.sql_longtext),
-            new(DbProviderSqlTypeAffinity.Text, MySqlTypes.sql_enum),
-            new(DbProviderSqlTypeAffinity.Text, MySqlTypes.sql_set),
-            new(DbProviderSqlTypeAffinity.Text, MySqlTypes.sql_json),
-            new(
-                DbProviderSqlTypeAffinity.Binary,
-                MySqlTypes.sql_blob,
-                formatWithLength: "blob({0})",
-                defaultLength: 65535
-            ),
-            new(DbProviderSqlTypeAffinity.Binary, MySqlTypes.sql_tinyblob),
-            new(DbProviderSqlTypeAffinity.Binary, MySqlTypes.sql_mediumblob),
-            new(DbProviderSqlTypeAffinity.Binary, MySqlTypes.sql_longblob),
-            new(
-                DbProviderSqlTypeAffinity.Binary,
-                MySqlTypes.sql_varbinary,
-                formatWithLength: "varbinary({0})",
-                defaultLength: DefaultLength
-            ),
-            new(
-                DbProviderSqlTypeAffinity.Binary,
-                MySqlTypes.sql_binary,
-                formatWithLength: "binary({0})",
-                defaultLength: DefaultLength,
-                isFixedLength: true
-            ),
-            new(
-                DbProviderSqlTypeAffinity.Binary,
-                MySqlTypes.sql_long_varbinary,
-                aliasOf: "mediumblob"
-            ),
-            new(DbProviderSqlTypeAffinity.Geometry, MySqlTypes.sql_geometry),
-            new(DbProviderSqlTypeAffinity.Geometry, MySqlTypes.sql_point),
-            new(DbProviderSqlTypeAffinity.Geometry, MySqlTypes.sql_linestring),
-            new(DbProviderSqlTypeAffinity.Geometry, MySqlTypes.sql_polygon),
-            new(DbProviderSqlTypeAffinity.Geometry, MySqlTypes.sql_multipoint),
-            new(DbProviderSqlTypeAffinity.Geometry, MySqlTypes.sql_multilinestring),
-            new(DbProviderSqlTypeAffinity.Geometry, MySqlTypes.sql_multipolygon),
-            new(DbProviderSqlTypeAffinity.Geometry, MySqlTypes.sql_geomcollection),
-            new(
-                DbProviderSqlTypeAffinity.Geometry,
-                MySqlTypes.sql_geometrycollection,
-                aliasOf: "geomcollection"
-            )
-        ];
-
-    protected override bool TryGetProviderSqlTypeMatchingDotnetTypeInternal(
-        DbProviderDotnetTypeDescriptor descriptor,
-        out DbProviderSqlType? providerSqlType
-    )
+    protected override void RegisterDotnetTypeToSqlTypeConverters()
     {
-        providerSqlType = null;
+        var booleanConverter = GetBooleanToSqlTypeConverter();
+        var numericConverter = GetNumbericToSqlTypeConverter();
+        var guidConverter = GetGuidToSqlTypeConverter();
+        var textConverter = GetTextToSqlTypeConverter();
+        var xmlConverter = GetXmlToSqlTypeConverter();
+        var jsonConverter = GetJsonToSqlTypeConverter();
+        var dateTimeConverter = GetDateTimeToSqlTypeConverter();
+        var byteArrayConverter = GetByteArrayToSqlTypeConverter();
+        var objectConverter = GetObjectToSqlTypeConverter();
+        var enumerableConverter = GetEnumerableToSqlTypeConverter();
+        var enumConverter = GetEnumToSqlTypeConverter();
+        var arrayConverter = GetArrayToSqlTypeConverter();
+        var pocoConverter = GetPocoToSqlTypeConverter();
+        var geometricConverter = GetGeometricToSqlTypeConverter();
 
-        var dotnetType = descriptor.DotnetType;
+        // Boolean affinity
+        RegisterConverter<bool>(booleanConverter);
 
-        // handle well-known types first
-        providerSqlType = dotnetType.IsGenericType
-            ? null
-            : dotnetType switch
-            {
-                Type t when t == typeof(bool) => ProviderSqlTypeLookup[MySqlTypes.sql_boolean],
-                Type t when t == typeof(byte)
-                    => ProviderSqlTypeLookup[MySqlTypes.sql_smallint_unsigned],
-                Type t when t == typeof(ReadOnlyMemory<byte>)
-                    => ProviderSqlTypeLookup[MySqlTypes.sql_smallint],
-                Type t when t == typeof(sbyte) => ProviderSqlTypeLookup[MySqlTypes.sql_smallint],
-                Type t when t == typeof(short) => ProviderSqlTypeLookup[MySqlTypes.sql_smallint],
-                Type t when t == typeof(ushort)
-                    => ProviderSqlTypeLookup[MySqlTypes.sql_smallint_unsigned],
-                Type t when t == typeof(int) => ProviderSqlTypeLookup[MySqlTypes.sql_int],
-                Type t when t == typeof(uint) => ProviderSqlTypeLookup[MySqlTypes.sql_int_unsigned],
-                Type t when t == typeof(long) => ProviderSqlTypeLookup[MySqlTypes.sql_bigint],
-                Type t when t == typeof(ulong)
-                    => ProviderSqlTypeLookup[MySqlTypes.sql_bigint_unsigned],
-                Type t when t == typeof(float) => ProviderSqlTypeLookup[MySqlTypes.sql_float],
-                Type t when t == typeof(double) => ProviderSqlTypeLookup[MySqlTypes.sql_double],
-                Type t when t == typeof(decimal) => ProviderSqlTypeLookup[MySqlTypes.sql_decimal],
-                Type t when t == typeof(char) => ProviderSqlTypeLookup[MySqlTypes.sql_varchar],
-                Type t when t == typeof(string)
-                    => descriptor.Length.GetValueOrDefault(255) < 8000
-                        ? ProviderSqlTypeLookup[MySqlTypes.sql_varchar]
-                        : ProviderSqlTypeLookup[MySqlTypes.sql_text],
-                Type t when t == typeof(char[])
-                    => descriptor.Length.GetValueOrDefault(255) < 8000
-                        ? ProviderSqlTypeLookup[MySqlTypes.sql_varchar]
-                        : ProviderSqlTypeLookup[MySqlTypes.sql_text],
-                Type t when t == typeof(ReadOnlyMemory<byte>[])
-                    => descriptor.Length.GetValueOrDefault(int.MaxValue) < 8000
-                        ? ProviderSqlTypeLookup[MySqlTypes.sql_varchar]
-                        : ProviderSqlTypeLookup[MySqlTypes.sql_text],
-                Type t when t == typeof(Stream)
-                    => descriptor.Length.GetValueOrDefault(int.MaxValue) < 8000
-                        ? ProviderSqlTypeLookup[MySqlTypes.sql_varchar]
-                        : ProviderSqlTypeLookup[MySqlTypes.sql_text],
-                Type t when t == typeof(TextReader)
-                    => descriptor.Length.GetValueOrDefault(int.MaxValue) < 8000
-                        ? ProviderSqlTypeLookup[MySqlTypes.sql_varchar]
-                        : ProviderSqlTypeLookup[MySqlTypes.sql_text],
-                Type t when t == typeof(byte[]) => ProviderSqlTypeLookup[MySqlTypes.sql_blob],
-                Type t when t == typeof(object)
-                    => descriptor.Length.GetValueOrDefault(int.MaxValue) < 8000
-                        ? ProviderSqlTypeLookup[MySqlTypes.sql_varchar]
-                        : ProviderSqlTypeLookup[MySqlTypes.sql_text],
-                Type t when t == typeof(object[])
-                    => descriptor.Length.GetValueOrDefault(int.MaxValue) < 8000
-                        ? ProviderSqlTypeLookup[MySqlTypes.sql_varchar]
-                        : ProviderSqlTypeLookup[MySqlTypes.sql_text],
-                Type t when t == typeof(Guid) => ProviderSqlTypeLookup[MySqlTypes.sql_varchar],
-                Type t when t == typeof(DateTime) => ProviderSqlTypeLookup[MySqlTypes.sql_datetime],
-                Type t when t == typeof(DateTimeOffset)
-                    => ProviderSqlTypeLookup[MySqlTypes.sql_timestamp],
-                Type t when t == typeof(TimeSpan) => ProviderSqlTypeLookup[MySqlTypes.sql_bigint],
-                Type t when t == typeof(DateOnly) => ProviderSqlTypeLookup[MySqlTypes.sql_date],
-                Type t when t == typeof(TimeOnly) => ProviderSqlTypeLookup[MySqlTypes.sql_time],
-                Type t when t == typeof(BitArray) || t == typeof(BitVector32)
-                    => ProviderSqlTypeLookup[MySqlTypes.sql_varbinary],
-                Type t
-                    when t == typeof(ImmutableDictionary<string, string>)
-                        || t == typeof(Dictionary<string, string>)
-                        || t == typeof(IDictionary<string, string>)
-                    => ProviderSqlTypeLookup[MySqlTypes.sql_text],
-                Type t
-                    when t == typeof(JsonNode)
-                        || t == typeof(JsonObject)
-                        || t == typeof(JsonArray)
-                        || t == typeof(JsonValue)
-                        || t == typeof(JsonDocument)
-                        || t == typeof(JsonElement)
-                    => ProviderSqlTypeLookup[MySqlTypes.sql_text],
-                _ => null
-            };
+        // Numeric affinity
+        RegisterConverterForTypes(
+            numericConverter,
+            typeof(byte),
+            typeof(short),
+            typeof(int),
+            typeof(BigInteger),
+            typeof(long),
+            typeof(sbyte),
+            typeof(ushort),
+            typeof(uint),
+            typeof(ulong),
+            typeof(decimal),
+            typeof(float),
+            typeof(double)
+        );
 
-        if (providerSqlType != null)
-            return true;
+        // Guid affinity
+        RegisterConverter<Guid>(guidConverter);
 
-        // handle generic types
-        providerSqlType = !dotnetType.IsGenericType
-            ? null
-            : dotnetType.GetGenericTypeDefinition() switch
-            {
-                Type t
-                    when t == typeof(Dictionary<,>)
-                        || t == typeof(IDictionary<,>)
-                        || t == typeof(List<>)
-                        || t == typeof(IList<>)
-                        || t == typeof(Collection<>)
-                        || t == typeof(ICollection<>)
-                        || t == typeof(IEnumerable<>)
-                    => ProviderSqlTypeLookup[MySqlTypes.sql_text],
-                _ => null
-            };
+        // Text affinity
+        RegisterConverterForTypes(
+            textConverter,
+            typeof(string),
+            typeof(char),
+            typeof(char[]),
+            typeof(MemoryStream),
+            typeof(ReadOnlyMemory<byte>[]),
+            typeof(Stream),
+            typeof(TextReader)
+        );
 
-        if (providerSqlType != null)
-            return true;
+        // Xml affinity
+        RegisterConverterForTypes(xmlConverter, typeof(XDocument), typeof(XElement));
 
-        // handle POCO type
-        if (dotnetType.IsClass || dotnetType.IsInterface)
-        {
-            providerSqlType = ProviderSqlTypeLookup[MySqlTypes.sql_text];
-        }
+        // Json affinity
+        RegisterConverterForTypes(
+            jsonConverter,
+            typeof(JsonDocument),
+            typeof(JsonElement),
+            typeof(JsonArray),
+            typeof(JsonNode),
+            typeof(JsonObject),
+            typeof(JsonValue)
+        );
 
-        return providerSqlType != null;
+        // DateTime affinity
+        RegisterConverterForTypes(
+            dateTimeConverter,
+            typeof(DateTime),
+            typeof(DateTimeOffset),
+            typeof(TimeSpan),
+            typeof(DateOnly),
+            typeof(TimeOnly)
+        );
+
+        // Binary affinity
+        RegisterConverterForTypes(
+            byteArrayConverter,
+            typeof(byte[]),
+            typeof(ReadOnlyMemory<byte>),
+            typeof(Memory<byte>),
+            typeof(Stream),
+            typeof(BinaryReader),
+            typeof(BitArray),
+            typeof(BitVector32)
+        );
+
+        // Object affinity
+        RegisterConverter<object>(objectConverter);
+
+        // Enumerable affinity
+        RegisterConverterForTypes(
+            enumerableConverter,
+            typeof(ImmutableDictionary<string, string>),
+            typeof(Dictionary<string, string>),
+            typeof(IDictionary<string, string>),
+            typeof(Dictionary<string, object>),
+            typeof(IDictionary<string, object>),
+            typeof(HashSet<string>),
+            typeof(List<string>),
+            typeof(IList<string>),
+            typeof(HashSet<>),
+            typeof(ISet<>),
+            typeof(Dictionary<,>),
+            typeof(IDictionary<,>),
+            typeof(List<>),
+            typeof(IList<>),
+            typeof(Collection<>),
+            typeof(IReadOnlyCollection<>),
+            typeof(IReadOnlySet<>),
+            typeof(ICollection<>),
+            typeof(IEnumerable<>)
+        );
+
+        // Enums (uses a placeholder to easily locate it)
+        RegisterConverter<InternalEnumTypePlaceholder>(enumConverter);
+
+        // Arrays (uses a placeholder to easily locate it)
+        RegisterConverter<InternalArrayTypePlaceholder>(arrayConverter);
+
+        // Poco (uses a placeholder to easily locate it)
+        RegisterConverter<InternalPocoTypePlaceholder>(pocoConverter);
+
+        // Geometry types (support the NetTopologySuite types)
+        RegisterConverterForTypes(
+            geometricConverter,
+            // always register the NetTopologySuite types, as they provide
+            // a good way to handle geometry types across database providers
+            Type.GetType("NetTopologySuite.Geometries.Geometry, NetTopologySuite"),
+            Type.GetType("NetTopologySuite.Geometries.Point, NetTopologySuite"),
+            Type.GetType("NetTopologySuite.Geometries.LineString, NetTopologySuite"),
+            Type.GetType("NetTopologySuite.Geometries.Polygon, NetTopologySuite"),
+            Type.GetType("NetTopologySuite.Geometries.MultiPoint, NetTopologySuite"),
+            Type.GetType("NetTopologySuite.Geometries.MultiLineString, NetTopologySuite"),
+            Type.GetType("NetTopologySuite.Geometries.MultiPolygon, NetTopologySuite"),
+            Type.GetType("NetTopologySuite.Geometries.GeometryCollection, NetTopologySuite"),
+            // also register the MySQL types
+            Type.GetType("MySql.Data.Types.MySqlGeometry, MySql.Data"),
+            Type.GetType("MySqlConnector.MySqlGeometry, MySqlConnector")
+        );
     }
+
+    protected override void RegisterSqlTypeToDotnetTypeConverters()
+    {
+        var booleanConverter = GetBooleanToDotnetTypeConverter();
+        var numericConverter = GetNumericToDotnetTypeConverter();
+        var guidConverter = GetGuidToDotnetTypeConverter();
+        var textConverter = GetTextToDotnetTypeConverter();
+        var jsonConverter = GetJsonToDotnetTypeConverter();
+        var dateTimeConverter = GetDateTimeToDotnetTypeConverter();
+        var byteArrayConverter = GetByteArrayToDotnetTypeConverter();
+        var geometricConverter = GetGeometricToDotnetTypeConverter();
+
+        // Boolean affinity (in MySQL, bool and boolean are the same, they are synonyms of tinyint(1))
+        RegisterConverterForTypes(booleanConverter, MySqlTypes.sql_bool, MySqlTypes.sql_boolean);
+
+        // Numeric affinity
+        RegisterConverterForTypes(
+            numericConverter,
+            MySqlTypes.sql_bit,
+            MySqlTypes.sql_tinyint,
+            MySqlTypes.sql_tinyint_unsigned,
+            MySqlTypes.sql_smallint,
+            MySqlTypes.sql_smallint_unsigned,
+            MySqlTypes.sql_mediumint,
+            MySqlTypes.sql_mediumint_unsigned,
+            MySqlTypes.sql_int,
+            MySqlTypes.sql_int_unsigned,
+            MySqlTypes.sql_integer,
+            MySqlTypes.sql_integer_unsigned,
+            MySqlTypes.sql_bigint,
+            MySqlTypes.sql_bigint_unsigned,
+            MySqlTypes.sql_serial,
+            MySqlTypes.sql_fixed,
+            MySqlTypes.sql_real,
+            MySqlTypes.sql_float,
+            MySqlTypes.sql_dec,
+            MySqlTypes.sql_decimal,
+            MySqlTypes.sql_numeric,
+            MySqlTypes.sql_double,
+            MySqlTypes.sql_double_unsigned,
+            MySqlTypes.sql_double_precision,
+            MySqlTypes.sql_double_precision_unsigned
+        );
+
+        // DateTime affinity
+        RegisterConverterForTypes(
+            dateTimeConverter,
+            MySqlTypes.sql_datetime,
+            MySqlTypes.sql_timestamp,
+            MySqlTypes.sql_time,
+            MySqlTypes.sql_date,
+            MySqlTypes.sql_year
+        );
+
+        // Guid affinity
+        RegisterConverterForTypes(guidConverter, MySqlTypes.sql_char, MySqlTypes.sql_varchar);
+
+        // Text affinity
+        RegisterConverterForTypes(
+            textConverter,
+            MySqlTypes.sql_char,
+            MySqlTypes.sql_varchar,
+            MySqlTypes.sql_long_varchar,
+            MySqlTypes.sql_tinytext,
+            MySqlTypes.sql_mediumtext,
+            MySqlTypes.sql_text,
+            MySqlTypes.sql_longtext,
+            MySqlTypes.sql_enum,
+            MySqlTypes.sql_set
+        );
+
+        // Json affinity
+        RegisterConverterForTypes(jsonConverter, MySqlTypes.sql_json);
+
+        // Binary affinity
+        RegisterConverterForTypes(
+            byteArrayConverter,
+            MySqlTypes.sql_binary,
+            MySqlTypes.sql_varbinary,
+            MySqlTypes.sql_long_varbinary,
+            MySqlTypes.sql_tinyblob,
+            MySqlTypes.sql_blob,
+            MySqlTypes.sql_mediumblob,
+            MySqlTypes.sql_longblob
+        );
+
+        // Geometry affinity
+        RegisterConverterForTypes(
+            geometricConverter,
+            MySqlTypes.sql_geometry,
+            MySqlTypes.sql_point,
+            MySqlTypes.sql_linestring,
+            MySqlTypes.sql_polygon,
+            MySqlTypes.sql_multipoint,
+            MySqlTypes.sql_multilinestring,
+            MySqlTypes.sql_multipolygon,
+            MySqlTypes.sql_geomcollection,
+            MySqlTypes.sql_geometrycollection
+        );
+    }
+
+    #region DotnetTypeToSqlTypeConverters
+    private static DotnetTypeToSqlTypeConverter GetBooleanToSqlTypeConverter()
+    {
+        return new(d =>
+        {
+            return new(MySqlTypes.sql_bit) { Length = 1 };
+        });
+    }
+
+    private static DotnetTypeToSqlTypeConverter GetNumbericToSqlTypeConverter()
+    {
+        return new(d =>
+        {
+            switch (d.DotnetType)
+            {
+                case Type t when t == typeof(byte):
+                    return new(MySqlTypes.sql_tinyint);
+                case Type t when t == typeof(sbyte):
+                    return new(MySqlTypes.sql_tinyint);
+                case Type t when t == typeof(short):
+                    return new(MySqlTypes.sql_smallint);
+                case Type t when t == typeof(ushort):
+                    return new(MySqlTypes.sql_smallint);
+                case Type t when t == typeof(int):
+                    return new(MySqlTypes.sql_int);
+                case Type t when t == typeof(uint):
+                    return new(MySqlTypes.sql_int);
+                case Type t when t == typeof(BigInteger) || t == typeof(long):
+                    return new(MySqlTypes.sql_bigint);
+                case Type t when t == typeof(ulong):
+                    return new(MySqlTypes.sql_bigint);
+                case Type t when t == typeof(float):
+                    return new(MySqlTypes.sql_real);
+                case Type t when t == typeof(double):
+                    return new(MySqlTypes.sql_float);
+                case Type t when t == typeof(decimal):
+                    var precision = d.Precision ?? 16;
+                    var scale = d.Scale ?? 4;
+                    return new(MySqlTypes.sql_decimal)
+                    {
+                        SqlTypeName = $"decimal({precision},{scale})",
+                        Precision = precision,
+                        Scale = scale
+                    };
+                default:
+                    return new(MySqlTypes.sql_int);
+            }
+        });
+    }
+
+    private static DotnetTypeToSqlTypeConverter GetGuidToSqlTypeConverter()
+    {
+        return new(d =>
+        {
+            return new(MySqlTypes.sql_char) { Length = 36 };
+        });
+    }
+
+    private static DotnetTypeToSqlTypeConverter GetTextToSqlTypeConverter()
+    {
+        return new(d =>
+        {
+            if (d.IsFixedLength == true && d.Length.HasValue)
+                return new(MySqlTypes.sql_char)
+                {
+                    SqlTypeName = $"char({d.Length})",
+                    Length = d.Length
+                };
+            if (d.Length.HasValue)
+                return new(MySqlTypes.sql_varchar)
+                {
+                    SqlTypeName = $"varchar({d.Length})",
+                    Length = d.Length
+                };
+            return new(MySqlTypes.sql_text);
+        });
+    }
+
+    private static DotnetTypeToSqlTypeConverter GetXmlToSqlTypeConverter()
+    {
+        return new(d => new(MySqlTypes.sql_text));
+    }
+
+    private static DotnetTypeToSqlTypeConverter GetJsonToSqlTypeConverter()
+    {
+        return new(d => new(MySqlTypes.sql_json));
+    }
+
+    private DotnetTypeToSqlTypeConverter GetDateTimeToSqlTypeConverter()
+    {
+        return new(d =>
+        {
+            switch (d.DotnetType)
+            {
+                case Type t when t == typeof(TimeSpan):
+                    return new(MySqlTypes.sql_time);
+                case Type t when t == typeof(DateOnly):
+                    return new(MySqlTypes.sql_date);
+                case Type t when t == typeof(TimeOnly):
+                    return new(MySqlTypes.sql_time);
+                case Type t when t == typeof(DateTime) || t == typeof(DateTimeOffset):
+                default:
+                    var precision = d.Length ?? d.Precision ?? 6;
+                    return new(MySqlTypes.sql_datetime)
+                    {
+                        SqlTypeName = $"datetime({precision})",
+                        Precision = precision
+                    };
+            }
+        });
+    }
+
+    private DotnetTypeToSqlTypeConverter GetByteArrayToSqlTypeConverter()
+    {
+        return new(d =>
+            d.IsFixedLength == true && d.Length.HasValue
+                ? new(MySqlTypes.sql_binary)
+                {
+                    SqlTypeName = $"binary({d.Length})",
+                    Length = d.Length
+                }
+                : new(MySqlTypes.sql_blob)
+        );
+    }
+
+    private DotnetTypeToSqlTypeConverter GetObjectToSqlTypeConverter()
+    {
+        return new(d => new(MySqlTypes.sql_json));
+    }
+
+    private DotnetTypeToSqlTypeConverter GetEnumerableToSqlTypeConverter() =>
+        GetJsonToSqlTypeConverter();
+
+    private DotnetTypeToSqlTypeConverter GetEnumToSqlTypeConverter()
+    {
+        return new(d =>
+        {
+            return new(MySqlTypes.sql_varchar) { SqlTypeName = "varchar(128)", Length = 128 };
+        });
+    }
+
+    private DotnetTypeToSqlTypeConverter GetArrayToSqlTypeConverter() =>
+        GetJsonToSqlTypeConverter();
+
+    private DotnetTypeToSqlTypeConverter GetPocoToSqlTypeConverter() => GetJsonToSqlTypeConverter();
+
+    private DotnetTypeToSqlTypeConverter GetGeometricToSqlTypeConverter()
+    {
+        return new(d =>
+        {
+            var assemblyQualifiedName = d.DotnetType?.AssemblyQualifiedName;
+            if (string.IsNullOrWhiteSpace(assemblyQualifiedName))
+            {
+                return null;
+            }
+
+            var assemblyQualifiedNameParts = assemblyQualifiedName.Split(',');
+            var fullNameWithAssemblyName =
+                assemblyQualifiedNameParts[0] + ", " + assemblyQualifiedNameParts[1];
+
+            switch (fullNameWithAssemblyName)
+            {
+                // NetTopologySuite types
+                case "NetTopologySuite.Geometries.Geometry, NetTopologySuite":
+                    return new(MySqlTypes.sql_geometry);
+                case "NetTopologySuite.Geometries.Point, NetTopologySuite":
+                    return new(MySqlTypes.sql_point);
+                case "NetTopologySuite.Geometries.LineString, NetTopologySuite":
+                    return new(MySqlTypes.sql_linestring);
+                case "NetTopologySuite.Geometries.Polygon, NetTopologySuite":
+                    return new(MySqlTypes.sql_polygon);
+                case "NetTopologySuite.Geometries.MultiPoint, NetTopologySuite":
+                    return new(MySqlTypes.sql_multipoint);
+                case "NetTopologySuite.Geometries.MultiLineString, NetTopologySuite":
+                    return new(MySqlTypes.sql_multilinestring);
+                case "NetTopologySuite.Geometries.MultiPolygon, NetTopologySuite":
+                    return new(MySqlTypes.sql_multipolygon);
+                case "NetTopologySuite.Geometries.GeometryCollection, NetTopologySuite":
+                    return new(MySqlTypes.sql_geometrycollection);
+                // MySQL types
+                case "MySql.Data.Types.MySqlGeometry, MySql.Data":
+                    return new(MySqlTypes.sql_geometry);
+                case "MySqlConnector.MySqlGeometry, MySqlConnector":
+                    return new(MySqlTypes.sql_geometry);
+            }
+
+            return null;
+        });
+    }
+
+    #endregion // DotnetTypeToSqlTypeConverters
+
+    #region SqlTypeToDotnetTypeConverters
+
+    private static SqlTypeToDotnetTypeConverter GetBooleanToDotnetTypeConverter()
+    {
+        return new(d =>
+        {
+            if (d.BaseTypeName == MySqlTypes.sql_bool || d.BaseTypeName == MySqlTypes.sql_boolean)
+                return new DotnetTypeDescriptor(typeof(bool));
+
+            return null;
+        });
+    }
+
+    private static SqlTypeToDotnetTypeConverter GetNumericToDotnetTypeConverter()
+    {
+        return new(d =>
+        {
+            switch (d.BaseTypeName)
+            {
+                case MySqlTypes.sql_bit:
+                    if (!d.Length.HasValue || d.Length == 1)
+                        return new DotnetTypeDescriptor(typeof(bool));
+                    if (d.Length == 8)
+                        return new DotnetTypeDescriptor(typeof(byte));
+                    if (d.Length == 16)
+                        return new DotnetTypeDescriptor(typeof(short));
+                    if (d.Length == 32)
+                        return new DotnetTypeDescriptor(typeof(int));
+                    if (d.Length == 64)
+                        return new DotnetTypeDescriptor(typeof(long));
+
+                    // make it a long if no recognizable length is specified
+                    return new DotnetTypeDescriptor(typeof(long));
+                case MySqlTypes.sql_tinyint:
+                    return new DotnetTypeDescriptor(typeof(sbyte));
+                case MySqlTypes.sql_tinyint_unsigned:
+                    return new DotnetTypeDescriptor(typeof(byte));
+                case MySqlTypes.sql_smallint:
+                    return new DotnetTypeDescriptor(typeof(short));
+                case MySqlTypes.sql_smallint_unsigned:
+                    return new DotnetTypeDescriptor(typeof(ushort));
+                case MySqlTypes.sql_mediumint:
+                case MySqlTypes.sql_int:
+                case MySqlTypes.sql_integer:
+                    return new DotnetTypeDescriptor(typeof(int));
+                case MySqlTypes.sql_serial:
+                    return new DotnetTypeDescriptor(typeof(int), isAutoIncrementing: true);
+                case MySqlTypes.sql_mediumint_unsigned:
+                case MySqlTypes.sql_int_unsigned:
+                case MySqlTypes.sql_integer_unsigned:
+                    return new DotnetTypeDescriptor(typeof(uint));
+                case MySqlTypes.sql_bigint:
+                    return new DotnetTypeDescriptor(typeof(long));
+                case MySqlTypes.sql_bigint_unsigned:
+                    return new DotnetTypeDescriptor(typeof(ulong));
+                case MySqlTypes.sql_decimal:
+                case MySqlTypes.sql_dec:
+                case MySqlTypes.sql_fixed:
+                case MySqlTypes.sql_numeric:
+                    return new DotnetTypeDescriptor(typeof(decimal))
+                    {
+                        Precision = d.Precision ?? 16,
+                        Scale = d.Scale ?? 4
+                    };
+                case MySqlTypes.sql_float:
+                    return new DotnetTypeDescriptor(typeof(float));
+                case MySqlTypes.sql_real:
+                case MySqlTypes.sql_double_precision:
+                case MySqlTypes.sql_double:
+                    return new DotnetTypeDescriptor(typeof(double));
+                case MySqlTypes.sql_double_precision_unsigned:
+                case MySqlTypes.sql_double_unsigned:
+                    // there is no unsigned double in C#
+                    return new DotnetTypeDescriptor(typeof(double));
+            }
+
+            return null;
+        });
+    }
+
+    private static SqlTypeToDotnetTypeConverter GetDateTimeToDotnetTypeConverter()
+    {
+        return new(d =>
+        {
+            switch (d.BaseTypeName)
+            {
+                case MySqlTypes.sql_datetime:
+                    return new DotnetTypeDescriptor(typeof(DateTime));
+                case MySqlTypes.sql_timestamp:
+                    return new DotnetTypeDescriptor(typeof(DateTimeOffset));
+                case MySqlTypes.sql_time:
+                    return new DotnetTypeDescriptor(typeof(TimeOnly));
+                case MySqlTypes.sql_date:
+                    return new DotnetTypeDescriptor(typeof(DateOnly));
+                case MySqlTypes.sql_year:
+                    return new DotnetTypeDescriptor(typeof(int));
+            }
+
+            return null;
+        });
+    }
+
+    private static SqlTypeToDotnetTypeConverter GetGuidToDotnetTypeConverter()
+    {
+        return new(d =>
+        {
+            if (d.Length == 36)
+            {
+                return new DotnetTypeDescriptor(typeof(Guid));
+            }
+
+            // move on to the next type converter
+            return null;
+        });
+    }
+
+    private static SqlTypeToDotnetTypeConverter GetTextToDotnetTypeConverter()
+    {
+        /*
+        MySQL Type	 Maximum Length/Count
+        -------------------------------------------------------
+        CHAR(M)	     255 characters
+        VARCHAR(M)	 65,535 characters (or 16,383 if M > 16,383)
+        LONGTEXT	 (2^{32} - 1) bytes (approximately 4 GB)
+        TINYTEXT	 255 bytes
+        MEDIUMTEXT	 (2^{24} - 1) bytes (approximately 16 MB)
+        TEXT	     (2^{16} - 1) bytes (65,535 bytes)
+        ENUM	     65,535 enumeration values, each up to 255 characters
+        SET	         64 set members, each up to 255 characters
+        */
+        return new(d =>
+        {
+            if (
+                (d.BaseTypeName == MySqlTypes.sql_char || d.BaseTypeName == MySqlTypes.sql_varchar)
+                && d.Length == 36
+            )
+                return new DotnetTypeDescriptor(typeof(Guid));
+
+            switch (d.BaseTypeName)
+            {
+                case MySqlTypes.sql_char:
+                    return new DotnetTypeDescriptor(
+                        typeof(string),
+                        d.Length,
+                        isUnicode: d.IsUnicode.GetValueOrDefault(true),
+                        isFixedLength: true
+                    );
+                case MySqlTypes.sql_varchar:
+                case MySqlTypes.sql_tinytext:
+                case MySqlTypes.sql_mediumtext:
+                case MySqlTypes.sql_text:
+                case MySqlTypes.sql_long_varchar:
+                case MySqlTypes.sql_longtext:
+                case MySqlTypes.sql_enum:
+                case MySqlTypes.sql_set:
+                    return new DotnetTypeDescriptor(
+                        typeof(string),
+                        d.Length,
+                        isUnicode: d.IsUnicode.GetValueOrDefault(true),
+                        isFixedLength: false
+                    );
+            }
+
+            return null;
+        });
+    }
+
+    private static SqlTypeToDotnetTypeConverter GetJsonToDotnetTypeConverter()
+    {
+        return new(d => new DotnetTypeDescriptor(typeof(JsonDocument)));
+    }
+
+    private static SqlTypeToDotnetTypeConverter GetByteArrayToDotnetTypeConverter()
+    {
+        return new(d =>
+        {
+            if (d.BaseTypeName == MySqlTypes.sql_binary && d.Length.HasValue)
+                return new DotnetTypeDescriptor(typeof(byte[]), d.Length, isFixedLength: true);
+
+            switch (d.BaseTypeName)
+            {
+                case MySqlTypes.sql_binary:
+                case MySqlTypes.sql_varbinary:
+                case MySqlTypes.sql_long_varbinary:
+                case MySqlTypes.sql_tinyblob:
+                case MySqlTypes.sql_blob:
+                case MySqlTypes.sql_mediumblob:
+                case MySqlTypes.sql_longblob:
+                    return new DotnetTypeDescriptor(
+                        typeof(byte[]),
+                        d.Length,
+                        isUnicode: true,
+                        isFixedLength: d.IsFixedLength.GetValueOrDefault(false)
+                    );
+            }
+
+            return null;
+        });
+    }
+
+    private static SqlTypeToDotnetTypeConverter GetGeometricToDotnetTypeConverter()
+    {
+        // NetTopologySuite types
+        var sqlNetTopologyGeometryType = Type.GetType(
+            "NetTopologySuite.Geometries.Geometry, NetTopologySuite"
+        );
+        var sqlNetTopologyPointType = Type.GetType(
+            "NetTopologySuite.Geometries.Point, NetTopologySuite"
+        );
+        var sqlNetTopologyLineStringType = Type.GetType(
+            "NetTopologySuite.Geometries.LineString, NetTopologySuite"
+        );
+        var sqlNetTopologyPolygonType = Type.GetType(
+            "NetTopologySuite.Geometries.Polygon, NetTopologySuite"
+        );
+        var sqlNetTopologyMultiPointType = Type.GetType(
+            "NetTopologySuite.Geometries.MultiPoint, NetTopologySuite"
+        );
+        var sqlNetTopologyMultLineStringType = Type.GetType(
+            "NetTopologySuite.Geometries.MultiLineString, NetTopologySuite"
+        );
+        var sqlNetTopologyMultiPolygonType = Type.GetType(
+            "NetTopologySuite.Geometries.MultiPolygon, NetTopologySuite"
+        );
+        var sqlNetTopologyGeometryCollectionType = Type.GetType(
+            "NetTopologySuite.Geometries.GeometryCollection, NetTopologySuite"
+        );
+
+        // Geometry affinity
+        var sqlMySqlDataGeometryType = Type.GetType(
+            "MySql.Data.Types.MySqlGeometry, MySql.Data",
+            false,
+            false
+        );
+        var sqlMySqlConnectorGeometryType = Type.GetType(
+            "MySqlConnector.MySqlGeometry, MySqlConnector",
+            false,
+            false
+        );
+
+        return new(d =>
+        {
+            switch (d.BaseTypeName)
+            {
+                case MySqlTypes.sql_geometry:
+                    if (sqlNetTopologyGeometryType != null)
+                        return new DotnetTypeDescriptor(sqlNetTopologyGeometryType);
+                    if (sqlMySqlDataGeometryType != null)
+                        return new DotnetTypeDescriptor(sqlMySqlDataGeometryType);
+                    if (sqlMySqlConnectorGeometryType != null)
+                        return new DotnetTypeDescriptor(sqlMySqlConnectorGeometryType);
+                    return new DotnetTypeDescriptor(typeof(object));
+                case MySqlTypes.sql_point:
+                    if (sqlNetTopologyPointType != null)
+                        return new DotnetTypeDescriptor(sqlNetTopologyPointType);
+                    return new DotnetTypeDescriptor(typeof(object));
+                case MySqlTypes.sql_linestring:
+                    if (sqlNetTopologyLineStringType != null)
+                        return new DotnetTypeDescriptor(sqlNetTopologyLineStringType);
+                    return new DotnetTypeDescriptor(typeof(object));
+                case MySqlTypes.sql_polygon:
+                    if (sqlNetTopologyPolygonType != null)
+                        return new DotnetTypeDescriptor(sqlNetTopologyPolygonType);
+                    return new DotnetTypeDescriptor(typeof(object));
+                case MySqlTypes.sql_multipoint:
+                    if (sqlNetTopologyMultiPointType != null)
+                        return new DotnetTypeDescriptor(sqlNetTopologyMultiPointType);
+                    return new DotnetTypeDescriptor(typeof(object));
+                case MySqlTypes.sql_multilinestring:
+                    if (sqlNetTopologyMultLineStringType != null)
+                        return new DotnetTypeDescriptor(sqlNetTopologyMultLineStringType);
+                    return new DotnetTypeDescriptor(typeof(object));
+                case MySqlTypes.sql_multipolygon:
+                    if (sqlNetTopologyMultiPolygonType != null)
+                        return new DotnetTypeDescriptor(sqlNetTopologyMultiPolygonType);
+                    return new DotnetTypeDescriptor(typeof(object));
+                case MySqlTypes.sql_geomcollection:
+                case MySqlTypes.sql_geometrycollection:
+                    if (sqlNetTopologyGeometryCollectionType != null)
+                        return new DotnetTypeDescriptor(sqlNetTopologyGeometryCollectionType);
+                    return new DotnetTypeDescriptor(typeof(object));
+            }
+
+            return null;
+        });
+    }
+
+    #endregion // SqlTypeToDotnetTypeConverters
 }

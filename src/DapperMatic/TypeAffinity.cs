@@ -1,6 +1,6 @@
 ﻿namespace DapperMatic;
 
-public enum DbProviderSqlTypeAffinity
+public enum TypeAffinity
 {
     Integer,
     Real,

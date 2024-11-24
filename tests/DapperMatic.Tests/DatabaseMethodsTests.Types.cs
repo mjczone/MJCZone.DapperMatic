@@ -99,7 +99,7 @@ public abstract partial class DatabaseMethodsTests
         foreach (var desiredType in GetSupportedTypes(dbTypeMap))
         {
             var exists = dbTypeMap.TryGetProviderSqlTypeMatchingDotnetType(
-                new DbProviderDotnetTypeDescriptor(desiredType),
+                new DotnetTypeDescriptor(desiredType.OrUnderlyingTypeIfNullable()),
                 out var sqlType
             );
 

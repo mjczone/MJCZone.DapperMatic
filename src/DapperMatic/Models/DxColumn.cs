@@ -80,6 +80,7 @@ public class DxColumn
     public bool IsPrimaryKey { get; set; }
     public bool IsAutoIncrement { get; set; }
     public bool IsUnicode { get; set; }
+    public bool IsFixedLength { get; set; }
 
     /// <summary>
     /// Is either part of a single column unique constraint or a single column unique index.

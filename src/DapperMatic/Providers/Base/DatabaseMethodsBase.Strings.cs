@@ -358,13 +358,14 @@ public abstract partial class DatabaseMethodsBase
 
     protected virtual string SqlInlineColumnNameAndType(DxColumn column, Version dbVersion)
     {
-        var descriptor = new DbProviderDotnetTypeDescriptor(
-            column.DotnetType,
+        var descriptor = new DotnetTypeDescriptor(
+            column.DotnetType.OrUnderlyingTypeIfNullable(),
             column.Length,
             column.Precision,
             column.Scale,
             column.IsAutoIncrement,
-            column.IsUnicode
+            column.IsUnicode,
+            column.IsFixedLength
         );
 
         var columnType = string.IsNullOrWhiteSpace(column.GetProviderDataType(ProviderType))

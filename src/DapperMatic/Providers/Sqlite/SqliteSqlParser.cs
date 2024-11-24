@@ -10,7 +10,10 @@ namespace DapperMatic.Providers.Sqlite;
 [SuppressMessage("ReSharper", "ForeachCanBePartlyConvertedToQueryUsingAnotherGetEnumerator")]
 public static partial class SqliteSqlParser
 {
-    public static DxTable? ParseCreateTableStatement(string createTableSql)
+    public static DxTable? ParseCreateTableStatement(
+        string createTableSql,
+        IDbProviderTypeMap providerTypeMap
+    )
     {
         var statements = ParseDdlSql(createTableSql);
         if (
@@ -130,8 +133,6 @@ public static partial class SqliteSqlParser
                         remainingWordsIndex = 3;
                     }
                 }
-
-                var providerTypeMap = SqliteProviderTypeMap.Instance.Value;
 
                 // if we don't recognize the column data type, we skip it
                 if (

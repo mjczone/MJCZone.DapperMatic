@@ -15,7 +15,7 @@ namespace DapperMatic.Providers;
 /// <param name="DefaultPrecision"></param>
 /// <param name="DefaultScale"></param>
 public class DbProviderSqlType(
-    DbProviderSqlTypeAffinity affinity,
+    TypeAffinity affinity,
     string name,
     Type? recommendedDotnetType = null,
     string? aliasOf = null,
@@ -38,7 +38,7 @@ public class DbProviderSqlType(
     bool isUnicode = false
 )
 {
-    public DbProviderSqlTypeAffinity Affinity { get; init; } = affinity;
+    public TypeAffinity Affinity { get; init; } = affinity;
     public string Name { get; init; } = name;
     public Type? RecommendedDotnetType { get; init; } = recommendedDotnetType;
     public string? AliasOf { get; set; } = aliasOf;

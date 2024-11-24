@@ -37,9 +37,9 @@ public interface IDatabaseMethods
         CancellationToken cancellationToken = default
     );
 
-    DbProviderDotnetTypeDescriptor GetDotnetTypeFromSqlType(string sqlType);
+    DotnetTypeDescriptor GetDotnetTypeFromSqlType(string sqlType);
 
-    string GetSqlTypeFromDotnetType(DbProviderDotnetTypeDescriptor descriptor);
+    string GetSqlTypeFromDotnetType(DotnetTypeDescriptor descriptor);
 
     string NormalizeName(string name);
 }

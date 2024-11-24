@@ -3,11 +3,12 @@ using DapperMatic.Providers.Base;
 
 namespace DapperMatic.Providers.PostgreSql;
 
-public partial class PostgreSqlMethods : DatabaseMethodsBase<PostgreSqlMethods>, IPostgreSqlMethods
+public partial class PostgreSqlMethods
+    : DatabaseMethodsBase<PostgreSqlProviderTypeMap>,
+        IPostgreSqlMethods
 {
-    public override DbProviderType ProviderType => DbProviderType.PostgreSql;
-
-    public override IDbProviderTypeMap ProviderTypeMap => PostgreSqlProviderTypeMap.Instance.Value;
+    internal PostgreSqlMethods()
+        : base(DbProviderType.PostgreSql) { }
 
     private static string _defaultSchema = "public";
     protected override string DefaultSchema => _defaultSchema;
@@ -25,8 +26,6 @@ public partial class PostgreSqlMethods : DatabaseMethodsBase<PostgreSqlMethods>,
     {
         return Task.FromResult(false);
     }
-
-    internal PostgreSqlMethods() { }
 
     public override async Task<Version> GetDatabaseVersionAsync(
         IDbConnection db,

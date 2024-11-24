@@ -5,7 +5,12 @@ namespace DapperMatic.Providers.MySql;
 [SuppressMessage("ReSharper", "InconsistentNaming")]
 public static class MySqlTypes
 {
+    // bool (in MySQL, bool and boolean are aliases for tinyint(1))
+    public const string sql_bool = "bool";
+    public const string sql_boolean = "boolean";
+
     // integers
+    public const string sql_bit = "bit";
     public const string sql_tinyint = "tinyint";
     public const string sql_tinyint_unsigned = "tinyint unsigned";
     public const string sql_smallint = "smallint";
@@ -19,7 +24,7 @@ public static class MySqlTypes
     public const string sql_bigint = "bigint";
     public const string sql_bigint_unsigned = "bigint unsigned";
     public const string sql_serial = "serial";
-    
+
     // real
     public const string sql_decimal = "decimal";
     public const string sql_dec = "dec";
@@ -31,31 +36,26 @@ public static class MySqlTypes
     public const string sql_double_precision_unsigned = "double precision unsigned";
     public const string sql_double = "double";
     public const string sql_double_unsigned = "double unsigned";
-    public const string sql_bit = "bit";
-    
-    // bool
-    public const string sql_bool = "bool";
-    public const string sql_boolean = "boolean";
-    
+
     // datetime
     public const string sql_datetime = "datetime";
     public const string sql_timestamp = "timestamp";
     public const string sql_time = "time";
     public const string sql_date = "date";
     public const string sql_year = "year";
-    
+
     // text
     public const string sql_char = "char";
     public const string sql_varchar = "varchar";
     public const string sql_long_varchar = "long varchar";
     public const string sql_tinytext = "tinytext";
-    public const string sql_text = "text";
     public const string sql_mediumtext = "mediumtext";
+    public const string sql_text = "text";
     public const string sql_longtext = "longtext";
     public const string sql_enum = "enum";
-    public const string sql_set = "set";
+    public const string sql_set = "set"; // csv of strings 'a,b,c'
     public const string sql_json = "json";
-    
+
     // binary
     public const string sql_binary = "binary";
     public const string sql_varbinary = "varbinary";
@@ -64,7 +64,7 @@ public static class MySqlTypes
     public const string sql_blob = "blob";
     public const string sql_mediumblob = "mediumblob";
     public const string sql_longblob = "longblob";
-    
+
     // geometry
     public const string sql_geometry = "geometry";
     public const string sql_point = "point";

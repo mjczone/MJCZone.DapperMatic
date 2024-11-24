@@ -44,7 +44,7 @@ public partial class SqliteMethods
         var tables = new List<DxTable>();
         foreach (var result in results)
         {
-            var table = SqliteSqlParser.ParseCreateTableStatement(result.table_sql);
+            var table = SqliteSqlParser.ParseCreateTableStatement(result.table_sql, ProviderTypeMap);
             if (table == null)
                 continue;
             tables.Add(table);

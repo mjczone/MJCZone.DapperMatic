@@ -3,15 +3,12 @@ using DapperMatic.Providers.Base;
 
 namespace DapperMatic.Providers.Sqlite;
 
-public partial class SqliteMethods : DatabaseMethodsBase<SqliteMethods>, ISqliteMethods
+public partial class SqliteMethods : DatabaseMethodsBase<SqliteProviderTypeMap>, ISqliteMethods
 {
-    public override DbProviderType ProviderType => DbProviderType.Sqlite;
-
-    public override IDbProviderTypeMap ProviderTypeMap => SqliteProviderTypeMap.Instance.Value;
+    internal SqliteMethods()
+        : base(DbProviderType.Sqlite) { }
 
     protected override string DefaultSchema => "";
-
-    internal SqliteMethods() { }
 
     public override async Task<Version> GetDatabaseVersionAsync(
         IDbConnection db,

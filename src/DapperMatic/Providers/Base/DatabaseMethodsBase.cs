@@ -1,12 +1,21 @@
 using System.Data;
 using Dapper;
 using DapperMatic.Interfaces;
-using DapperMatic.Models;
 
 namespace DapperMatic.Providers.Base;
 
-public abstract class DatabaseMethodsBase<TMethodsImpl> : DatabaseMethodsBase
+public abstract class DatabaseMethodsBase<TMap> : DatabaseMethodsBase
+    where TMap : IDbProviderTypeMap, new()
 {
+    internal DatabaseMethodsBase(DbProviderType providerType)
+    {
+        ProviderType = providerType;
+    }
+
+    public override DbProviderType ProviderType { get; }
+
+    public override IDbProviderTypeMap ProviderTypeMap => new TMap();
+
     protected override async Task<List<TOutput>> QueryAsync<TOutput>(
         IDbConnection db,
         string sql,
@@ -86,94 +95,31 @@ public abstract partial class DatabaseMethodsBase : IDatabaseMethods
         CancellationToken cancellationToken = default
     ) => Task.FromResult(true);
 
-    public virtual DbProviderDotnetTypeDescriptor GetDotnetTypeFromSqlType(string sqlType)
+    public virtual DotnetTypeDescriptor GetDotnetTypeFromSqlType(string sqlType)
     {
         if (
-            !ProviderTypeMap.TryGetDotnetTypeDescriptorMatchingFullSqlTypeName(
+            ProviderTypeMap.TryGetDotnetTypeDescriptorMatchingFullSqlTypeName(
                 sqlType,
                 out var dotnetTypeDescriptor
             )
-            || dotnetTypeDescriptor == null
+            && dotnetTypeDescriptor?.DotnetType != null
         )
-            throw new NotSupportedException($"SQL type {sqlType} is not supported.");
+            return dotnetTypeDescriptor;
 
-        return dotnetTypeDescriptor;
+        throw new NotSupportedException($"SQL type {sqlType} is not supported.");
     }
 
-    public string GetSqlTypeFromDotnetType(DbProviderDotnetTypeDescriptor descriptor)
+    public string GetSqlTypeFromDotnetType(DotnetTypeDescriptor descriptor)
     {
-        var tmb = ProviderTypeMap as DbProviderTypeMapBase;
-
         if (
-            !ProviderTypeMap.TryGetProviderSqlTypeMatchingDotnetType(
+            ProviderTypeMap.TryGetProviderSqlTypeMatchingDotnetType(
                 descriptor,
                 out var providerDataType
-            )
-            || providerDataType == null
+            ) && !string.IsNullOrWhiteSpace(providerDataType?.SqlTypeName)
         )
-        {
-            if (tmb != null)
-                return tmb.SqTypeForUnknownDotnetType;
+            return providerDataType.SqlTypeName;
 
-            throw new NotSupportedException(
-                $"No provider data type found for .NET type {descriptor}."
-            );
-        }
-
-        var length = descriptor.Length;
-        var precision = descriptor.Precision;
-        var scale = descriptor.Scale;
-
-        if (providerDataType.SupportsLength())
-        {
-            if (!length.HasValue && descriptor.DotnetType == typeof(Guid))
-                length = 36;
-            if (!length.HasValue && descriptor.DotnetType == typeof(char))
-                length = 1;
-            if (!length.HasValue)
-                length = providerDataType.DefaultLength;
-
-            if (length.HasValue)
-            {
-                if (
-                    tmb != null
-                    && length >= 8000
-                    && providerDataType.Affinity == DbProviderSqlTypeAffinity.Text
-                )
-                    return tmb.SqTypeForStringLengthMax;
-
-                if (
-                    tmb != null
-                    && length >= 8000
-                    && providerDataType.Affinity == DbProviderSqlTypeAffinity.Binary
-                )
-                    return tmb.SqTypeForBinaryLengthMax;
-
-                if (!string.IsNullOrWhiteSpace(providerDataType.FormatWithLength))
-                    return string.Format(providerDataType.FormatWithLength, length);
-            }
-        }
-
-        if (providerDataType.SupportsPrecision())
-        {
-            precision ??= providerDataType.DefaultPrecision;
-            scale ??= providerDataType.DefaultScale;
-
-            if (
-                scale.HasValue
-                && !string.IsNullOrWhiteSpace(providerDataType.FormatWithPrecisionAndScale)
-            )
-                return string.Format(
-                    providerDataType.FormatWithPrecisionAndScale,
-                    precision,
-                    scale
-                );
-
-            if (!string.IsNullOrWhiteSpace(providerDataType.FormatWithPrecision))
-                return string.Format(providerDataType.FormatWithPrecision, precision);
-        }
-
-        return providerDataType.Name;
+        throw new NotSupportedException($"No provider data type found for .NET type {descriptor}.");
     }
 
     public abstract Task<Version> GetDatabaseVersionAsync(
