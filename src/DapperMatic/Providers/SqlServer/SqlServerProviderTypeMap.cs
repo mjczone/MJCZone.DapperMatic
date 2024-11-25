@@ -305,7 +305,7 @@ public sealed class SqlServerProviderTypeMap : DbProviderTypeMapBase<SqlServerPr
     {
         return new(d =>
         {
-            var length = d.Length ?? 255;
+            var length = d.Length.GetValueOrDefault(255);
             if (length == int.MaxValue)
             {
                 return d.IsUnicode == true

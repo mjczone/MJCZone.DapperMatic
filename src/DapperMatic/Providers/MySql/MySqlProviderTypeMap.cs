@@ -319,19 +319,24 @@ public sealed class MySqlProviderTypeMap : DbProviderTypeMapBase<MySqlProviderTy
     {
         return new(d =>
         {
-            if (d.IsFixedLength == true && d.Length.HasValue)
+            var length = d.Length.GetValueOrDefault(255);
+            if (length == int.MaxValue)
+            {
+                return new(MySqlTypes.sql_text);
+            }
+            if (d.IsFixedLength == true)
+            {
                 return new(MySqlTypes.sql_char)
                 {
-                    SqlTypeName = $"char({d.Length})",
-                    Length = d.Length
+                    SqlTypeName = $"char({length})",
+                    Length = length
                 };
-            if (d.Length.HasValue)
-                return new(MySqlTypes.sql_varchar)
-                {
-                    SqlTypeName = $"varchar({d.Length})",
-                    Length = d.Length
-                };
-            return new(MySqlTypes.sql_text);
+            }
+            return new(MySqlTypes.sql_varchar)
+            {
+                SqlTypeName = $"varchar({length})",
+                Length = length
+            };
         });
     }
 

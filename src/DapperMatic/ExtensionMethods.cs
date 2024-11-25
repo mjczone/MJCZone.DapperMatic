@@ -9,6 +9,11 @@ namespace DapperMatic;
 [SuppressMessage("ReSharper", "MemberCanBePrivate.Global")]
 internal static partial class ExtensionMethods
 {
+    public static bool IsStruct(this Type type)
+    {
+        return type.IsValueType && !type.IsEnum && !typeof(Delegate).IsAssignableFrom(type);
+    }
+
     public static Type OrUnderlyingTypeIfNullable(this Type type)
     {
         return (type.IsGenericType && type.GetGenericTypeDefinition() == typeof(Nullable<>))

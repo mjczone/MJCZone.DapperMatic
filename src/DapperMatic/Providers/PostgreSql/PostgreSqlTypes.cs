@@ -36,7 +36,7 @@ public static class PostgreSqlTypes
     // datetime
     public const string sql_date = "date";
     public const string sql_interval = "interval";
-    public const string sql_time_without_timezone = "time without timezone";
+    public const string sql_time_without_time_zone = "time without time zone";
     public const string sql_time = "time";
     public const string sql_time_with_time_zone = "time with time zone";
     public const string sql_timetz = "timetz";

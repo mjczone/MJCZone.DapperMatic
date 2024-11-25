@@ -283,7 +283,21 @@ public sealed class SqliteProviderTypeMap : DbProviderTypeMapBase<SqliteProvider
     {
         return new(d =>
         {
-            var length = d.Length ?? 255;
+            var length = d.Length.GetValueOrDefault(255);
+            if (length == int.MaxValue)
+            {
+                return d.IsUnicode == true
+                    ? new(SqliteTypes.sql_nvarchar)
+                    {
+                        SqlTypeName = "nvarchar(max)",
+                        Length = int.MaxValue
+                    }
+                    : new(SqliteTypes.sql_varchar)
+                    {
+                        SqlTypeName = "varchar(max)",
+                        Length = int.MaxValue
+                    };
+            }
 
             if (d.IsFixedLength == true)
             {

@@ -35,11 +35,6 @@ public abstract partial class DbProviderTypeMapBase<TImpl> : IDbProviderTypeMap
         List<SqlTypeToDotnetTypeConverter>
     > SqlTypeToDotnetTypeConverters = new();
 
-    // protected static readonly ConcurrentDictionary<
-    //     string,
-    //     DbProviderSqlType
-    // > ProviderSqlTypeLookup = new();
-
     protected DbProviderTypeMapBase()
     {
         if (DotnetTypeToSqlTypeConverters.IsEmpty)
@@ -161,6 +156,7 @@ public abstract partial class DbProviderTypeMapBase<TImpl> : IDbProviderTypeMap
                 && (
                     dotnetTypeDescriptor.DotnetType.IsClass
                     || dotnetTypeDescriptor.DotnetType.IsInterface
+                    || dotnetTypeDescriptor.DotnetType.IsStruct()
                 )
             )
             {

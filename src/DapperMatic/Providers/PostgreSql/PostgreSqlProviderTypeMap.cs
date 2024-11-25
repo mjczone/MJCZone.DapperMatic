@@ -192,8 +192,8 @@ public sealed class PostgreSqlProviderTypeMap : DbProviderTypeMapBase<PostgreSql
                 }
                     .SelectMany(t =>
                     {
-                        var rangeType = t.MakeGenericType(t);
-                        return new[] { rangeType, rangeType.MakeArrayType() };
+                        var dotnetType = rangeType.MakeGenericType(t);
+                        return new[] { dotnetType, dotnetType.MakeArrayType() };
                     })
                     .ToArray()
             );
@@ -251,7 +251,7 @@ public sealed class PostgreSqlProviderTypeMap : DbProviderTypeMapBase<PostgreSql
             dateTimeConverter,
             PostgreSqlTypes.sql_date,
             PostgreSqlTypes.sql_interval,
-            PostgreSqlTypes.sql_time_without_timezone,
+            PostgreSqlTypes.sql_time_without_time_zone,
             PostgreSqlTypes.sql_time,
             PostgreSqlTypes.sql_time_with_time_zone,
             PostgreSqlTypes.sql_timetz,
@@ -422,19 +422,24 @@ public sealed class PostgreSqlProviderTypeMap : DbProviderTypeMapBase<PostgreSql
     {
         return new(d =>
         {
-            if (d.IsFixedLength == true && d.Length.HasValue)
+            var length = d.Length.GetValueOrDefault(255);
+            if (length == int.MaxValue)
+            {
+                return new(PostgreSqlTypes.sql_text);
+            }
+            if (d.IsFixedLength == true)
+            {
                 return new(PostgreSqlTypes.sql_char)
                 {
-                    SqlTypeName = $"char({d.Length})",
-                    Length = d.Length
+                    SqlTypeName = $"char({length})",
+                    Length = length
                 };
-            if (d.Length.HasValue)
-                return new(PostgreSqlTypes.sql_varchar)
-                {
-                    SqlTypeName = $"varchar({d.Length})",
-                    Length = d.Length
-                };
-            return new(PostgreSqlTypes.sql_text);
+            }
+            return new(PostgreSqlTypes.sql_varchar)
+            {
+                SqlTypeName = $"varchar({length})",
+                Length = length
+            };
         });
     }
 
@@ -717,7 +722,7 @@ public sealed class PostgreSqlProviderTypeMap : DbProviderTypeMapBase<PostgreSql
                 case PostgreSqlTypes.sql_interval:
                     return new DotnetTypeDescriptor(typeof(TimeSpan));
                 case PostgreSqlTypes.sql_time:
-                case PostgreSqlTypes.sql_time_without_timezone:
+                case PostgreSqlTypes.sql_time_without_time_zone:
                 case PostgreSqlTypes.sql_timetz:
                 case PostgreSqlTypes.sql_time_with_time_zone:
                     return new DotnetTypeDescriptor(typeof(TimeOnly));
