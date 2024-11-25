@@ -6,26 +6,6 @@ public abstract partial class DatabaseMethodsTests
 {
     private static Type[] GetSupportedTypes(IDbProviderTypeMap dbTypeMap)
     {
-        // Type[] supportedTypes = dbTypeMap
-        //     .GetProviderSqlTypes()
-        //     .SelectMany(t =>
-        //     {
-        //         var dotnetTypes = new List<Type>();
-        //         if (
-        //             dbTypeMap.TryGetRecommendedDotnetTypeMatchingSqlType(
-        //                 t.SqlType,
-        //                 out var dotnetTypeInfo
-        //             )
-        //             && dotnetTypeInfo != null
-        //         )
-        //         {
-        //             dotnetTypes.AddRange(dotnetTypeInfo.Value.allSupportedTypes);
-        //         }
-        //         return dotnetTypes;
-        //     })
-        //     .Distinct()
-        //     .ToArray();
-
         Type[] typesToSupport =
         [
             typeof(bool),

@@ -31,6 +31,14 @@ public abstract class MariaDbDatabaseMethodsTests<TDatabaseFixture>(
 ) : DatabaseMethodsTests(output), IClassFixture<TDatabaseFixture>, IDisposable
     where TDatabaseFixture : MariaDbDatabaseFixture
 {
+    static MariaDbDatabaseMethodsTests()
+    {
+        Providers.DatabaseMethodsProvider.RegisterFactory(
+            nameof(ProfiledMariaDbMethodsFactory),
+            new ProfiledMariaDbMethodsFactory()
+        );
+    }
+
     public override async Task<IDbConnection> OpenConnectionAsync()
     {
         var connectionString = fixture.ConnectionString;
@@ -39,7 +47,10 @@ public abstract class MariaDbDatabaseMethodsTests<TDatabaseFixture>(
         {
             connectionString += ";SSL Mode=None";
         }
-        var db = new MySqlConnection(connectionString);
+        var db = new DbQueryLogging.LoggedDbConnection(
+            new MySqlConnection(connectionString),
+            new Logging.TestLogger(Output, nameof(MySqlConnection))
+        );
         await db.OpenAsync();
         return db;
     }
@@ -48,4 +59,10 @@ public abstract class MariaDbDatabaseMethodsTests<TDatabaseFixture>(
     {
         return fixture.IgnoreSqlType(sqlType);
     }
+}
+
+public class ProfiledMariaDbMethodsFactory : Providers.MySql.MySqlMethodsFactory
+{
+    public override bool SupportsConnectionCustom(IDbConnection db) =>
+        db is DbQueryLogging.LoggedDbConnection loggedDb && loggedDb.Inner is MySqlConnection;
 }

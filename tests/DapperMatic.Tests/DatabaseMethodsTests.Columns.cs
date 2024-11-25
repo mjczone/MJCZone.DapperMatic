@@ -1,5 +1,6 @@
 using DapperMatic.Models;
 using DapperMatic.Providers;
+using DbQueryLogging;
 using Npgsql;
 
 namespace DapperMatic.Tests;
@@ -46,7 +47,7 @@ public abstract partial class DatabaseMethodsTests
                 defaultGuidSql = "uuid_generate_v4()";
                 break;
             case DbProviderType.MySql:
-                defaultDateTimeSql = version > new Version(5, 6, 5) ? "CURRENT_TIMESTAMP" : null;
+                defaultDateTimeSql = version > new Version(5, 6, 5) ? "CURRENT_TIMESTAMP(6)" : null;
                 // only supported after 8.0.13
                 // LEADS TO THIS ERROR:
                 // Statement is unsafe because it uses a system function that may return a different value on the replication slave.
@@ -116,7 +117,11 @@ public abstract partial class DatabaseMethodsTests
         );
         Assert.True(columnCreated);
 
-        if (db is NpgsqlConnection)
+        if (
+            db is NpgsqlConnection
+            || db is LoggedDbConnection loggedDbConnection
+                && loggedDbConnection.Inner is NpgsqlConnection
+        )
         {
             columnCreated = await db.CreateColumnIfNotExistsAsync(
                 new DxColumn(

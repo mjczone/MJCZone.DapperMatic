@@ -39,10 +39,27 @@ public abstract class SqlServerDatabaseMethodsests<TDatabaseFixture>(
 ) : DatabaseMethodsTests(output), IClassFixture<TDatabaseFixture>, IDisposable
     where TDatabaseFixture : SqlServerDatabaseFixture
 {
+    static SqlServerDatabaseMethodsests()
+    {
+        Providers.DatabaseMethodsProvider.RegisterFactory(
+            nameof(ProfiledSqlServerMethodsFactory),
+            new ProfiledSqlServerMethodsFactory()
+        );
+    }
+
     public override async Task<IDbConnection> OpenConnectionAsync()
     {
-        var db = new SqlConnection(fixture.ConnectionString);
+        var db = new DbQueryLogging.LoggedDbConnection(
+            new SqlConnection(fixture.ConnectionString),
+            new Logging.TestLogger(Output, nameof(SqlConnection))
+        );
         await db.OpenAsync();
         return db;
     }
+}
+
+public class ProfiledSqlServerMethodsFactory : Providers.SqlServer.SqlServerMethodsFactory
+{
+    public override bool SupportsConnectionCustom(IDbConnection db) =>
+        db is DbQueryLogging.LoggedDbConnection loggedDb && loggedDb.Inner is SqlConnection;
 }

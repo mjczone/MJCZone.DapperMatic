@@ -39,6 +39,14 @@ public abstract class MySqlDatabaseMethodsTests<TDatabaseFixture>(
 ) : DatabaseMethodsTests(output), IClassFixture<TDatabaseFixture>, IDisposable
     where TDatabaseFixture : MySqlDatabaseFixture
 {
+    static MySqlDatabaseMethodsTests()
+    {
+        Providers.DatabaseMethodsProvider.RegisterFactory(
+            nameof(ProfiledMySqlMethodsFactory),
+            new ProfiledMySqlMethodsFactory()
+        );
+    }
+
     public override async Task<IDbConnection> OpenConnectionAsync()
     {
         var connectionString = fixture.ConnectionString;
@@ -47,7 +55,10 @@ public abstract class MySqlDatabaseMethodsTests<TDatabaseFixture>(
         {
             connectionString += ";SSL Mode=None";
         }
-        var db = new MySqlConnection(connectionString);
+        var db = new DbQueryLogging.LoggedDbConnection(
+            new MySqlConnection(connectionString),
+            new Logging.TestLogger(Output, nameof(MySqlConnection))
+        );
         await db.OpenAsync();
         return db;
     }
@@ -56,4 +67,10 @@ public abstract class MySqlDatabaseMethodsTests<TDatabaseFixture>(
     {
         return fixture.IgnoreSqlType(sqlType);
     }
+}
+
+public class ProfiledMySqlMethodsFactory : Providers.MySql.MySqlMethodsFactory
+{
+    public override bool SupportsConnectionCustom(IDbConnection db) =>
+        db is DbQueryLogging.LoggedDbConnection loggedDb && loggedDb.Inner is MySqlConnection;
 }

@@ -1,5 +1,6 @@
 using System.Data;
 using Dapper;
+using DapperMatic.Providers;
 using DapperMatic.Tests.ProviderFixtures;
 using Npgsql;
 using Xunit.Abstractions;
@@ -48,9 +49,20 @@ public abstract class PostgreSqlDatabaseMethodsTests<TDatabaseFixture>(
 ) : DatabaseMethodsTests(output), IClassFixture<TDatabaseFixture>, IDisposable
     where TDatabaseFixture : PostgreSqlDatabaseFixture
 {
+    static PostgreSqlDatabaseMethodsTests()
+    {
+        DatabaseMethodsProvider.RegisterFactory(
+            nameof(ProfiledPostgreSqlMethodsFactory),
+            new ProfiledPostgreSqlMethodsFactory()
+        );
+    }
+
     public override async Task<IDbConnection> OpenConnectionAsync()
     {
-        var db = new NpgsqlConnection(fixture.ConnectionString);
+        var db = new DbQueryLogging.LoggedDbConnection(
+            new NpgsqlConnection(fixture.ConnectionString),
+            new Logging.TestLogger(Output, nameof(NpgsqlConnection))
+        );
         await db.OpenAsync();
         await db.ExecuteAsync("CREATE EXTENSION IF NOT EXISTS \"uuid-ossp\";");
         await db.ExecuteAsync("CREATE EXTENSION IF NOT EXISTS \"hstore\";");
@@ -65,4 +77,10 @@ public abstract class PostgreSqlDatabaseMethodsTests<TDatabaseFixture>(
         }
         return db;
     }
+}
+
+public class ProfiledPostgreSqlMethodsFactory : Providers.PostgreSql.PostgreSqlMethodsFactory
+{
+    public override bool SupportsConnectionCustom(IDbConnection db) =>
+        db is DbQueryLogging.LoggedDbConnection loggedDb && loggedDb.Inner is NpgsqlConnection;
 }
