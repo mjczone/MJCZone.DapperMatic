@@ -5,6 +5,16 @@ namespace DapperMatic.Providers.Base;
 
 public abstract partial class DatabaseMethodsBase
 {
+    /// <summary>
+    /// Checks if a foreign key constraint exists.
+    /// </summary>
+    /// <param name="db">The database connection.</param>
+    /// <param name="schemaName">The schema name.</param>
+    /// <param name="tableName">The table name.</param>
+    /// <param name="constraintName">The constraint name.</param>
+    /// <param name="tx">The transaction.</param>
+    /// <param name="cancellationToken">The cancellation token.</param>
+    /// <returns>True if the constraint exists, otherwise false.</returns>
     public virtual async Task<bool> DoesForeignKeyConstraintExistAsync(
         IDbConnection db,
         string? schemaName,
@@ -25,6 +35,16 @@ public abstract partial class DatabaseMethodsBase
                 .ConfigureAwait(false) != null;
     }
 
+    /// <summary>
+    /// Checks if a foreign key constraint exists on a specific column.
+    /// </summary>
+    /// <param name="db">The database connection.</param>
+    /// <param name="schemaName">The schema name.</param>
+    /// <param name="tableName">The table name.</param>
+    /// <param name="columnName">The column name.</param>
+    /// <param name="tx">The transaction.</param>
+    /// <param name="cancellationToken">The cancellation token.</param>
+    /// <returns>True if the constraint exists on the column, otherwise false.</returns>
     public virtual async Task<bool> DoesForeignKeyConstraintExistOnColumnAsync(
         IDbConnection db,
         string? schemaName,
@@ -45,6 +65,14 @@ public abstract partial class DatabaseMethodsBase
                 .ConfigureAwait(false) != null;
     }
 
+    /// <summary>
+    /// Creates a foreign key constraint if it does not exist.
+    /// </summary>
+    /// <param name="db">The database connection.</param>
+    /// <param name="constraint">The foreign key constraint.</param>
+    /// <param name="tx">The transaction.</param>
+    /// <param name="cancellationToken">The cancellation token.</param>
+    /// <returns>True if the constraint was created, otherwise false.</returns>
     public virtual async Task<bool> CreateForeignKeyConstraintIfNotExistsAsync(
         IDbConnection db,
         DxForeignKeyConstraint constraint,
@@ -57,9 +85,9 @@ public abstract partial class DatabaseMethodsBase
                 constraint.SchemaName,
                 constraint.TableName,
                 constraint.ConstraintName,
-                constraint.SourceColumns,
+                [.. constraint.SourceColumns],
                 constraint.ReferencedTableName,
-                constraint.ReferencedColumns,
+                [.. constraint.ReferencedColumns],
                 constraint.OnDelete,
                 constraint.OnUpdate,
                 tx,
@@ -68,6 +96,21 @@ public abstract partial class DatabaseMethodsBase
             .ConfigureAwait(false);
     }
 
+    /// <summary>
+    /// Creates a foreign key constraint if it does not exist.
+    /// </summary>
+    /// <param name="db">The database connection.</param>
+    /// <param name="schemaName">The schema name.</param>
+    /// <param name="tableName">The table name.</param>
+    /// <param name="constraintName">The constraint name.</param>
+    /// <param name="sourceColumns">The source columns.</param>
+    /// <param name="referencedTableName">The referenced table name.</param>
+    /// <param name="referencedColumns">The referenced columns.</param>
+    /// <param name="onDelete">The delete action.</param>
+    /// <param name="onUpdate">The update action.</param>
+    /// <param name="tx">The transaction.</param>
+    /// <param name="cancellationToken">The cancellation token.</param>
+    /// <returns>True if the constraint was created, otherwise false.</returns>
     public virtual async Task<bool> CreateForeignKeyConstraintIfNotExistsAsync(
         IDbConnection db,
         string? schemaName,
@@ -83,34 +126,46 @@ public abstract partial class DatabaseMethodsBase
     )
     {
         if (string.IsNullOrWhiteSpace(tableName))
+        {
             throw new ArgumentException("Table name is required.", nameof(tableName));
+        }
 
         if (string.IsNullOrWhiteSpace(constraintName))
+        {
             throw new ArgumentException("Constraint name is required.", nameof(constraintName));
+        }
 
         if (sourceColumns.Length == 0)
+        {
             throw new ArgumentException(
                 "At least one column must be specified.",
                 nameof(sourceColumns)
             );
+        }
 
         if (string.IsNullOrWhiteSpace(referencedTableName))
+        {
             throw new ArgumentException(
                 "Referenced table name is required.",
                 nameof(referencedTableName)
             );
+        }
 
         if (referencedColumns.Length == 0)
+        {
             throw new ArgumentException(
                 "At least one column must be specified.",
                 nameof(referencedColumns)
             );
+        }
 
         if (sourceColumns.Length != referencedColumns.Length)
+        {
             throw new ArgumentException(
                 "The number of source columns must match the number of referenced columns.",
                 nameof(referencedColumns)
             );
+        }
 
         if (
             await DoesForeignKeyConstraintExistAsync(
@@ -123,7 +178,9 @@ public abstract partial class DatabaseMethodsBase
                 )
                 .ConfigureAwait(false)
         )
+        {
             return false;
+        }
 
         var sql = SqlAlterTableAddForeignKeyConstraint(
             schemaName,
@@ -136,11 +193,22 @@ public abstract partial class DatabaseMethodsBase
             onUpdate
         );
 
-        await ExecuteAsync(db, sql, tx: tx).ConfigureAwait(false);
+        await ExecuteAsync(db, sql, tx: tx, cancellationToken: cancellationToken)
+            .ConfigureAwait(false);
 
         return true;
     }
 
+    /// <summary>
+    /// Gets a foreign key constraint.
+    /// </summary>
+    /// <param name="db">The database connection.</param>
+    /// <param name="schemaName">The schema name.</param>
+    /// <param name="tableName">The table name.</param>
+    /// <param name="constraintName">The constraint name.</param>
+    /// <param name="tx">The transaction.</param>
+    /// <param name="cancellationToken">The cancellation token.</param>
+    /// <returns>The foreign key constraint if found, otherwise null.</returns>
     public virtual async Task<DxForeignKeyConstraint?> GetForeignKeyConstraintAsync(
         IDbConnection db,
         string? schemaName,
@@ -151,7 +219,9 @@ public abstract partial class DatabaseMethodsBase
     )
     {
         if (string.IsNullOrWhiteSpace(constraintName))
+        {
             throw new ArgumentException("Constraint name is required.", nameof(constraintName));
+        }
 
         var foreignKeyConstraints = await GetForeignKeyConstraintsAsync(
                 db,
@@ -165,6 +235,16 @@ public abstract partial class DatabaseMethodsBase
         return foreignKeyConstraints.SingleOrDefault();
     }
 
+    /// <summary>
+    /// Gets the name of the foreign key constraint on a specific column.
+    /// </summary>
+    /// <param name="db">The database connection.</param>
+    /// <param name="schemaName">The schema name.</param>
+    /// <param name="tableName">The table name.</param>
+    /// <param name="columnName">The column name.</param>
+    /// <param name="tx">The transaction.</param>
+    /// <param name="cancellationToken">The cancellation token.</param>
+    /// <returns>The name of the foreign key constraint if found, otherwise null.</returns>
     public virtual async Task<string?> GetForeignKeyConstraintNameOnColumnAsync(
         IDbConnection db,
         string? schemaName,
@@ -187,6 +267,16 @@ public abstract partial class DatabaseMethodsBase
         )?.ConstraintName;
     }
 
+    /// <summary>
+    /// Gets the names of the foreign key constraints.
+    /// </summary>
+    /// <param name="db">The database connection.</param>
+    /// <param name="schemaName">The schema name.</param>
+    /// <param name="tableName">The table name.</param>
+    /// <param name="constraintNameFilter">The constraint name filter.</param>
+    /// <param name="tx">The transaction.</param>
+    /// <param name="cancellationToken">The cancellation token.</param>
+    /// <returns>A list of foreign key constraint names.</returns>
     public virtual async Task<List<string>> GetForeignKeyConstraintNamesAsync(
         IDbConnection db,
         string? schemaName,
@@ -208,6 +298,16 @@ public abstract partial class DatabaseMethodsBase
         return foreignKeyConstraints.Select(c => c.ConstraintName).ToList();
     }
 
+    /// <summary>
+    /// Gets the foreign key constraint on a specific column.
+    /// </summary>
+    /// <param name="db">The database connection.</param>
+    /// <param name="schemaName">The schema name.</param>
+    /// <param name="tableName">The table name.</param>
+    /// <param name="columnName">The column name.</param>
+    /// <param name="tx">The transaction.</param>
+    /// <param name="cancellationToken">The cancellation token.</param>
+    /// <returns>The foreign key constraint if found, otherwise null.</returns>
     public virtual async Task<DxForeignKeyConstraint?> GetForeignKeyConstraintOnColumnAsync(
         IDbConnection db,
         string? schemaName,
@@ -218,7 +318,9 @@ public abstract partial class DatabaseMethodsBase
     )
     {
         if (string.IsNullOrWhiteSpace(columnName))
+        {
             throw new ArgumentException("Column name is required.", nameof(columnName));
+        }
 
         var foreignKeyConstraints = await GetForeignKeyConstraintsAsync(
                 db,
@@ -236,6 +338,16 @@ public abstract partial class DatabaseMethodsBase
         );
     }
 
+    /// <summary>
+    /// Gets the foreign key constraints.
+    /// </summary>
+    /// <param name="db">The database connection.</param>
+    /// <param name="schemaName">The schema name.</param>
+    /// <param name="tableName">The table name.</param>
+    /// <param name="constraintNameFilter">The constraint name filter.</param>
+    /// <param name="tx">The transaction.</param>
+    /// <param name="cancellationToken">The cancellation token.</param>
+    /// <returns>A list of foreign key constraints.</returns>
     public virtual async Task<List<DxForeignKeyConstraint>> GetForeignKeyConstraintsAsync(
         IDbConnection db,
         string? schemaName,
@@ -246,13 +358,17 @@ public abstract partial class DatabaseMethodsBase
     )
     {
         if (string.IsNullOrWhiteSpace(tableName))
+        {
             throw new ArgumentException("Table name is required.", nameof(tableName));
+        }
 
         var table = await GetTableAsync(db, schemaName, tableName, tx, cancellationToken)
             .ConfigureAwait(false);
 
         if (table == null)
+        {
             return new List<DxForeignKeyConstraint>();
+        }
 
         var filter = string.IsNullOrWhiteSpace(constraintNameFilter)
             ? null
@@ -265,6 +381,16 @@ public abstract partial class DatabaseMethodsBase
                 .ToList();
     }
 
+    /// <summary>
+    /// Drops the foreign key constraint on a specific column if it exists.
+    /// </summary>
+    /// <param name="db">The database connection.</param>
+    /// <param name="schemaName">The schema name.</param>
+    /// <param name="tableName">The table name.</param>
+    /// <param name="columnName">The column name.</param>
+    /// <param name="tx">The transaction.</param>
+    /// <param name="cancellationToken">The cancellation token.</param>
+    /// <returns>True if the constraint was dropped, otherwise false.</returns>
     public virtual async Task<bool> DropForeignKeyConstraintOnColumnIfExistsAsync(
         IDbConnection db,
         string? schemaName,
@@ -295,6 +421,16 @@ public abstract partial class DatabaseMethodsBase
                 .ConfigureAwait(false);
     }
 
+    /// <summary>
+    /// Drops the foreign key constraint if it exists.
+    /// </summary>
+    /// <param name="db">The database connection.</param>
+    /// <param name="schemaName">The schema name.</param>
+    /// <param name="tableName">The table name.</param>
+    /// <param name="constraintName">The constraint name.</param>
+    /// <param name="tx">The transaction.</param>
+    /// <param name="cancellationToken">The cancellation token.</param>
+    /// <returns>True if the constraint was dropped, otherwise false.</returns>
     public virtual async Task<bool> DropForeignKeyConstraintIfExistsAsync(
         IDbConnection db,
         string? schemaName,
@@ -315,11 +451,14 @@ public abstract partial class DatabaseMethodsBase
                 )
                 .ConfigureAwait(false)
         )
+        {
             return false;
+        }
 
         var sql = SqlDropForeignKeyConstraint(schemaName, tableName, constraintName);
 
-        await ExecuteAsync(db, sql, tx: tx).ConfigureAwait(false);
+        await ExecuteAsync(db, sql, tx: tx, cancellationToken: cancellationToken)
+            .ConfigureAwait(false);
 
         return true;
     }

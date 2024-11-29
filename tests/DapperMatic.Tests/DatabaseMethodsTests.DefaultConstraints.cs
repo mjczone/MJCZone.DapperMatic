@@ -34,7 +34,9 @@ public abstract partial class DatabaseMethodsTests
             constraintName
         );
         if (exists)
+        {
             await db.DropDefaultConstraintIfExistsAsync(schemaName, testTableName, constraintName);
+        }
 
         await db.CreateDefaultConstraintIfNotExistsAsync(
             schemaName,

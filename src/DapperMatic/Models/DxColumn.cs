@@ -4,14 +4,40 @@ using System.Text.Json;
 
 namespace DapperMatic.Models;
 
+/// <summary>
+/// Represents a database column with various properties and methods to determine its characteristics.
+/// </summary>
 [Serializable]
 public class DxColumn
 {
     /// <summary>
-    /// Used for deserialization
+    /// Initializes a new instance of the <see cref="DxColumn"/> class.
     /// </summary>
     public DxColumn() { }
 
+    /// <summary>
+    /// Initializes a new instance of the <see cref="DxColumn"/> class with the specified parameters.
+    /// </summary>
+    /// <param name="schemaName">The schema name.</param>
+    /// <param name="tableName">The table name.</param>
+    /// <param name="columnName">The column name.</param>
+    /// <param name="dotnetType">The .NET type of the column.</param>
+    /// <param name="providerDataTypes">The provider data types.</param>
+    /// <param name="length">The length of the column.</param>
+    /// <param name="precision">The precision of the column.</param>
+    /// <param name="scale">The scale of the column.</param>
+    /// <param name="checkExpression">The check expression.</param>
+    /// <param name="defaultExpression">The default expression.</param>
+    /// <param name="isNullable">Indicates whether the column is nullable.</param>
+    /// <param name="isPrimaryKey">Indicates whether the column is a primary key.</param>
+    /// <param name="isAutoIncrement">Indicates whether the column is auto-incremented.</param>
+    /// <param name="isUnique">Indicates whether the column is unique.</param>
+    /// <param name="isIndexed">Indicates whether the column is indexed.</param>
+    /// <param name="isForeignKey">Indicates whether the column is a foreign key.</param>
+    /// <param name="referencedTableName">The referenced table name.</param>
+    /// <param name="referencedColumnName">The referenced column name.</param>
+    /// <param name="onDelete">The action on delete.</param>
+    /// <param name="onUpdate">The action on update.</param>
     [SetsRequiredMembers]
     public DxColumn(
         string? schemaName,
@@ -58,49 +84,124 @@ public class DxColumn
         OnUpdate = onUpdate;
     }
 
+    /// <summary>
+    /// Gets or sets the schema name.
+    /// </summary>
     public string? SchemaName { get; set; }
+
+    /// <summary>
+    /// Gets the table name.
+    /// </summary>
     public required string TableName { get; init; }
+
+    /// <summary>
+    /// Gets the column name.
+    /// </summary>
     public required string ColumnName { get; init; }
+
+    /// <summary>
+    /// Gets the .NET type of the column.
+    /// </summary>
     public required Type DotnetType { get; init; }
 
     /// <summary>
-    /// The FULL native provider data type. This is the data type that the provider uses to
+    /// Gets the provider data types. The FULL native provider data type. This is the data type that the provider uses to
     /// store the data (e.g. "INTEGER", "DECIMAL(14,3)", "VARCHAR(255)", "TEXT", "BLOB", etc.)
     /// </summary>
     /// <remarks>
     /// The provider data type should include the length, precision, and scale if applicable.
     /// </remarks>
     public Dictionary<DbProviderType, string> ProviderDataTypes { get; } = new();
-    public int? Length { get; set; }
-    public int? Precision { get; set; }
-    public int? Scale { get; set; }
-    public string? CheckExpression { get; set; }
-    public string? DefaultExpression { get; set; }
-    public bool IsNullable { get; set; }
-    public bool IsPrimaryKey { get; set; }
-    public bool IsAutoIncrement { get; set; }
-    public bool IsUnicode { get; set; }
-    public bool IsFixedLength { get; set; }
 
     /// <summary>
-    /// Is either part of a single column unique constraint or a single column unique index.
+    /// Gets or sets the length of the column.
+    /// </summary>
+    public int? Length { get; set; }
+
+    /// <summary>
+    /// Gets or sets the precision of the column.
+    /// </summary>
+    public int? Precision { get; set; }
+
+    /// <summary>
+    /// Gets or sets the scale of the column.
+    /// </summary>
+    public int? Scale { get; set; }
+
+    /// <summary>
+    /// Gets or sets the check expression.
+    /// </summary>
+    public string? CheckExpression { get; set; }
+
+    /// <summary>
+    /// Gets or sets the default expression.
+    /// </summary>
+    public string? DefaultExpression { get; set; }
+
+    /// <summary>
+    /// Gets or sets a value indicating whether the column is nullable.
+    /// </summary>
+    public bool IsNullable { get; set; }
+
+    /// <summary>
+    /// Gets or sets a value indicating whether the column is a primary key.
+    /// </summary>
+    public bool IsPrimaryKey { get; set; }
+
+    /// <summary>
+    /// Gets or sets a value indicating whether the column is auto-incremented.
+    /// </summary>
+    public bool IsAutoIncrement { get; set; }
+
+    /// <summary>
+    /// Gets or sets a value indicating whether the column is unique.
     /// </summary>
     public bool IsUnique { get; set; }
 
     /// <summary>
-    /// Is part of an index
+    /// Gets or sets a value indicating whether the column explicitly supports unicode characters.
+    /// </summary>
+    public bool IsUnicode { get; set; }
+
+    /// <summary>
+    /// Gets or sets a value indicating whether the column is of a fixed length.
+    /// </summary>
+    public bool IsFixedLength { get; set; }
+
+    /// <summary>
+    /// Gets or sets a value indicating whether the column is indexed.
     /// </summary>
     public bool IsIndexed { get; set; }
 
     /// <summary>
-    /// Is a foreign key to a another referenced table. This is the MANY side of a ONE-TO-MANY relationship.
+    /// Gets or sets a value indicating whether the column is a foreign key.
     /// </summary>
     public bool IsForeignKey { get; set; }
+
+    /// <summary>
+    /// Gets or sets the referenced table name.
+    /// </summary>
     public string? ReferencedTableName { get; set; }
+
+    /// <summary>
+    /// Gets or sets the referenced column name.
+    /// </summary>
     public string? ReferencedColumnName { get; set; }
+
+    /// <summary>
+    /// Gets or sets the action on delete.
+    /// </summary>
     public DxForeignKeyAction? OnDelete { get; set; }
+
+    /// <summary>
+    /// Gets or sets the action on update.
+    /// </summary>
     public DxForeignKeyAction? OnUpdate { get; set; }
 
+    /// <summary>
+    /// Determines whether the column is numeric.
+    /// </summary>
+    /// <returns><c>true</c> if the column is numeric; otherwise, <c>false</c>.</returns>
     public bool IsNumeric()
     {
         return DotnetType == typeof(byte)
@@ -116,6 +217,10 @@ public class DxColumn
             || DotnetType == typeof(decimal);
     }
 
+    /// <summary>
+    /// Determines whether the column is text.
+    /// </summary>
+    /// <returns><c>true</c> if the column is text; otherwise, <c>false</c>.</returns>
     public bool IsText()
     {
         return DotnetType == typeof(string)
@@ -123,85 +228,159 @@ public class DxColumn
             || DotnetType == typeof(char[]);
     }
 
+    /// <summary>
+    /// Determines whether the column is a date/time type.
+    /// </summary>
+    /// <returns><c>true</c> if the column is a date/time type; otherwise, <c>false</c>.</returns>
     public bool IsDateTime()
     {
         return DotnetType == typeof(DateTime) || DotnetType == typeof(DateTimeOffset);
     }
 
+    /// <summary>
+    /// Determines whether the column is a boolean type.
+    /// </summary>
+    /// <returns><c>true</c> if the column is a boolean type; otherwise, <c>false</c>.</returns>
     public bool IsBoolean()
     {
         return DotnetType == typeof(bool);
     }
 
+    /// <summary>
+    /// Determines whether the column is a binary type.
+    /// </summary>
+    /// <returns><c>true</c> if the column is a binary type; otherwise, <c>false</c>.</returns>
     public bool IsBinary()
     {
         return DotnetType == typeof(byte[]);
     }
 
+    /// <summary>
+    /// Determines whether the column is a GUID type.
+    /// </summary>
+    /// <returns><c>true</c> if the column is a GUID type; otherwise, <c>false</c>.</returns>
     public bool IsGuid()
     {
         return DotnetType == typeof(Guid);
     }
 
+    /// <summary>
+    /// Determines whether the column is an enum type.
+    /// </summary>
+    /// <returns><c>true</c> if the column is an enum type; otherwise, <c>false</c>.</returns>
     public bool IsEnum()
     {
         return DotnetType.IsEnum;
     }
 
+    /// <summary>
+    /// Determines whether the column is an array type.
+    /// </summary>
+    /// <returns><c>true</c> if the column is an array type; otherwise, <c>false</c>.</returns>
     public bool IsArray()
     {
         return DotnetType.IsArray;
     }
 
+    /// <summary>
+    /// Determines whether the column is a dictionary type.
+    /// </summary>
+    /// <returns><c>true</c> if the column is a dictionary type; otherwise, <c>false</c>.</returns>
     public bool IsDictionary()
     {
         return DotnetType.IsGenericType
             && DotnetType.GetGenericTypeDefinition() == typeof(Dictionary<,>);
     }
 
+    /// <summary>
+    /// Determines whether the column is an enumerable type.
+    /// </summary>
+    /// <returns><c>true</c> if the column is an enumerable type; otherwise, <c>false</c>.</returns>
     public bool IsEnumerable()
     {
         return typeof(IEnumerable<>).IsAssignableFrom(DotnetType);
     }
 
+    /// <summary>
+    /// Gets the type category of the column.
+    /// </summary>
+    /// <returns>The type category of the column.</returns>
     public string GetTypeCategory()
     {
         if (IsNumeric())
+        {
             return "Numeric";
+        }
+
         if (IsText())
+        {
             return "Text";
+        }
+
         if (IsDateTime())
+        {
             return "DateTime";
+        }
+
         if (IsBoolean())
+        {
             return "Boolean";
+        }
+
         if (IsBinary())
+        {
             return "Binary";
+        }
+
         if (IsGuid())
+        {
             return "Guid";
+        }
+
         if (IsEnum())
+        {
             return "Enum";
+        }
+
         if (IsArray())
+        {
             return "Array";
+        }
+
         if (IsDictionary())
+        {
             return "Dictionary";
+        }
+
         if (IsEnumerable())
+        {
             return "Enumerable";
+        }
+
         return "Unknown";
     }
 
-    // ToString override to display column definition
+    /// <summary>
+    /// Returns a string representation of the column definition.
+    /// </summary>
+    /// <returns>A string representation of the column definition.</returns>
     public override string ToString()
     {
         return $"{ColumnName} ({JsonSerializer.Serialize(ProviderDataTypes)}) {(IsNullable ? "NULL" : "NOT NULL")}"
-            + $"{(IsPrimaryKey ? " PRIMARY KEY" : "")}"
-            + $"{(IsUnique ? " UNIQUE" : "")}"
-            + $"{(IsIndexed ? " INDEXED" : "")}"
-            + $"{(IsForeignKey ? $" FOREIGN KEY({ReferencedTableName ?? ""}) REFERENCES({ReferencedColumnName ?? ""})" : "")}"
-            + $"{(IsAutoIncrement ? " AUTOINCREMENT" : "")}"
-            + $"{(!string.IsNullOrWhiteSpace(CheckExpression) ? $" CHECK ({CheckExpression})" : "")}"
-            + $"{(!string.IsNullOrWhiteSpace(DefaultExpression) ? $" DEFAULT {(DefaultExpression.Contains(' ') ? $"({DefaultExpression})" : DefaultExpression)}" : "")}";
+            + $"{(IsPrimaryKey ? " PRIMARY KEY" : string.Empty)}"
+            + $"{(IsUnique ? " UNIQUE" : string.Empty)}"
+            + $"{(IsIndexed ? " INDEXED" : string.Empty)}"
+            + $"{(IsForeignKey ? $" FOREIGN KEY({ReferencedTableName ?? string.Empty}) REFERENCES({ReferencedColumnName ?? string.Empty})" : string.Empty)}"
+            + $"{(IsAutoIncrement ? " AUTOINCREMENT" : string.Empty)}"
+            + $"{(!string.IsNullOrWhiteSpace(CheckExpression) ? $" CHECK ({CheckExpression})" : string.Empty)}"
+            + $"{(!string.IsNullOrWhiteSpace(DefaultExpression) ? $" DEFAULT {(DefaultExpression.Contains(' ', StringComparison.OrdinalIgnoreCase) ? $"({DefaultExpression})" : DefaultExpression)}" : string.Empty)}";
     }
 
+    /// <summary>
+    /// Gets the provider data type for the specified provider.
+    /// </summary>
+    /// <param name="providerType">The provider type.</param>
+    /// <returns>The provider data type for the specified provider.</returns>
     public string? GetProviderDataType(DbProviderType providerType)
     {
         return ProviderDataTypes.TryGetValue(providerType, out var providerDataType)
@@ -209,6 +388,12 @@ public class DxColumn
             : null;
     }
 
+    /// <summary>
+    /// Sets the provider data type for the specified provider.
+    /// </summary>
+    /// <param name="providerType">The provider type.</param>
+    /// <param name="providerDataType">The provider data type.</param>
+    /// <returns>The current <see cref="DxColumn"/> instance.</returns>
     public DxColumn SetProviderDataType(DbProviderType providerType, string providerDataType)
     {
         ProviderDataTypes[providerType] = providerDataType;

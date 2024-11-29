@@ -5,6 +5,15 @@ namespace DapperMatic.Providers.PostgreSql;
 
 public partial class PostgreSqlMethods
 {
+    /// <summary>
+    /// Retrieves a list of tables and their metadata from the PostgreSQL database.
+    /// </summary>
+    /// <param name="db">The database connection.</param>
+    /// <param name="schemaName">The schema name to filter tables.</param>
+    /// <param name="tableNameFilter">The table name filter.</param>
+    /// <param name="tx">The database transaction.</param>
+    /// <param name="cancellationToken">The cancellation token.</param>
+    /// <returns>A list of <see cref="DxTable"/> objects representing the tables and their metadata.</returns>
     public override async Task<List<DxTable>> GetTablesAsync(
         IDbConnection db,
         string? schemaName,
@@ -24,7 +33,7 @@ public partial class PostgreSqlMethods
         // so we will use pg_catalog instead
         var columnsSql = $"""
 
-                        SELECT 
+                        SELECT
                             schemas.nspname as schema_name,
                             tables.relname as table_name,
                             columns.attname as column_name,
@@ -50,7 +59,7 @@ public partial class PostgreSqlMethods
                 string.IsNullOrWhiteSpace(where) ? null : " AND lower(tables.relname) LIKE @where"
             )}
                         order by schema_name, table_name, column_ordinal;
-                    
+
             """;
         var columnResults = await QueryAsync<(
             string schema_name,
@@ -64,7 +73,7 @@ public partial class PostgreSqlMethods
             bool is_identity,
             string data_type,
             string data_type_ext
-        )>(db, columnsSql, new { schemaName, where }, tx: tx)
+        )>(db, columnsSql, new { schemaName, where }, tx: tx, cancellationToken: cancellationToken)
             .ConfigureAwait(false);
 
         // get indexes
@@ -81,12 +90,12 @@ public partial class PostgreSqlMethods
         // get primary key, unique key, foreign key and check constraints in a single query
         var constraintsSql = $"""
 
-                        select 
+                        select
                             schemas.nspname as schema_name,
                             tables.relname as table_name,
                             r.conname as constraint_name,
                             indexes.relname as supporting_index_name,
-                            case 
+                            case
                                 when r.contype = 'c' then 'CHECK'
                                 when r.contype = 'f' then 'FOREIGN KEY'
                                 when r.contype = 'p' then 'PRIMARY KEY'
@@ -112,14 +121,14 @@ public partial class PostgreSqlMethods
                                 when r.confupdtype = 'n' then 'SET NULL'
                                 when r.confupdtype = 'd' then 'SET DEFAULT'
                                 else null
-                            end as update_rule	
+                            end as update_rule
                         from pg_catalog.pg_constraint r
                             join pg_catalog.pg_namespace AS schemas ON r.connamespace = schemas.oid
                             join pg_class as tables on r.conrelid = tables.oid
                             left outer join pg_class as indexes on r.conindid = indexes.oid
                             left outer join pg_class as referenced_tables on r.confrelid = referenced_tables.oid
                         where
-                            schemas.nspname not like 'pg_%' 
+                            schemas.nspname not like 'pg_%'
                             and schemas.nspname != 'information_schema'
                             and r.contype in ('c', 'f', 'p', 'u')
                             and lower(schemas.nspname) = @schemaName
@@ -127,7 +136,7 @@ public partial class PostgreSqlMethods
                 string.IsNullOrWhiteSpace(where) ? null : " AND lower(tables.relname) LIKE @where"
             )}
                         order by schema_name, table_name, constraint_type, constraint_name
-                    
+
             """;
         var constraintResults = await QueryAsync<(
             string schema_name,
@@ -142,7 +151,7 @@ public partial class PostgreSqlMethods
             string referenced_column_ordinals_csv,
             string delete_rule,
             string update_rule
-        )>(db, constraintsSql, new { schemaName, where }, tx: tx).ConfigureAwait(false);
+        )>(db, constraintsSql, new { schemaName, where }, tx: tx, cancellationToken: cancellationToken).ConfigureAwait(false);
 
         var referencedTableNames = constraintResults
             .Where(c => c.constraint_type == "FOREIGN KEY")
@@ -151,7 +160,7 @@ public partial class PostgreSqlMethods
             .ToArray();
         var referencedColumnsSql = """
 
-                        SELECT 
+                        SELECT
                             schemas.nspname as schema_name,
                             tables.relname as table_name,
                             columns.attname as column_name,
@@ -164,7 +173,7 @@ public partial class PostgreSqlMethods
                             AND lower(schemas.nspname) = @schemaName
                             AND lower(tables.relname) = ANY (@referencedTableNames)
                         order by schema_name, table_name, column_ordinal;
-                    
+
             """;
         var referencedColumnsResults =
             referencedTableNames.Length == 0
@@ -174,7 +183,13 @@ public partial class PostgreSqlMethods
                     string table_name,
                     string column_name,
                     int column_ordinal
-                )>(db, referencedColumnsSql, new { schemaName, referencedTableNames }, tx: tx)
+                )>(
+                        db,
+                        referencedColumnsSql,
+                        new { schemaName, referencedTableNames },
+                        tx: tx,
+                        cancellationToken: cancellationToken
+                    )
                     .ConfigureAwait(false);
 
         var tables = new List<DxTable>();
@@ -183,7 +198,7 @@ public partial class PostgreSqlMethods
             var tableColumnResults in columnResults.GroupBy(r => new
             {
                 r.schema_name,
-                r.table_name
+                r.table_name,
             })
         )
         {
@@ -253,8 +268,8 @@ public partial class PostgreSqlMethods
                 )
                 .Select(c =>
                 {
-                    var columns = (c.column_ordinals_csv)
-                        .Split(',')
+                    var columns = c
+                        .column_ordinals_csv.Split(',')
                         .Select(r =>
                         {
                             return tableColumnResults
@@ -342,8 +357,10 @@ public partial class PostgreSqlMethods
 
             var tableIndexes = indexes
                 .Where(i =>
-                    (i.SchemaName ?? "").Equals(schemaName, StringComparison.OrdinalIgnoreCase)
-                    && i.TableName.Equals(tableName, StringComparison.OrdinalIgnoreCase)
+                    (i.SchemaName ?? string.Empty).Equals(
+                        schemaName,
+                        StringComparison.OrdinalIgnoreCase
+                    ) && i.TableName.Equals(tableName, StringComparison.OrdinalIgnoreCase)
                 )
                 .ToArray();
 
@@ -352,7 +369,7 @@ public partial class PostgreSqlMethods
             {
                 var columnIsUniqueViaUniqueConstraintOrIndex =
                     tableUniqueConstraints.Any(c =>
-                        c.Columns.Length == 1
+                        c.Columns.Count == 1
                         && c.Columns.Any(col =>
                             col.ColumnName.Equals(
                                 tableColumn.column_name,
@@ -362,7 +379,7 @@ public partial class PostgreSqlMethods
                     )
                     || indexes.Any(i =>
                         i.IsUnique
-                        && i.Columns.Length == 1
+                        && i.Columns.Count == 1
                         && i.Columns.Any(c =>
                             c.ColumnName.Equals(
                                 tableColumn.column_name,
@@ -412,7 +429,7 @@ public partial class PostgreSqlMethods
                     dotnetTypeDescriptor.DotnetType,
                     new Dictionary<DbProviderType, string>
                     {
-                        { ProviderType, tableColumn.data_type }
+                        { ProviderType, tableColumn.data_type },
                     },
                     dotnetTypeDescriptor.Length,
                     dotnetTypeDescriptor.Precision,
@@ -475,6 +492,16 @@ public partial class PostgreSqlMethods
         return tables;
     }
 
+    /// <summary>
+    /// Retrieves a list of indexes and their metadata from the PostgreSQL database.
+    /// </summary>
+    /// <param name="db">The database connection.</param>
+    /// <param name="schemaName">The schema name to filter indexes.</param>
+    /// <param name="tableNameFilter">The table name filter.</param>
+    /// <param name="indexNameFilter">The index name filter.</param>
+    /// <param name="tx">The database transaction.</param>
+    /// <param name="cancellationToken">The cancellation token.</param>
+    /// <returns>A list of <see cref="DxIndex"/> objects representing the indexes and their metadata.</returns>
     protected override async Task<List<DxIndex>> GetIndexesInternalAsync(
         IDbConnection db,
         string? schemaName,
@@ -502,12 +529,12 @@ public partial class PostgreSqlMethods
                                 indexes.relname AS index_name,
                                 case when i.indisunique then 1 else 0 end as is_unique,
                                 array_to_string(array_agg (
-                                    a.attname 
+                                    a.attname
                                     || ' ' || CASE o.option & 1 WHEN 1 THEN 'DESC' ELSE 'ASC' END
                                     || ' ' || CASE o.option & 2 WHEN 2 THEN 'NULLS FIRST' ELSE 'NULLS LAST' END
                                     ORDER BY c.ordinality
                                 ),',') AS columns_csv
-                            from 
+                            from
                                 pg_index AS i
                                 JOIN pg_class AS tables ON tables.oid = i.indrelid
                                 JOIN pg_namespace AS schemas ON tables.relnamespace = schemas.oid
@@ -517,33 +544,33 @@ public partial class PostgreSqlMethods
                                 ON c.ordinality = o.ordinality
                                 JOIN pg_attribute AS a ON tables.oid = a.attrelid AND a.attnum = c.colnum
                             where
-                                schemas.nspname not like 'pg_%' 
+                                schemas.nspname not like 'pg_%'
                                 and schemas.nspname != 'information_schema'
                                 and i.indislive
                                 and not i.indisprimary
                                 {(
                 string.IsNullOrWhiteSpace(whereSchemaLike)
-                    ? ""
+                    ? string.Empty
                     : " AND lower(schemas.nspname) LIKE @whereSchemaLike"
             )}
                                 {(
                 string.IsNullOrWhiteSpace(whereTableLike)
-                    ? ""
+                    ? string.Empty
                     : " AND lower(tables.relname) LIKE @whereTableLike"
             )}
                                 {(
                 string.IsNullOrWhiteSpace(whereIndexLike)
-                    ? ""
+                    ? string.Empty
                     : " AND lower(indexes.relname) LIKE @whereIndexLike"
             )}
                                 -- postgresql creates an index for primary key and unique constraints, so we don't need to include them in the results
-                                and indexes.relname not in (select x.conname from pg_catalog.pg_constraint x 
+                                and indexes.relname not in (select x.conname from pg_catalog.pg_constraint x
                                             join pg_catalog.pg_namespace AS x2 ON x.connamespace = x2.oid
                                             join pg_class as x3 on x.conrelid = x3.oid
                                             where x2.nspname = schemas.nspname and x3.relname = tables.relname)
                             group by schemas.nspname, tables.relname, indexes.relname, i.indisunique
                             order by schema_name, table_name, index_name
-                        
+
             """;
 
         var indexResults = await QueryAsync<(
@@ -559,9 +586,10 @@ public partial class PostgreSqlMethods
                 {
                     whereSchemaLike,
                     whereTableLike,
-                    whereIndexLike
+                    whereIndexLike,
                 },
-                tx
+                tx: tx,
+                cancellationToken: cancellationToken
             )
             .ConfigureAwait(false);
 

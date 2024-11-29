@@ -2,6 +2,7 @@ using System.Data;
 using System.Data.Common;
 using System.Text;
 using DapperMatic.Models;
+
 // ReSharper disable LoopCanBeConvertedToQuery
 // ReSharper disable ForeachCanBeConvertedToQueryUsingAnotherGetEnumerator
 
@@ -9,6 +10,7 @@ namespace DapperMatic.Providers.Sqlite;
 
 public partial class SqliteMethods
 {
+    /// <inheritdoc/>
     public override async Task<List<DxTable>> GetTablesAsync(
         IDbConnection db,
         string? schemaName,
@@ -24,29 +26,39 @@ public partial class SqliteMethods
         var sql = new StringBuilder();
         sql.AppendLine(
             """
-            SELECT name as table_name, sql as table_sql 
-                            FROM sqlite_master 
+            SELECT name as table_name, sql as table_sql
+                            FROM sqlite_master
                             WHERE type = 'table' AND name NOT LIKE 'sqlite_%'
             """
         );
         if (!string.IsNullOrWhiteSpace(where))
+        {
             sql.AppendLine(" AND name LIKE @where");
+        }
+
         sql.AppendLine("ORDER BY name");
 
         var results = await QueryAsync<(string table_name, string table_sql)>(
                 db,
                 sql.ToString(),
                 new { where },
-                tx: tx
+                tx: tx,
+                cancellationToken: cancellationToken
             )
             .ConfigureAwait(false);
 
         var tables = new List<DxTable>();
         foreach (var result in results)
         {
-            var table = SqliteSqlParser.ParseCreateTableStatement(result.table_sql, ProviderTypeMap);
+            var table = SqliteSqlParser.ParseCreateTableStatement(
+                result.table_sql,
+                ProviderTypeMap
+            );
             if (table == null)
+            {
                 continue;
+            }
+
             tables.Add(table);
         }
 
@@ -61,26 +73,27 @@ public partial class SqliteMethods
             )
             .ConfigureAwait(false);
 
-        if (indexes.Count <= 0) return tables;
-        
+        if (indexes.Count <= 0)
+        {
+            return tables;
+        }
+
         foreach (var table in tables)
         {
             table.Indexes = indexes
-                .Where(i =>
-                    i.TableName.Equals(table.TableName, StringComparison.OrdinalIgnoreCase)
-                )
+                .Where(i => i.TableName.Equals(table.TableName, StringComparison.OrdinalIgnoreCase))
                 .ToList();
-                
-            if (table.Indexes.Count <= 0) continue;
-                
+
+            if (table.Indexes.Count <= 0)
+            {
+                continue;
+            }
+
             foreach (var column in table.Columns)
             {
                 column.IsIndexed = table.Indexes.Any(i =>
                     i.Columns.Any(c =>
-                        c.ColumnName.Equals(
-                            column.ColumnName,
-                            StringComparison.OrdinalIgnoreCase
-                        )
+                        c.ColumnName.Equals(column.ColumnName, StringComparison.OrdinalIgnoreCase)
                     )
                 );
                 if (column is { IsIndexed: true, IsUnique: false })
@@ -102,6 +115,15 @@ public partial class SqliteMethods
         return tables;
     }
 
+    /// <summary>
+    /// Truncates the table if it exists asynchronously.
+    /// </summary>
+    /// <param name="db">The database connection.</param>
+    /// <param name="schemaName">The schema name.</param>
+    /// <param name="tableName">The table name.</param>
+    /// <param name="tx">The transaction.</param>
+    /// <param name="cancellationToken">The cancellation token.</param>
+    /// <returns>True if the table was truncated, otherwise false.</returns>
     public override async Task<bool> TruncateTableIfExistsAsync(
         IDbConnection db,
         string? schemaName,
@@ -114,7 +136,9 @@ public partial class SqliteMethods
             !await DoesTableExistAsync(db, schemaName, tableName, tx, cancellationToken)
                 .ConfigureAwait(false)
         )
+        {
             return false;
+        }
 
         (_, tableName, _) = NormalizeNames(schemaName, tableName);
 
@@ -127,21 +151,35 @@ public partial class SqliteMethods
                 db,
                 "select sql FROM sqlite_master WHERE type = 'table' AND name = @tableName",
                 new { tableName },
-                tx: tx
+                tx: tx,
+                cancellationToken: cancellationToken
             )
             .ConfigureAwait(false);
 
         if (string.IsNullOrWhiteSpace(createTableSql))
+        {
             return false;
+        }
 
         await DropTableIfExistsAsync(db, schemaName, tableName, tx, cancellationToken)
             .ConfigureAwait(false);
 
-        await ExecuteAsync(db, createTableSql, tx: tx).ConfigureAwait(false);
+        await ExecuteAsync(db, createTableSql, tx: tx, cancellationToken: cancellationToken)
+            .ConfigureAwait(false);
 
         return true;
     }
 
+    /// <summary>
+    /// Gets the indexes internally asynchronously.
+    /// </summary>
+    /// <param name="db">The database connection.</param>
+    /// <param name="schemaName">The schema name.</param>
+    /// <param name="tableNameFilter">The table name filter.</param>
+    /// <param name="indexNameFilter">The index name filter.</param>
+    /// <param name="tx">The transaction.</param>
+    /// <param name="cancellationToken">The cancellation token.</param>
+    /// <returns>A list of indexes.</returns>
     protected override async Task<List<DxIndex>> GetIndexesInternalAsync(
         IDbConnection db,
         string? schemaName,
@@ -158,25 +196,28 @@ public partial class SqliteMethods
             ? null
             : ToLikeString(indexNameFilter);
 
-        var sql =
-            $"""
-             
-                             SELECT DISTINCT 
-                                 m.name AS table_name, 
-                                 il.name AS index_name,
-                                 il."unique" AS is_unique,	
-                                 ii.name AS column_name,
-                                 ii.DESC AS is_descending
-                             FROM sqlite_schema AS m,
-                                 pragma_index_list(m.name) AS il,
-                                 pragma_index_xinfo(il.name) AS ii
-                             WHERE m.type='table' 
-                                 and ii.name IS NOT NULL 
-                                 AND il.origin = 'c'
-                                 {(string.IsNullOrWhiteSpace(whereTableLike) ? "" : " AND m.name LIKE @whereTableLike")}
-                                 {(string.IsNullOrWhiteSpace(whereIndexLike) ? "" : " AND il.name LIKE @whereIndexLike")}                
-                             ORDER BY m.name, il.name, ii.seqno
-             """;
+        var sql = $"""
+
+                            SELECT DISTINCT
+                                m.name AS table_name,
+                                il.name AS index_name,
+                                il."unique" AS is_unique,
+                                ii.name AS column_name,
+                                ii.DESC AS is_descending
+                            FROM sqlite_schema AS m,
+                                pragma_index_list(m.name) AS il,
+                                pragma_index_xinfo(il.name) AS ii
+                            WHERE m.type='table'
+                                and ii.name IS NOT NULL
+                                AND il.origin = 'c'
+                                {(
+                string.IsNullOrWhiteSpace(whereTableLike) ? string.Empty : " AND m.name LIKE @whereTableLike"
+            )}
+                                {(
+                string.IsNullOrWhiteSpace(whereIndexLike) ? string.Empty : " AND il.name LIKE @whereIndexLike"
+            )}
+                            ORDER BY m.name, il.name, ii.seqno
+            """;
 
         var results = await QueryAsync<(
             string table_name,
@@ -184,7 +225,13 @@ public partial class SqliteMethods
             bool is_unique,
             string column_name,
             bool is_descending
-        )>(db, sql, new { whereTableLike, whereIndexLike }, tx: tx)
+        )>(
+                db,
+                sql,
+                new { whereTableLike, whereIndexLike },
+                tx: tx,
+                cancellationToken: cancellationToken
+            )
             .ConfigureAwait(false);
 
         var indexes = new List<DxIndex>();
@@ -194,7 +241,7 @@ public partial class SqliteMethods
             {
                 r.table_name,
                 r.index_name,
-                r.is_unique
+                r.is_unique,
             })
         )
         {
@@ -209,7 +256,7 @@ public partial class SqliteMethods
                         r.column_name,
                         r.is_descending ? DxColumnOrder.Descending : DxColumnOrder.Ascending
                     ))
-                    .ToArray()
+                    .ToList(),
             };
             indexes.Add(index);
         }
@@ -217,51 +264,17 @@ public partial class SqliteMethods
         return indexes;
     }
 
-    // private async Task<List<string>> GetCreateIndexSqlStatementsForTable(
-    //     IDbConnection db,
-    //     string? schemaName,
-    //     string tableName,
-    //     IDbTransaction? tx = null,
-    //     CancellationToken cancellationToken = default
-    // )
-    // {
-    //     var getSqlCreateIndexStatements =
-    //         @"
-    //             SELECT DISTINCT
-    //                 m.sql
-    //             FROM sqlite_schema AS m,
-    //                 pragma_index_list(m.name) AS il,
-    //                 pragma_index_xinfo(il.name) AS ii
-    //             WHERE m.type='table'
-    //                 AND ii.name IS NOT NULL
-    //                 AND il.origin = 'c'
-    //                 AND m.name = @tableName
-    //                 AND m.sql IS NOT NULL
-    //              ORDER BY m.name, il.name, ii.seqno
-    //     ";
-    //     return (
-    //         await QueryAsync<string>(db, getSqlCreateIndexStatements, new { tableName }, tx: tx)
-    //             .ConfigureAwait(false)
-    //     )
-    //         .Select(sql =>
-    //         {
-    //             return sql.Contains("IF NOT EXISTS", StringComparison.OrdinalIgnoreCase)
-    //                 ? sql
-    //                 : sql.Replace(
-    //                         "CREATE INDEX",
-    //                         "CREATE INDEX IF NOT EXISTS",
-    //                         StringComparison.OrdinalIgnoreCase
-    //                     )
-    //                     .Replace(
-    //                         "CREATE UNIQUE INDEX",
-    //                         "CREATE UNIQUE INDEX IF NOT EXISTS",
-    //                         StringComparison.OrdinalIgnoreCase
-    //                     )
-    //                     .Trim();
-    //         })
-    //         .ToList();
-    // }
-
+    /// <summary>
+    /// Alters the table using recreate table strategy asynchronously.
+    /// </summary>
+    /// <param name="db">The database connection.</param>
+    /// <param name="schemaName">The schema name.</param>
+    /// <param name="tableName">The table name.</param>
+    /// <param name="validateTable">The validate table function.</param>
+    /// <param name="updateTable">The update table function.</param>
+    /// <param name="tx">The transaction.</param>
+    /// <param name="cancellationToken">The cancellation token.</param>
+    /// <returns>True if the table was altered, otherwise false.</returns>
     private async Task<bool> AlterTableUsingRecreateTableStrategyAsync(
         IDbConnection db,
         string? schemaName,
@@ -276,10 +289,14 @@ public partial class SqliteMethods
             .ConfigureAwait(false);
 
         if (table == null)
+        {
             return false;
+        }
 
         if (validateTable != null && !validateTable(table))
+        {
             return false;
+        }
 
         // create a temporary table with the updated schema
         var tmpTable = new DxTable(
@@ -295,17 +312,20 @@ public partial class SqliteMethods
         );
         var newTable = updateTable(tmpTable);
 
-        await AlterTableUsingRecreateTableStrategyAsync(
-            db,
-            table,
-            newTable,
-            tx,
-            cancellationToken
-        );
+        await AlterTableUsingRecreateTableStrategyAsync(db, table, newTable, tx, cancellationToken)
+            .ConfigureAwait(false);
 
         return true;
     }
 
+    /// <summary>
+    /// Alters the table using recreate table strategy asynchronously.
+    /// </summary>
+    /// <param name="db">The database connection.</param>
+    /// <param name="existingTable">The existing table.</param>
+    /// <param name="updatedTable">The updated table.</param>
+    /// <param name="tx">The transaction.</param>
+    /// <param name="cancellationToken">The cancellation token.</param>
     private async Task AlterTableUsingRecreateTableStrategyAsync(
         IDbConnection db,
         DxTable existingTable,
@@ -316,7 +336,6 @@ public partial class SqliteMethods
     {
         var tableName = existingTable.TableName;
         var tempTableName = $"{tableName}_tmp_{Guid.NewGuid():N}";
-        // updatedTable.TableName = newTableName;
 
         // get the create index sql statements for the existing table
         // var createIndexStatements = await GetCreateIndexSqlStatementsForTable(
@@ -329,7 +348,13 @@ public partial class SqliteMethods
         //     .ConfigureAwait(false);
 
         // disable foreign key constraints temporarily
-        await ExecuteAsync(db, "PRAGMA foreign_keys = 0", tx).ConfigureAwait(false);
+        await ExecuteAsync(
+                db,
+                "PRAGMA foreign_keys = 0",
+                tx: tx,
+                cancellationToken: cancellationToken
+            )
+            .ConfigureAwait(false);
 
         var innerTx = (DbTransaction)(
             tx
@@ -343,12 +368,19 @@ public partial class SqliteMethods
             await ExecuteAsync(
                     db,
                     $"CREATE TEMP TABLE {tempTableName} AS SELECT * FROM {tableName}",
-                    tx: innerTx
+                    tx: innerTx,
+                    cancellationToken: cancellationToken
                 )
                 .ConfigureAwait(false);
 
             // drop the old table
-            await ExecuteAsync(db, $"DROP TABLE {tableName}", tx: innerTx).ConfigureAwait(false);
+            await ExecuteAsync(
+                    db,
+                    $"DROP TABLE {tableName}",
+                    tx: innerTx,
+                    cancellationToken: cancellationToken
+                )
+                .ConfigureAwait(false);
 
             var created = await CreateTableIfNotExistsAsync(
                     db,
@@ -364,11 +396,13 @@ public partial class SqliteMethods
                 var previousColumnNames = existingTable.Columns.Select(c => c.ColumnName);
 
                 // make sure to only copy columns that exist in both tables
-                var columnNamesInBothTables = previousColumnNames.Where(c =>
-                    updatedTable.Columns.Any(x =>
-                        x.ColumnName.Equals(c, StringComparison.OrdinalIgnoreCase)
+                var columnNamesInBothTables = previousColumnNames
+                    .Where(c =>
+                        updatedTable.Columns.Any(x =>
+                            x.ColumnName.Equals(c, StringComparison.OrdinalIgnoreCase)
+                        )
                     )
-                ).ToArray();
+                    .ToArray();
 
                 if (columnNamesInBothTables.Length > 0)
                 {
@@ -376,13 +410,19 @@ public partial class SqliteMethods
                     await ExecuteAsync(
                             db,
                             $"INSERT INTO {updatedTable.TableName} ({columnsToCopyString}) SELECT {columnsToCopyString} FROM {tempTableName}",
-                            tx: innerTx
+                            tx: innerTx,
+                            cancellationToken: cancellationToken
                         )
                         .ConfigureAwait(false);
                 }
 
                 // drop the temp table
-                await ExecuteAsync(db, $"DROP TABLE {tempTableName}", tx: innerTx)
+                await ExecuteAsync(
+                        db,
+                        $"DROP TABLE {tempTableName}",
+                        tx: innerTx,
+                        cancellationToken: cancellationToken
+                    )
                     .ConfigureAwait(false);
 
                 // commit the transaction
@@ -404,10 +444,16 @@ public partial class SqliteMethods
         {
             if (tx == null)
             {
-                await innerTx.DisposeAsync();
+                await innerTx.DisposeAsync().ConfigureAwait(false);
             }
             // re-enable foreign key constraints
-            await ExecuteAsync(db, "PRAGMA foreign_keys = 1", tx).ConfigureAwait(false);
+            await ExecuteAsync(
+                    db,
+                    "PRAGMA foreign_keys = 1",
+                    tx: tx,
+                    cancellationToken: cancellationToken
+                )
+                .ConfigureAwait(false);
         }
     }
 }

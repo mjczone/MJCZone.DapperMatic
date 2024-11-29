@@ -1,12 +1,18 @@
-namespace DapperMatic;
+namespace DapperMatic.Converters;
 
-public interface IDbTypeConverter<TFrom, TTo>
+/// <summary>
+/// Interface for a type of database type conversion.
+/// </summary>
+/// <typeparam name="TSource">Source type.</typeparam>
+/// <typeparam name="TTarget">Target type.</typeparam>
+// ReSharper disable once TypeParameterCanBeVariant
+public interface IDbTypeConverter<TSource, TTarget>
 {
     /// <summary>
-    /// Tries to convert an object of type <typeparamref name="TFrom"/> to an object of type <typeparamref name="TTo"/>.
+    /// Tries to convert an object of type <typeparamref name="TSource"/> to an object of type <typeparamref name="TTarget"/>.
     /// </summary>
-    /// <param name="from">The object to convert from.</param>
-    /// <param name="to">The converted object, if the conversion was successful.</param>
+    /// <param name="source">The object to convert from.</param>
+    /// <param name="target">The converted object, if the conversion was successful.</param>
     /// <returns>True if the conversion was successful; otherwise, false.</returns>
-    bool TryConvert(TFrom from, out TTo? to);
+    bool TryConvert(TSource source, out TTarget? target);
 }

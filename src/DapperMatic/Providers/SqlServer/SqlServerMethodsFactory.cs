@@ -4,10 +4,23 @@ using DapperMatic.Interfaces;
 
 namespace DapperMatic.Providers.SqlServer;
 
+/// <summary>
+/// Factory class for creating SQL Server specific database methods.
+/// </summary>
 public class SqlServerMethodsFactory : DatabaseMethodsFactoryBase
 {
+    /// <summary>
+    /// Determines whether the specified connection supports custom handling.
+    /// </summary>
+    /// <param name="db">The database connection.</param>
+    /// <returns><c>true</c> if the connection supports custom handling; otherwise, <c>false</c>.</returns>
     public virtual bool SupportsConnectionCustom(IDbConnection db) => false;
 
+    /// <summary>
+    /// Determines whether the specified connection is supported.
+    /// </summary>
+    /// <param name="db">The database connection.</param>
+    /// <returns><c>true</c> if the connection is supported; otherwise, <c>false</c>.</returns>
     public override bool SupportsConnection(IDbConnection db)
     {
         var typeName = db.GetType().FullName;
@@ -17,5 +30,9 @@ public class SqlServerMethodsFactory : DatabaseMethodsFactoryBase
             || (typeName == "Microsoft.Data.SqlClient.SqlConnection");
     }
 
+    /// <summary>
+    /// Creates the core database methods for SQL Server.
+    /// </summary>
+    /// <returns>The SQL Server specific database methods.</returns>
     protected override IDatabaseMethods CreateMethodsCore() => new SqlServerMethods();
 }

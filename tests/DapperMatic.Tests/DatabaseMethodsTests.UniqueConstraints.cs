@@ -188,7 +188,7 @@ public abstract partial class DatabaseMethodsTests
         );
         Assert.NotNull(uniqueConstraint);
         Assert.NotNull(uniqueConstraint.Columns);
-        Assert.Equal(2, uniqueConstraint.Columns.Length);
+        Assert.Equal(2, uniqueConstraint.Columns.Count);
         Assert.Equal(
             columnName2,
             uniqueConstraint.Columns[0].ColumnName,

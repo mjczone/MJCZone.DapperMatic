@@ -6,14 +6,20 @@ using System.Numerics;
 using System.Text.Json;
 using System.Text.Json.Nodes;
 using System.Xml.Linq;
+using DapperMatic.Converters;
 
 namespace DapperMatic.Providers.SqlServer;
 
 // See:
 // https://learn.microsoft.com/en-us/dotnet/framework/data/adonet/sql-server-data-type-mappings
 // https://learn.microsoft.com/en-us/dotnet/framework/data/adonet/sql/linq/media/sql-clr-type-mapping.png
+
+/// <summary>
+/// Provides a type map for SQL Server, mapping .NET types to SQL Server types and vice versa.
+/// </summary>
 public sealed class SqlServerProviderTypeMap : DbProviderTypeMapBase<SqlServerProviderTypeMap>
 {
+    /// <inheritdoc/>
     protected override void RegisterDotnetTypeToSqlTypeConverters()
     {
         var booleanConverter = GetBooleanToSqlTypeConverter();
@@ -158,6 +164,7 @@ public sealed class SqlServerProviderTypeMap : DbProviderTypeMapBase<SqlServerPr
         );
     }
 
+    /// <inheritdoc/>
     protected override void RegisterSqlTypeToDotnetTypeConverters()
     {
         var booleanConverter = GetBooleanToDotnetTypeConverter();
@@ -293,7 +300,7 @@ public sealed class SqlServerProviderTypeMap : DbProviderTypeMapBase<SqlServerPr
                     {
                         SqlTypeName = $"decimal({precision},{scale})",
                         Precision = precision,
-                        Scale = scale
+                        Scale = scale,
                     };
                 default:
                     return new(SqlServerTypes.sql_int);
@@ -312,12 +319,12 @@ public sealed class SqlServerProviderTypeMap : DbProviderTypeMapBase<SqlServerPr
                     ? new(SqlServerTypes.sql_nvarchar)
                     {
                         SqlTypeName = "nvarchar(max)",
-                        Length = int.MaxValue
+                        Length = int.MaxValue,
                     }
                     : new(SqlServerTypes.sql_varchar)
                     {
                         SqlTypeName = "varchar(max)",
-                        Length = int.MaxValue
+                        Length = int.MaxValue,
                     };
             }
 
@@ -327,12 +334,12 @@ public sealed class SqlServerProviderTypeMap : DbProviderTypeMapBase<SqlServerPr
                     ? new(SqlServerTypes.sql_nchar)
                     {
                         SqlTypeName = $"nchar({length})",
-                        Length = length
+                        Length = length,
                     }
                     : new(SqlServerTypes.sql_char)
                     {
                         SqlTypeName = $"char({length})",
-                        Length = length
+                        Length = length,
                     };
             }
 
@@ -340,12 +347,12 @@ public sealed class SqlServerProviderTypeMap : DbProviderTypeMapBase<SqlServerPr
                 ? new(SqlServerTypes.sql_nvarchar)
                 {
                     SqlTypeName = $"nvarchar({length})",
-                    Length = length
+                    Length = length,
                 }
                 : new(SqlServerTypes.sql_varchar)
                 {
                     SqlTypeName = $"varchar({length})",
-                    Length = length
+                    Length = length,
                 };
         });
     }
@@ -366,12 +373,12 @@ public sealed class SqlServerProviderTypeMap : DbProviderTypeMapBase<SqlServerPr
                 ? new(SqlServerTypes.sql_nvarchar)
                 {
                     SqlTypeName = "nvarchar(max)",
-                    Length = int.MaxValue
+                    Length = int.MaxValue,
                 }
                 : new(SqlServerTypes.sql_varchar)
                 {
                     SqlTypeName = "varchar(max)",
-                    Length = int.MaxValue
+                    Length = int.MaxValue,
                 };
         });
     }
@@ -408,7 +415,7 @@ public sealed class SqlServerProviderTypeMap : DbProviderTypeMapBase<SqlServerPr
                 return new(SqlServerTypes.sql_varbinary)
                 {
                     SqlTypeName = "varbinary(max)",
-                    Length = int.MaxValue
+                    Length = int.MaxValue,
                 };
             }
 
@@ -416,12 +423,12 @@ public sealed class SqlServerProviderTypeMap : DbProviderTypeMapBase<SqlServerPr
                 ? new(SqlServerTypes.sql_binary)
                 {
                     SqlTypeName = $"binary({length})",
-                    Length = length
+                    Length = length,
                 }
                 : new(SqlServerTypes.sql_varbinary)
                 {
                     SqlTypeName = $"varbinary({length})",
-                    Length = length
+                    Length = length,
                 };
         });
     }
@@ -479,7 +486,7 @@ public sealed class SqlServerProviderTypeMap : DbProviderTypeMapBase<SqlServerPr
                     return new(SqlServerTypes.sql_nvarchar)
                     {
                         SqlTypeName = "nvarchar(max)",
-                        Length = int.MaxValue
+                        Length = int.MaxValue,
                     };
                 // SQL Server types
                 case "Microsoft.SqlServer.Types.SqlGeometry, Microsoft.SqlServer.Types":
@@ -528,25 +535,25 @@ public sealed class SqlServerProviderTypeMap : DbProviderTypeMapBase<SqlServerPr
                     return new DotnetTypeDescriptor(typeof(decimal))
                     {
                         Precision = d.Precision ?? 16,
-                        Scale = d.Scale ?? 4
+                        Scale = d.Scale ?? 4,
                     };
                 case SqlServerTypes.sql_numeric:
                     return new DotnetTypeDescriptor(typeof(decimal))
                     {
                         Precision = d.Precision ?? 16,
-                        Scale = d.Scale ?? 4
+                        Scale = d.Scale ?? 4,
                     };
                 case SqlServerTypes.sql_money:
                     return new DotnetTypeDescriptor(typeof(decimal))
                     {
                         Precision = d.Precision ?? 19,
-                        Scale = d.Scale ?? 4
+                        Scale = d.Scale ?? 4,
                     };
                 case SqlServerTypes.sql_smallmoney:
                     return new DotnetTypeDescriptor(typeof(decimal))
                     {
                         Precision = d.Precision ?? 10,
-                        Scale = d.Scale ?? 4
+                        Scale = d.Scale ?? 4,
                     };
                 default:
                     return new DotnetTypeDescriptor(typeof(int));
@@ -640,6 +647,7 @@ public sealed class SqlServerProviderTypeMap : DbProviderTypeMapBase<SqlServerPr
         var sqlNetTopologyGeometryType = Type.GetType(
             "NetTopologySuite.Geometries.Geometry, NetTopologySuite"
         );
+
         // var sqlNetTopologyPointType = Type.GetType(
         //     "NetTopologySuite.Geometries.Point, NetTopologySuite"
         // );
@@ -685,17 +693,29 @@ public sealed class SqlServerProviderTypeMap : DbProviderTypeMapBase<SqlServerPr
             {
                 case SqlServerTypes.sql_geometry:
                     if (sqlNetTopologyGeometryType != null)
+                    {
                         return new DotnetTypeDescriptor(sqlNetTopologyGeometryType);
+                    }
+
                     if (sqlGeometryType != null)
+                    {
                         return new DotnetTypeDescriptor(sqlGeometryType);
+                    }
+
                     return new DotnetTypeDescriptor(typeof(object));
                 case SqlServerTypes.sql_geography:
                     if (sqlGeographyType != null)
+                    {
                         return new DotnetTypeDescriptor(sqlGeographyType);
+                    }
+
                     return new DotnetTypeDescriptor(typeof(object));
                 case SqlServerTypes.sql_hierarchyid:
                     if (sqlHierarchyIdType != null)
+                    {
                         return new DotnetTypeDescriptor(sqlHierarchyIdType);
+                    }
+
                     return new DotnetTypeDescriptor(typeof(object));
             }
 

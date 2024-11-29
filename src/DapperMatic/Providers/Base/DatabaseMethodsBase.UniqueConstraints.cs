@@ -5,6 +5,16 @@ namespace DapperMatic.Providers.Base;
 
 public abstract partial class DatabaseMethodsBase
 {
+    /// <summary>
+    /// Checks if a unique constraint exists in the specified table.
+    /// </summary>
+    /// <param name="db">The database connection.</param>
+    /// <param name="schemaName">The schema name.</param>
+    /// <param name="tableName">The table name.</param>
+    /// <param name="constraintName">The constraint name.</param>
+    /// <param name="tx">The transaction to use.</param>
+    /// <param name="cancellationToken">The cancellation token.</param>
+    /// <returns>True if the unique constraint exists, otherwise false.</returns>
     public virtual async Task<bool> DoesUniqueConstraintExistAsync(
         IDbConnection db,
         string? schemaName,
@@ -25,6 +35,16 @@ public abstract partial class DatabaseMethodsBase
                 .ConfigureAwait(false) != null;
     }
 
+    /// <summary>
+    /// Checks if a unique constraint exists on the specified column.
+    /// </summary>
+    /// <param name="db">The database connection.</param>
+    /// <param name="schemaName">The schema name.</param>
+    /// <param name="tableName">The table name.</param>
+    /// <param name="columnName">The column name.</param>
+    /// <param name="tx">The transaction to use.</param>
+    /// <param name="cancellationToken">The cancellation token.</param>
+    /// <returns>True if the unique constraint exists on the column, otherwise false.</returns>
     public virtual async Task<bool> DoesUniqueConstraintExistOnColumnAsync(
         IDbConnection db,
         string? schemaName,
@@ -45,6 +65,14 @@ public abstract partial class DatabaseMethodsBase
                 .ConfigureAwait(false) != null;
     }
 
+    /// <summary>
+    /// Creates a unique constraint if it does not already exist.
+    /// </summary>
+    /// <param name="db">The database connection.</param>
+    /// <param name="constraint">The unique constraint to create.</param>
+    /// <param name="tx">The transaction to use.</param>
+    /// <param name="cancellationToken">The cancellation token.</param>
+    /// <returns>True if the unique constraint was created, otherwise false.</returns>
     public virtual async Task<bool> CreateUniqueConstraintIfNotExistsAsync(
         IDbConnection db,
         DxUniqueConstraint constraint,
@@ -57,13 +85,24 @@ public abstract partial class DatabaseMethodsBase
                 constraint.SchemaName,
                 constraint.TableName,
                 constraint.ConstraintName,
-                constraint.Columns,
+                [.. constraint.Columns],
                 tx,
                 cancellationToken
             )
             .ConfigureAwait(false);
     }
 
+    /// <summary>
+    /// Creates a unique constraint if it does not already exist.
+    /// </summary>
+    /// <param name="db">The database connection.</param>
+    /// <param name="schemaName">The schema name.</param>
+    /// <param name="tableName">The table name.</param>
+    /// <param name="constraintName">The constraint name.</param>
+    /// <param name="columns">The columns to include in the constraint.</param>
+    /// <param name="tx">The transaction to use.</param>
+    /// <param name="cancellationToken">The cancellation token.</param>
+    /// <returns>True if the unique constraint was created, otherwise false.</returns>
     public virtual async Task<bool> CreateUniqueConstraintIfNotExistsAsync(
         IDbConnection db,
         string? schemaName,
@@ -75,13 +114,19 @@ public abstract partial class DatabaseMethodsBase
     )
     {
         if (string.IsNullOrWhiteSpace(tableName))
+        {
             throw new ArgumentException("Table name is required.", nameof(tableName));
+        }
 
         if (string.IsNullOrWhiteSpace(constraintName))
+        {
             throw new ArgumentException("Constraint name is required.", nameof(constraintName));
+        }
 
         if (columns.Length == 0)
+        {
             throw new ArgumentException("At least one column must be specified.", nameof(columns));
+        }
 
         if (
             await DoesUniqueConstraintExistAsync(
@@ -94,7 +139,9 @@ public abstract partial class DatabaseMethodsBase
                 )
                 .ConfigureAwait(false)
         )
+        {
             return false;
+        }
 
         var supportsOrderedKeysInConstraints = await SupportsOrderedKeysInConstraintsAsync(
                 db,
@@ -111,11 +158,22 @@ public abstract partial class DatabaseMethodsBase
             supportsOrderedKeysInConstraints
         );
 
-        await ExecuteAsync(db, sql, tx: tx).ConfigureAwait(false);
+        await ExecuteAsync(db, sql, tx: tx, cancellationToken: cancellationToken)
+            .ConfigureAwait(false);
 
         return true;
     }
 
+    /// <summary>
+    /// Gets a unique constraint by name.
+    /// </summary>
+    /// <param name="db">The database connection.</param>
+    /// <param name="schemaName">The schema name.</param>
+    /// <param name="tableName">The table name.</param>
+    /// <param name="constraintName">The constraint name.</param>
+    /// <param name="tx">The transaction to use.</param>
+    /// <param name="cancellationToken">The cancellation token.</param>
+    /// <returns>The unique constraint if found, otherwise null.</returns>
     public virtual async Task<DxUniqueConstraint?> GetUniqueConstraintAsync(
         IDbConnection db,
         string? schemaName,
@@ -126,7 +184,9 @@ public abstract partial class DatabaseMethodsBase
     )
     {
         if (string.IsNullOrWhiteSpace(constraintName))
+        {
             throw new ArgumentException("Constraint name is required.", nameof(constraintName));
+        }
 
         var uniqueConstraints = await GetUniqueConstraintsAsync(
                 db,
@@ -140,6 +200,16 @@ public abstract partial class DatabaseMethodsBase
         return uniqueConstraints.SingleOrDefault();
     }
 
+    /// <summary>
+    /// Gets the name of the unique constraint on the specified column.
+    /// </summary>
+    /// <param name="db">The database connection.</param>
+    /// <param name="schemaName">The schema name.</param>
+    /// <param name="tableName">The table name.</param>
+    /// <param name="columnName">The column name.</param>
+    /// <param name="tx">The transaction to use.</param>
+    /// <param name="cancellationToken">The cancellation token.</param>
+    /// <returns>The name of the unique constraint if found, otherwise null.</returns>
     public virtual async Task<string?> GetUniqueConstraintNameOnColumnAsync(
         IDbConnection db,
         string? schemaName,
@@ -162,6 +232,16 @@ public abstract partial class DatabaseMethodsBase
         )?.ConstraintName;
     }
 
+    /// <summary>
+    /// Gets the names of all unique constraints in the specified table.
+    /// </summary>
+    /// <param name="db">The database connection.</param>
+    /// <param name="schemaName">The schema name.</param>
+    /// <param name="tableName">The table name.</param>
+    /// <param name="constraintNameFilter">An optional filter for constraint names.</param>
+    /// <param name="tx">The transaction to use.</param>
+    /// <param name="cancellationToken">The cancellation token.</param>
+    /// <returns>A list of unique constraint names.</returns>
     public virtual async Task<List<string>> GetUniqueConstraintNamesAsync(
         IDbConnection db,
         string? schemaName,
@@ -183,6 +263,16 @@ public abstract partial class DatabaseMethodsBase
         return uniqueConstraints.Select(c => c.ConstraintName).ToList();
     }
 
+    /// <summary>
+    /// Gets the unique constraint on the specified column.
+    /// </summary>
+    /// <param name="db">The database connection.</param>
+    /// <param name="schemaName">The schema name.</param>
+    /// <param name="tableName">The table name.</param>
+    /// <param name="columnName">The column name.</param>
+    /// <param name="tx">The transaction to use.</param>
+    /// <param name="cancellationToken">The cancellation token.</param>
+    /// <returns>The unique constraint if found, otherwise null.</returns>
     public virtual async Task<DxUniqueConstraint?> GetUniqueConstraintOnColumnAsync(
         IDbConnection db,
         string? schemaName,
@@ -193,7 +283,9 @@ public abstract partial class DatabaseMethodsBase
     )
     {
         if (string.IsNullOrWhiteSpace(columnName))
+        {
             throw new ArgumentException("Column name is required.", nameof(columnName));
+        }
 
         var uniqueConstraints = await GetUniqueConstraintsAsync(
                 db,
@@ -211,6 +303,16 @@ public abstract partial class DatabaseMethodsBase
         );
     }
 
+    /// <summary>
+    /// Gets all unique constraints in the specified table.
+    /// </summary>
+    /// <param name="db">The database connection.</param>
+    /// <param name="schemaName">The schema name.</param>
+    /// <param name="tableName">The table name.</param>
+    /// <param name="constraintNameFilter">An optional filter for constraint names.</param>
+    /// <param name="tx">The transaction to use.</param>
+    /// <param name="cancellationToken">The cancellation token.</param>
+    /// <returns>A list of unique constraints.</returns>
     public virtual async Task<List<DxUniqueConstraint>> GetUniqueConstraintsAsync(
         IDbConnection db,
         string? schemaName,
@@ -223,7 +325,9 @@ public abstract partial class DatabaseMethodsBase
         var table = await GetTableAsync(db, schemaName, tableName, tx, cancellationToken)
             .ConfigureAwait(false);
         if (table == null)
+        {
             return [];
+        }
 
         var filter = string.IsNullOrWhiteSpace(constraintNameFilter)
             ? null
@@ -236,6 +340,16 @@ public abstract partial class DatabaseMethodsBase
                 .ToList();
     }
 
+    /// <summary>
+    /// Drops a unique constraint if it exists.
+    /// </summary>
+    /// <param name="db">The database connection.</param>
+    /// <param name="schemaName">The schema name.</param>
+    /// <param name="tableName">The table name.</param>
+    /// <param name="constraintName">The constraint name.</param>
+    /// <param name="tx">The transaction to use.</param>
+    /// <param name="cancellationToken">The cancellation token.</param>
+    /// <returns>True if the unique constraint was dropped, otherwise false.</returns>
     public virtual async Task<bool> DropUniqueConstraintIfExistsAsync(
         IDbConnection db,
         string? schemaName,
@@ -256,15 +370,28 @@ public abstract partial class DatabaseMethodsBase
                 )
                 .ConfigureAwait(false)
         )
+        {
             return false;
+        }
 
         var sql = SqlDropUniqueConstraint(schemaName, tableName, constraintName);
 
-        await ExecuteAsync(db, sql, tx: tx).ConfigureAwait(false);
+        await ExecuteAsync(db, sql, tx: tx, cancellationToken: cancellationToken)
+            .ConfigureAwait(false);
 
         return true;
     }
 
+    /// <summary>
+    /// Drops a unique constraint on the specified column if it exists.
+    /// </summary>
+    /// <param name="db">The database connection.</param>
+    /// <param name="schemaName">The schema name.</param>
+    /// <param name="tableName">The table name.</param>
+    /// <param name="columnName">The column name.</param>
+    /// <param name="tx">The transaction to use.</param>
+    /// <param name="cancellationToken">The cancellation token.</param>
+    /// <returns>True if the unique constraint was dropped, otherwise false.</returns>
     public virtual async Task<bool> DropUniqueConstraintOnColumnIfExistsAsync(
         IDbConnection db,
         string? schemaName,
@@ -285,11 +412,14 @@ public abstract partial class DatabaseMethodsBase
             .ConfigureAwait(false);
 
         if (string.IsNullOrWhiteSpace(constraintName))
+        {
             return false;
+        }
 
         var sql = SqlDropUniqueConstraint(schemaName, tableName, constraintName);
 
-        await ExecuteAsync(db, sql, tx: tx).ConfigureAwait(false);
+        await ExecuteAsync(db, sql, tx: tx, cancellationToken: cancellationToken)
+            .ConfigureAwait(false);
 
         return true;
     }

@@ -88,7 +88,7 @@ public class ProfiledPostgreSqlMethodsFactory: PostgreSqlMethodsFactory
 {
     public override bool SupportsConnectionCustom(IDbConnection db)
     {
-        return (db is ProfiledDbConnection pdc) ? base.SupportsConnectionCustom(pdc.InnerConnection): false; 
+        return (db is ProfiledDbConnection pdc) ? base.SupportsConnectionCustom(pdc.InnerConnection): false;
     }
 }
 ```
@@ -153,7 +153,7 @@ using var db = await connectionFactory.OpenConnectionAsync();
 using var tx = db.BeginTransaction();
 
 // Get the version of the database (e.g., 3.46.1 for a SQLite database)
-Version version = await db.GetDatabaseVersionAsync(tx, cancellationToken);
+Version version = await db.GetDatabaseVersionAsync(tx, cancellationToken).ConfigureAwait(false)
 
 // Get a .NET type descriptor for a provider specific sql type
 DbProviderDotnetTypeDescriptor descriptor = db.GetDotnetTypeFromSqlType("nvarchar(255)");
@@ -189,7 +189,7 @@ using var tx = db.BeginTransaction();
 var supportsSchemas = db.SupportsSchemas();
 
 // EXISTS: Check to see if a database schema exists
-bool exists = await db.DoesSchemaExistAsync("app", tx, cancellationToken);
+bool exists = await db.DoesSchemaExistAsync("app", tx, cancellationToken).ConfigureAwait(false)
 
 // CREATE: Create a database schema
 bool created = await db.CreateSchemaIfNotExistsAsync("app", ...);
@@ -208,9 +208,9 @@ using var db = await connectionFactory.OpenConnectionAsync();
 using var tx = db.BeginTransaction();
 
 // EXISTS: Check to see if a database table exists
-bool exists = await db.DoesTableExistAsync("app","app_employees", tx, cancellationToken);
+bool exists = await db.DoesTableExistAsync("app","app_employees", tx, cancellationToken).ConfigureAwait(false)
 
-// CREATE: Create a database table 
+// CREATE: Create a database table
 bool created = await db.CreateTableIfNotExistsAsync("app", /* DxTable */ table);
 // or
     created = await db.CreateTableIfNotExistsAsync(
@@ -259,7 +259,7 @@ using var db = await connectionFactory.OpenConnectionAsync();
 using var tx = db.BeginTransaction();
 
 // EXISTS: Check to see if a table column exists
-bool exists = await db.DoesColumnExistAsync("app", "app_employees", "title", tx, cancellationToken);
+bool exists = await db.DoesColumnExistAsync("app", "app_employees", "title", tx, cancellationToken).ConfigureAwait(false)
 
 // CREATE: Create a table column
 bool created = await db.CreateColumnIfNotExistsAsync("app", /* DxColumn */ column);
@@ -316,10 +316,10 @@ using var tx = db.BeginTransaction();
 var constraintName = ProviderUtils.GenerateCheckConstraintName("app_employees", "age");
 
 // EXISTS: Check to see if a check constraint exists
-bool exists = await db.DoesCheckConstraintExistAsync("app","app_employees", constraintName, tx, cancellationToken);
+bool exists = await db.DoesCheckConstraintExistAsync("app","app_employees", constraintName, tx, cancellationToken).ConfigureAwait(false)
 
 // EXISTS: Check to see if a check constraint exists on a column
-exists = await db.DoesCheckConstraintExistOnColumnAsync("app","app_employees", "age", tx, cancellationToken);
+exists = await db.DoesCheckConstraintExistOnColumnAsync("app","app_employees", "age", tx, cancellationToken).ConfigureAwait(false)
 
 // CREATE: Create a check constraint
 bool created = await db.CreateCheckConstraintIfNotExistsAsync("app", /* DxCheckConstraint */ checkConstraint);
@@ -366,10 +366,10 @@ using var tx = db.BeginTransaction();
 var constraintName = ProviderUtils.GenerateDefaultConstraintName("app_employees", "age");
 
 // EXISTS: Check to see if a default constraint exists
-bool exists = await db.DoesDefaultConstraintExistAsync("app","app_employees", constraintName, tx, cancellationToken);
+bool exists = await db.DoesDefaultConstraintExistAsync("app","app_employees", constraintName, tx, cancellationToken).ConfigureAwait(false)
 
 // EXISTS: Check to see if a default constraint exists on a column
-exists = await db.DoesDefaultConstraintExistOnColumnAsync("app","app_employees", "age", tx, cancellationToken);
+exists = await db.DoesDefaultConstraintExistOnColumnAsync("app","app_employees", "age", tx, cancellationToken).ConfigureAwait(false)
 
 // CREATE: Create a default constraint
 bool created = await db.CreateDefaultConstraintIfNotExistsAsync("app", /* DxDefaultConstraint */ defaultConstraint);
@@ -416,10 +416,10 @@ using var tx = db.BeginTransaction();
 var constraintName = ProviderUtils.GenerateForeignKeyConstraintName("app_employees", "manager_id", "app_managers", "id");
 
 // EXISTS: Check to see if a foreign key exists
-bool exists = await db.DoesForeignKeyConstraintExistAsync("app","app_employees", constraintName, tx, cancellationToken);
+bool exists = await db.DoesForeignKeyConstraintExistAsync("app","app_employees", constraintName, tx, cancellationToken).ConfigureAwait(false)
 
 // EXISTS: Check to see if a foreign key exists on a column
-exists = await db.DoesForeignKeyConstraintExistOnColumnAsync("app","app_employees", "manager_id", tx, cancellationToken);
+exists = await db.DoesForeignKeyConstraintExistOnColumnAsync("app","app_employees", "manager_id", tx, cancellationToken).ConfigureAwait(false)
 
 // CREATE: Create a foreign key
 bool created = await db.CreateForeignKeyConstraintIfNotExistsAsync("app", /* DxForeignKeyConstraint */ foreignKeyConstraint);
@@ -471,10 +471,10 @@ using var tx = db.BeginTransaction();
 var uniqueConstraintName = ProviderUtils.GenerateUniqueConstraintName("app_employees", "email");
 
 // EXISTS: Check to see if a unique constraint exists
-bool exists = await db.DoesUniqueConstraintExistAsync("app","app_employees", uniqueConstraintName, tx, cancellationToken);
+bool exists = await db.DoesUniqueConstraintExistAsync("app","app_employees", uniqueConstraintName, tx, cancellationToken).ConfigureAwait(false)
 
 // EXISTS: Check to see if a unique constraint exists on a column
-exists = await db.DoesUniqueConstraintExistOnColumnAsync("app","app_employees", "email", tx, cancellationToken);
+exists = await db.DoesUniqueConstraintExistOnColumnAsync("app","app_employees", "email", tx, cancellationToken).ConfigureAwait(false)
 
 // CREATE: Create a unique constraint
 bool created = await db.CreateUniqueConstraintIfNotExistsAsync("app", /* DxUniqueConstraint */ uniqueConstraint, ...);
@@ -520,10 +520,10 @@ using var tx = db.BeginTransaction();
 var indexName = ProviderUtils.GenerateIndexName("app_employees", "is_onboarded");
 
 // EXISTS: Check to see if a index exists
-bool exists = await db.DoesIndexExistAsync("app","app_employees", indexName, tx, cancellationToken);
+bool exists = await db.DoesIndexExistAsync("app","app_employees", indexName, tx, cancellationToken).ConfigureAwait(false)
 
 // EXISTS: Check to see if a index exists on a column
-exists = await db.DoesIndexExistOnColumnAsync("app","app_employees", "is_onboarded", tx, cancellationToken);
+exists = await db.DoesIndexExistOnColumnAsync("app","app_employees", "is_onboarded", tx, cancellationToken).ConfigureAwait(false)
 
 // CREATE: Create a index
 bool created = await db.CreateIndexIfNotExistsAsync("app", /* DxIndex */ index);
@@ -570,7 +570,7 @@ using var tx = db.BeginTransaction();
 var primaryKeyConstraintName = ProviderUtils.GeneratePrimaryKeyConstraintName("app_employees", "email");
 
 // EXISTS: Check to see if a primary key constraint exists
-bool exists = await db.DoesPrimaryKeyConstraintExistAsync("app","app_employees", tx, cancellationToken);
+bool exists = await db.DoesPrimaryKeyConstraintExistAsync("app","app_employees", tx, cancellationToken).ConfigureAwait(false)
 
 // CREATE: Create a primary key constraint
 bool created = await db.CreatePrimaryKeyConstraintIfNotExistsAsync("app", /* DxPrimaryKeyConstraint */ primaryKeyConstraint, ...);
@@ -601,7 +601,7 @@ using var tx = db.BeginTransaction();
 var viewName = "vw_employees_not_yet_onboarded";
 
 // EXISTS: Check to see if a view exists
-bool exists = await db.DoesViewExistAsync("app", viewName, tx, cancellationToken);
+bool exists = await db.DoesViewExistAsync("app", viewName, tx, cancellationToken).ConfigureAwait(false)
 
 // CREATE: Create a view
 bool created = await db.CreateViewIfNotExistsAsync("app", /* DxView */ view, ...);
@@ -639,11 +639,11 @@ bool dropped = await db.DropViewIfExistsAsync("app", viewName, ...);
 
 // RENAME: Rename a view
 bool dropped = await db.RenameViewIfExistsAsync(
-    "app", 
+    "app",
     // string viewName,
-    "vw_employees_not_yet_onboarded", 
+    "vw_employees_not_yet_onboarded",
     // string newViewName,
-    "vw_current_employees_not_yet_onboarded", 
+    "vw_current_employees_not_yet_onboarded",
     ...
 );
 ```

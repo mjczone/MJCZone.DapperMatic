@@ -2,15 +2,22 @@ using DapperMatic.Models;
 
 namespace DapperMatic.DataAnnotations;
 
-[AttributeUsage(
-    AttributeTargets.Property | AttributeTargets.Class,
-    AllowMultiple = true
-)]
-public class DxForeignKeyConstraintAttribute : Attribute
+/// <summary>
+/// Attribute to define foreign key constraints on a class or property.
+/// </summary>
+[AttributeUsage(AttributeTargets.Property | AttributeTargets.Class, AllowMultiple = true)]
+public sealed class DxForeignKeyConstraintAttribute : Attribute
 {
     /// <summary>
-    /// Use this on a class to define a foreign key constraint. Constructor for single-column foreign key constraint
+    /// Initializes a new instance of the <see cref="DxForeignKeyConstraintAttribute"/> class.
+    /// Constructor for single-column foreign key constraint.
     /// </summary>
+    /// <param name="sourceColumnName">The name of the source column in the foreign key constraint.</param>
+    /// <param name="referencedType">The type of the referenced entity in the foreign key constraint.</param>
+    /// <param name="referencedColumnName">The name of the referenced column in the foreign key constraint. Optional.</param>
+    /// <param name="constraintName">The name of the foreign key constraint. Optional.</param>
+    /// <param name="onDelete">The action to take when a referenced row is deleted. Default is <see cref="DxForeignKeyAction.NoAction"/>.</param>
+    /// <param name="onUpdate">The action to take when a referenced row is updated. Default is <see cref="DxForeignKeyAction.NoAction"/>.</param>
     public DxForeignKeyConstraintAttribute(
         string sourceColumnName,
         Type referencedType,
@@ -31,8 +38,15 @@ public class DxForeignKeyConstraintAttribute : Attribute
     }
 
     /// <summary>
-    /// Use this on a class to define a foreign key constraint. Constructor for multi-column foreign key constraint (composite keys)
+    /// Initializes a new instance of the <see cref="DxForeignKeyConstraintAttribute"/> class.
+    /// Constructor for multi-column foreign key constraint (composite keys).
     /// </summary>
+    /// <param name="sourceColumnNames">The names of the source columns in the foreign key constraint.</param>
+    /// <param name="referencedType">The type of the referenced entity in the foreign key constraint.</param>
+    /// <param name="referencedColumnNames">The names of the referenced columns in the foreign key constraint. Optional.</param>
+    /// <param name="constraintName">The name of the foreign key constraint. Optional.</param>
+    /// <param name="onDelete">The action to take when a referenced row is deleted. Default is <see cref="DxForeignKeyAction.NoAction"/>.</param>
+    /// <param name="onUpdate">The action to take when a referenced row is updated. Default is <see cref="DxForeignKeyAction.NoAction"/>.</param>
     public DxForeignKeyConstraintAttribute(
         string[] sourceColumnNames,
         Type referencedType,
@@ -54,8 +68,15 @@ public class DxForeignKeyConstraintAttribute : Attribute
     }
 
     /// <summary>
-    /// Use this on a class to define a foreign key constraint. Constructor for single-column foreign key constraint
+    /// Initializes a new instance of the <see cref="DxForeignKeyConstraintAttribute"/> class.
+    /// Constructor for single-column foreign key constraint.
     /// </summary>
+    /// <param name="sourceColumnName">The name of the source column in the foreign key constraint.</param>
+    /// <param name="referencedTableName">The name of the referenced table in the foreign key constraint.</param>
+    /// <param name="referencedColumnName">The name of the referenced column in the foreign key constraint.</param>
+    /// <param name="constraintName">The name of the foreign key constraint. Optional.</param>
+    /// <param name="onDelete">The action to take when a referenced row is deleted. Default is <see cref="DxForeignKeyAction.NoAction"/>.</param>
+    /// <param name="onUpdate">The action to take when a referenced row is updated. Default is <see cref="DxForeignKeyAction.NoAction"/>.</param>
     public DxForeignKeyConstraintAttribute(
         string sourceColumnName,
         string referencedTableName,
@@ -74,8 +95,15 @@ public class DxForeignKeyConstraintAttribute : Attribute
     }
 
     /// <summary>
-    /// Use this on a class to define a foreign key constraint. Constructor for multi-column foreign key constraint (composite keys)
+    /// Initializes a new instance of the <see cref="DxForeignKeyConstraintAttribute"/> class.
+    /// Constructor for multi-column foreign key constraint (composite keys).
     /// </summary>
+    /// <param name="sourceColumnNames">The names of the source columns in the foreign key constraint.</param>
+    /// <param name="referencedTableName">The name of the referenced table in the foreign key constraint.</param>
+    /// <param name="referencedColumnNames">The names of the referenced columns in the foreign key constraint.</param>
+    /// <param name="constraintName">The name of the foreign key constraint. Optional.</param>
+    /// <param name="onDelete">The action to take when a referenced row is deleted. Default is <see cref="DxForeignKeyAction.NoAction"/>.</param>
+    /// <param name="onUpdate">The action to take when a referenced row is updated. Default is <see cref="DxForeignKeyAction.NoAction"/>.</param>
     public DxForeignKeyConstraintAttribute(
         string[] sourceColumnNames,
         string referencedTableName,
@@ -94,8 +122,14 @@ public class DxForeignKeyConstraintAttribute : Attribute
     }
 
     /// <summary>
-    /// Use this on a property to define a foreign key constraint
+    /// Initializes a new instance of the <see cref="DxForeignKeyConstraintAttribute"/> class.
+    /// Constructor for single-column foreign key constraint.
     /// </summary>
+    /// <param name="referencedType">The type of the referenced entity in the foreign key constraint.</param>
+    /// <param name="referencedColumnName">The name of the referenced column in the foreign key constraint. Optional.</param>
+    /// <param name="constraintName">The name of the foreign key constraint. Optional.</param>
+    /// <param name="onDelete">The action to take when a referenced row is deleted. Default is <see cref="DxForeignKeyAction.NoAction"/>.</param>
+    /// <param name="onUpdate">The action to take when a referenced row is updated. Default is <see cref="DxForeignKeyAction.NoAction"/>.</param>
     public DxForeignKeyConstraintAttribute(
         Type referencedType,
         string? referencedColumnName = null,
@@ -114,8 +148,14 @@ public class DxForeignKeyConstraintAttribute : Attribute
     }
 
     /// <summary>
-    /// Use this on a property to define a foreign key constraint
+    /// Initializes a new instance of the <see cref="DxForeignKeyConstraintAttribute"/> class.
+    /// Constructor for single-column foreign key constraint.
     /// </summary>
+    /// <param name="referencedTableName">The name of the referenced table in the foreign key constraint.</param>
+    /// <param name="referencedColumnName">The name of the referenced column in the foreign key constraint. Optional.</param>
+    /// <param name="constraintName">The name of the foreign key constraint. Optional.</param>
+    /// <param name="onDelete">The action to take when a referenced row is deleted. Default is <see cref="DxForeignKeyAction.NoAction"/>.</param>
+    /// <param name="onUpdate">The action to take when a referenced row is updated. Default is <see cref="DxForeignKeyAction.NoAction"/>.</param>
     public DxForeignKeyConstraintAttribute(
         string referencedTableName,
         string? referencedColumnName = null,
@@ -133,11 +173,38 @@ public class DxForeignKeyConstraintAttribute : Attribute
         OnUpdate = onUpdate;
     }
 
+    /// <summary>
+    /// Gets the name of the foreign key constraint.
+    /// </summary>
     public string? ConstraintName { get; }
+
+    /// <summary>
+    /// Gets the names of the source columns in the foreign key constraint.
+    /// </summary>
     public string[]? SourceColumnNames { get; }
+
+    /// <summary>
+    /// Gets the type of the referenced entity in the foreign key constraint.
+    /// </summary>
     public Type? ReferencedType { get; }
+
+    /// <summary>
+    /// Gets the name of the referenced table in the foreign key constraint.
+    /// </summary>
     public string? ReferencedTableName { get; }
+
+    /// <summary>
+    /// Gets the names of the referenced columns in the foreign key constraint.
+    /// </summary>
     public string[]? ReferencedColumnNames { get; }
+
+    /// <summary>
+    /// Gets the action to take when a referenced row is deleted.
+    /// </summary>
     public DxForeignKeyAction? OnDelete { get; }
+
+    /// <summary>
+    /// Gets the action to take when a referenced row is updated.
+    /// </summary>
     public DxForeignKeyAction? OnUpdate { get; }
 }

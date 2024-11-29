@@ -6,6 +6,15 @@ namespace DapperMatic.Providers.MySql;
 
 public partial class MySqlMethods
 {
+    /// <summary>
+    /// Asynchronously retrieves a list of tables from the database.
+    /// </summary>
+    /// <param name="db">The database connection.</param>
+    /// <param name="schemaName">The schema name.</param>
+    /// <param name="tableNameFilter">The table name filter.</param>
+    /// <param name="tx">The database transaction.</param>
+    /// <param name="cancellationToken">The cancellation token.</param>
+    /// <returns>A list of tables.</returns>
     public override async Task<List<DxTable>> GetTablesAsync(
         IDbConnection db,
         string? schemaName,
@@ -30,12 +39,12 @@ public partial class MySqlMethods
                             c.ORDINAL_POSITION AS column_ordinal,
                             c.COLUMN_DEFAULT AS column_default,
                             case when (c.COLUMN_KEY = 'PRI') then 1 else 0 end AS is_primary_key,
-                            case 
+                            case
                                 when (c.COLUMN_KEY = 'UNI') then 1 else 0 end AS is_unique,
-                            case 
-                                when (c.COLUMN_KEY = 'UNI') then 1 
-                                when (c.COLUMN_KEY = 'MUL') then 1 
-                                else 0 
+                            case
+                                when (c.COLUMN_KEY = 'UNI') then 1
+                                when (c.COLUMN_KEY = 'MUL') then 1
+                                else 0
                             end AS is_indexed,
                             case when (c.IS_NULLABLE = 'YES') then 1 else 0 end AS is_nullable,
                             c.DATA_TYPE AS data_type,
@@ -52,9 +61,10 @@ public partial class MySqlMethods
                 string.IsNullOrWhiteSpace(where) ? null : " AND t.TABLE_NAME LIKE @where"
             )}
                         ORDER BY t.TABLE_SCHEMA, t.TABLE_NAME, c.ORDINAL_POSITION
-                    
+
             """;
-        List<(
+
+        var columnResults = await QueryAsync<(
             string schema_name,
             string table_name,
             string column_name,
@@ -71,36 +81,8 @@ public partial class MySqlMethods
             int? numeric_precision,
             int? numeric_scale,
             string? extra
-        )> columnResults = [];
-        try
-        {
-            columnResults = await QueryAsync<(
-                string schema_name,
-                string table_name,
-                string column_name,
-                string table_collation,
-                int column_ordinal,
-                string column_default,
-                bool is_primary_key,
-                bool is_unique,
-                bool is_indexed,
-                bool is_nullable,
-                string data_type,
-                string data_type_complete,
-                long? max_length,
-                int? numeric_precision,
-                int? numeric_scale,
-                string? extra
-            )>(db, columnsSql, new { schemaName, where }, tx: tx)
-                .ConfigureAwait(false);
-        }
-        catch (Exception e)
-        {
-            var rows = await QueryAsync<object>(db, columnsSql, new { schemaName, where }, tx: tx)
-                .ConfigureAwait(false);
-            Console.WriteLine(e.Message);
-            throw;
-        }
+        )>(db, columnsSql, new { schemaName, where }, tx: tx, cancellationToken: cancellationToken)
+            .ConfigureAwait(false);
 
         // get primary key, unique key in a single query
         var constraintsSql = $"""
@@ -142,7 +124,7 @@ public partial class MySqlMethods
                                 tc.table_name,
                                 tc.constraint_type,
                                 tc.constraint_name
-                    
+
             """;
         var constraintResults = await QueryAsync<(
             string schema_name,
@@ -151,7 +133,13 @@ public partial class MySqlMethods
             string constraint_name,
             string columns_csv,
             string columns_desc_csv
-        )>(db, constraintsSql, new { schemaName, where }, tx: tx)
+        )>(
+                db,
+                constraintsSql,
+                new { schemaName, where },
+                tx: tx,
+                cancellationToken: cancellationToken
+            )
             .ConfigureAwait(false);
 
         var allDefaultConstraints = columnResults
@@ -227,8 +215,8 @@ public partial class MySqlMethods
         var foreignKeysSql = $"""
 
                         select distinct
-                            kcu.TABLE_SCHEMA as schema_name, 
-                            kcu.TABLE_NAME as table_name, 
+                            kcu.TABLE_SCHEMA as schema_name,
+                            kcu.TABLE_NAME as table_name,
                             kcu.CONSTRAINT_NAME as constraint_name,
                             kcu.REFERENCED_TABLE_SCHEMA as referenced_schema_name,
                             kcu.REFERENCED_TABLE_NAME as referenced_table_name,
@@ -237,7 +225,7 @@ public partial class MySqlMethods
                             kcu.ORDINAL_POSITION as key_ordinal,
                             kcu.COLUMN_NAME as column_name,
                             kcu.REFERENCED_COLUMN_NAME as referenced_column_name
-                        from INFORMATION_SCHEMA.KEY_COLUMN_USAGE kcu 
+                        from INFORMATION_SCHEMA.KEY_COLUMN_USAGE kcu
                             INNER JOIN INFORMATION_SCHEMA.TABLE_CONSTRAINTS tc on kcu.CONSTRAINT_NAME = tc.CONSTRAINT_NAME
                             INNER JOIN INFORMATION_SCHEMA.REFERENTIAL_CONSTRAINTS rc on kcu.CONSTRAINT_NAME = rc.CONSTRAINT_NAME
                         where kcu.CONSTRAINT_SCHEMA = DATABASE()
@@ -247,7 +235,7 @@ public partial class MySqlMethods
                 string.IsNullOrWhiteSpace(where) ? null : " AND kcu.TABLE_NAME LIKE @where"
             )}
                         order by schema_name, table_name, key_ordinal
-                    
+
             """;
         var foreignKeyResults = await QueryAsync<(
             string schema_name,
@@ -260,7 +248,13 @@ public partial class MySqlMethods
             string key_ordinal,
             string column_name,
             string referenced_column_name
-        )>(db, foreignKeysSql, new { schemaName, where }, tx: tx)
+        )>(
+                db,
+                foreignKeysSql,
+                new { schemaName, where },
+                tx: tx,
+                cancellationToken: cancellationToken
+            )
             .ConfigureAwait(false);
         var allForeignKeyConstraints = foreignKeyResults
             .GroupBy(t => new
@@ -271,7 +265,7 @@ public partial class MySqlMethods
                 t.referenced_schema_name,
                 t.referenced_table_name,
                 t.update_rule,
-                t.delete_rule
+                t.delete_rule,
             })
             .Select(gb =>
             {
@@ -295,28 +289,28 @@ public partial class MySqlMethods
         {
             var checkConstraintsSql = $"""
 
-                            SELECT 
+                            SELECT
                                 tc.TABLE_SCHEMA as schema_name,
-                                tc.TABLE_NAME as table_name, 
+                                tc.TABLE_NAME as table_name,
                                 kcu.COLUMN_NAME as column_name,
                                 tc.CONSTRAINT_NAME as constraint_name,
                                 cc.CHECK_CLAUSE AS check_expression
-                            FROM 
+                            FROM
                                 INFORMATION_SCHEMA.TABLE_CONSTRAINTS AS tc
-                            JOIN 
+                            JOIN
                                 INFORMATION_SCHEMA.CHECK_CONSTRAINTS AS cc
                                 ON tc.CONSTRAINT_NAME = cc.CONSTRAINT_NAME
-                            LEFT JOIN 
+                            LEFT JOIN
                                 INFORMATION_SCHEMA.KEY_COLUMN_USAGE AS kcu
                                 ON tc.CONSTRAINT_NAME = kcu.CONSTRAINT_NAME
-                            WHERE 
+                            WHERE
                                 tc.TABLE_SCHEMA = DATABASE()
                                 and tc.CONSTRAINT_TYPE = 'CHECK'
                                 {(
                     string.IsNullOrWhiteSpace(where) ? null : " AND tc.TABLE_NAME LIKE @where"
                 )}
-                            order by schema_name, table_name, column_name, constraint_name            
-                            
+                            order by schema_name, table_name, column_name, constraint_name
+
                 """;
 
             var checkConstraintResults = await QueryAsync<(
@@ -325,7 +319,13 @@ public partial class MySqlMethods
                 string? column_name,
                 string constraint_name,
                 string check_expression
-            )>(db, checkConstraintsSql, new { schemaName, where }, tx: tx)
+            )>(
+                    db,
+                    checkConstraintsSql,
+                    new { schemaName, where },
+                    tx: tx,
+                    cancellationToken: cancellationToken
+                )
                 .ConfigureAwait(false);
             allCheckConstraints = checkConstraintResults
                 .Select(t =>
@@ -334,7 +334,7 @@ public partial class MySqlMethods
                     {
                         // try to associate the check constraint with a column
                         var columnCount = 0;
-                        var columnName = "";
+                        var columnName = string.Empty;
                         foreach (var column in columnResults)
                         {
                             var pattern = $@"\b{Regex.Escape(column.column_name)}\b";
@@ -411,7 +411,7 @@ public partial class MySqlMethods
             {
                 var columnIsUniqueViaUniqueConstraintOrIndex =
                     uniqueConstraints.Any(c =>
-                        c.Columns.Length == 1
+                        c.Columns.Count == 1
                         && c.Columns.Any(col =>
                             col.ColumnName.Equals(
                                 tableColumn.column_name,
@@ -420,7 +420,7 @@ public partial class MySqlMethods
                         )
                     )
                     || indexes.Any(i =>
-                        i is { IsUnique: true, Columns.Length: 1 }
+                        i is { IsUnique: true, Columns.Count: 1 }
                         && i.Columns.Any(c =>
                             c.ColumnName.Equals(
                                 tableColumn.column_name,
@@ -466,7 +466,7 @@ public partial class MySqlMethods
                     dotnetTypeDescriptor.DotnetType,
                     new Dictionary<DbProviderType, string>
                     {
-                        { ProviderType, tableColumn.data_type_complete }
+                        { ProviderType, tableColumn.data_type_complete },
                     },
                     tableColumn.max_length.HasValue
                         ? (
@@ -537,6 +537,16 @@ public partial class MySqlMethods
         return tables;
     }
 
+    /// <summary>
+    /// Asynchronously retrieves a list of indexes from the database.
+    /// </summary>
+    /// <param name="db">The database connection.</param>
+    /// <param name="schemaName">The schema name.</param>
+    /// <param name="tableNameFilter">The table name filter.</param>
+    /// <param name="indexNameFilter">The index name filter.</param>
+    /// <param name="tx">The database transaction.</param>
+    /// <param name="cancellationToken">The cancellation token.</param>
+    /// <returns>A list of indexes.</returns>
     protected override async Task<List<DxIndex>> GetIndexesInternalAsync(
         IDbConnection db,
         string? schemaName,
@@ -556,7 +566,7 @@ public partial class MySqlMethods
 
         var sql = $"""
 
-                        SELECT 
+                        SELECT
                             TABLE_SCHEMA as schema_name,
                             TABLE_NAME as table_name,
                             INDEX_NAME as index_name,
@@ -567,29 +577,29 @@ public partial class MySqlMethods
                                 WHEN COLLATION = 'D' THEN 'DESC'
                                 ELSE 'N/A'
                             END ORDER BY SEQ_IN_INDEX ASC) AS columns_desc_csv
-                        FROM 
+                        FROM
                             INFORMATION_SCHEMA.STATISTICS stats
-                        WHERE 
+                        WHERE
                             TABLE_SCHEMA = DATABASE()
                             and INDEX_NAME != 'PRIMARY'
                             and INDEX_NAME NOT IN (select CONSTRAINT_NAME from INFORMATION_SCHEMA.TABLE_CONSTRAINTS
-                                                where TABLE_SCHEMA = DATABASE() and 
+                                                where TABLE_SCHEMA = DATABASE() and
                                                         TABLE_NAME = stats.TABLE_NAME and
                                                         CONSTRAINT_TYPE in ('PRIMARY KEY', 'FOREIGN KEY', 'CHECK'))
                             {(
                 !string.IsNullOrWhiteSpace(whereTableLike)
                     ? "and TABLE_NAME LIKE @whereTableLike"
-                    : ""
+                    : string.Empty
             )}
                             {(
                 !string.IsNullOrWhiteSpace(whereIndexLike)
                     ? "and INDEX_NAME LIKE @whereIndexLike"
-                    : ""
+                    : string.Empty
             )}
-                        GROUP BY 
+                        GROUP BY
                             TABLE_NAME, INDEX_NAME, NON_UNIQUE
                         order by schema_name, table_name, index_name
-                        
+
             """;
 
         var indexResults = await QueryAsync<(
@@ -599,7 +609,13 @@ public partial class MySqlMethods
             bool is_unique,
             string columns_csv,
             string columns_desc_csv
-        )>(db, sql, new { whereTableLike, whereIndexLike }, tx)
+        )>(
+                db,
+                sql,
+                new { whereTableLike, whereIndexLike },
+                tx: tx,
+                cancellationToken: cancellationToken
+            )
             .ConfigureAwait(false);
 
         var indexes = new List<DxIndex>();

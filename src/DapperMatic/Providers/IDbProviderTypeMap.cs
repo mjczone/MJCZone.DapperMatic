@@ -1,5 +1,8 @@
 namespace DapperMatic.Providers;
 
+/// <summary>
+/// Represents a mapping between .NET types and SQL types.
+/// </summary>
 public interface IDbProviderTypeMap
 {
     /// <summary>
@@ -8,7 +11,7 @@ public interface IDbProviderTypeMap
     /// </summary>
     /// <param name="sqlTypeName">The sql type name including the length, precision, and/or scale (e.g., nvarchar(255), varchar(max), decimal(16,4), etc...)</param>
     /// <param name="dotnetTypeDescriptor">A corresponding .NET type descriptor object, or null.</param>
-    /// <returns>true/false</returns>
+    /// <returns>true/false.</returns>
     bool TryGetDotnetTypeDescriptorMatchingFullSqlTypeName(
         string sqlTypeName,
         out DotnetTypeDescriptor? dotnetTypeDescriptor
@@ -20,8 +23,7 @@ public interface IDbProviderTypeMap
     /// </summary>
     /// <param name="sqlTypeDescriptor">The sql type descriptor including the length, precision, and/or scale among other things.</param>
     /// <param name="dotnetTypeDescriptor">A corresponding .NET type descriptor object, or null.</param>
-    /// <returns>true/false</returns>
-    /// <returns></returns>
+    /// <returns>true/false.</returns>
     bool TryGetDotnetTypeDescriptorMatchingFullSqlTypeName(
         SqlTypeDescriptor sqlTypeDescriptor,
         out DotnetTypeDescriptor? dotnetTypeDescriptor
@@ -33,7 +35,7 @@ public interface IDbProviderTypeMap
     /// </summary>
     /// <param name="type">The .NET type to convert to a SQL type.</param>
     /// <param name="sqlTypeDescriptor">A corresponding SQL type descriptor object, or null.</param>
-    /// <returns>true/false</returns>
+    /// <returns>true/false.</returns>
     bool TryGetProviderSqlTypeMatchingDotnetType(
         Type type,
         out SqlTypeDescriptor? sqlTypeDescriptor
@@ -45,7 +47,7 @@ public interface IDbProviderTypeMap
     /// </summary>
     /// <param name="dotnetTypeDescriptor">The .NET type descriptor to convert to a SQL type.</param>
     /// <param name="sqlTypeDescriptor">A corresponding SQL type descriptor object, or null.</param>
-    /// <returns>true/false</returns>
+    /// <returns>true/false.</returns>
     bool TryGetProviderSqlTypeMatchingDotnetType(
         DotnetTypeDescriptor dotnetTypeDescriptor,
         out SqlTypeDescriptor? sqlTypeDescriptor

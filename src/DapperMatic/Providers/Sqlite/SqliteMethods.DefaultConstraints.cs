@@ -5,6 +5,7 @@ namespace DapperMatic.Providers.Sqlite;
 
 public partial class SqliteMethods
 {
+    /// <inheritdoc/>
     public override async Task<bool> CreateDefaultConstraintIfNotExistsAsync(
         IDbConnection db,
         string? schemaName,
@@ -17,16 +18,24 @@ public partial class SqliteMethods
     )
     {
         if (string.IsNullOrWhiteSpace(tableName))
+        {
             throw new ArgumentException("Table name is required.", nameof(tableName));
+        }
 
         if (string.IsNullOrWhiteSpace(columnName))
+        {
             throw new ArgumentException("Column name is required.", nameof(columnName));
+        }
 
         if (string.IsNullOrWhiteSpace(constraintName))
+        {
             throw new ArgumentException("Constraint name is required.", nameof(constraintName));
+        }
 
         if (string.IsNullOrWhiteSpace(expression))
+        {
             throw new ArgumentException("Expression is required.", nameof(expression));
+        }
 
         (_, tableName, constraintName) = NormalizeNames(schemaName, tableName, constraintName);
 
@@ -37,7 +46,7 @@ public partial class SqliteMethods
                 table =>
                 {
                     return table.DefaultConstraints.All(x =>
-                        !x.ConstraintName.Equals(constraintName)
+                        !x.ConstraintName.Equals(constraintName, StringComparison.OrdinalIgnoreCase)
                         && !x.ColumnName.Equals(columnName, StringComparison.OrdinalIgnoreCase)
                     );
                 },
@@ -60,6 +69,7 @@ public partial class SqliteMethods
             .ConfigureAwait(false);
     }
 
+    /// <inheritdoc/>
     public override async Task<bool> DropDefaultConstraintIfExistsAsync(
         IDbConnection db,
         string? schemaName,
@@ -114,6 +124,7 @@ public partial class SqliteMethods
             .ConfigureAwait(false);
     }
 
+    /// <inheritdoc/>
     public override async Task<bool> DropDefaultConstraintOnColumnIfExistsAsync(
         IDbConnection db,
         string? schemaName,
@@ -134,7 +145,9 @@ public partial class SqliteMethods
             .ConfigureAwait(false);
 
         if (string.IsNullOrWhiteSpace(constraintName))
+        {
             return false;
+        }
 
         return await DropDefaultConstraintIfExistsAsync(
                 db,

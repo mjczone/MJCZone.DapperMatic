@@ -19,7 +19,9 @@ public class SQLiteDatabaseMethodsTests(ITestOutputHelper output)
     public override async Task<IDbConnection> OpenConnectionAsync()
     {
         if (File.Exists("sqlite_tests.sqlite"))
+        {
             File.Delete("sqlite_tests.sqlite");
+        }
 
         var db = new DbQueryLogging.LoggedDbConnection(
             new SQLiteConnection("Data Source=sqlite_tests.sqlite;Version=3;BinaryGuid=False;"),
@@ -32,7 +34,9 @@ public class SQLiteDatabaseMethodsTests(ITestOutputHelper output)
     public override void Dispose()
     {
         if (File.Exists("sqlite_tests.sqlite"))
+        {
             File.Delete("sqlite_tests.sqlite");
+        }
 
         base.Dispose();
     }

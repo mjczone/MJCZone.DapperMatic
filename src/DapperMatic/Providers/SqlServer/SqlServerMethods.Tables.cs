@@ -5,6 +5,7 @@ namespace DapperMatic.Providers.SqlServer;
 
 public partial class SqlServerMethods
 {
+    /// <inheritdoc/>
     public override async Task<List<DxTable>> GetTablesAsync(
         IDbConnection db,
         string? schemaName,
@@ -65,7 +66,7 @@ public partial class SqlServerMethods
             int? max_length,
             int? numeric_precision,
             int? numeric_scale
-        )>(db, columnsSql, new { schemaName, where }, tx: tx)
+        )>(db, columnsSql, new { schemaName, where }, tx: tx, cancellationToken: cancellationToken)
             .ConfigureAwait(false);
 
         // get primary key, unique key, and indexes in a single query
@@ -82,17 +83,17 @@ public partial class SqlServerMethods
             FROM sys.indexes i
                 INNER JOIN sys.index_columns ic
                     ON i.index_id = ic.index_id AND i.object_id = ic.object_id
-                INNER JOIN sys.tables AS t 
+                INNER JOIN sys.tables AS t
                     ON t.object_id = i.object_id
                 INNER JOIN sys.columns c
                     ON t.object_id = c.object_id AND ic.column_id = c.column_id
-                INNER JOIN sys.objects AS syso 
-                    ON syso.object_id = t.object_id AND syso.is_ms_shipped = 0 
+                INNER JOIN sys.objects AS syso
+                    ON syso.object_id = t.object_id AND syso.is_ms_shipped = 0
                 INNER JOIN sys.schemas AS sh
-                    ON sh.schema_id = t.schema_id 
+                    ON sh.schema_id = t.schema_id
                 INNER JOIN information_schema.schemata sch
                     ON sch.schema_name = sh.name
-            WHERE 
+            WHERE
                 sh.name = @schemaName
                 {(string.IsNullOrWhiteSpace(where) ? null : " AND t.name LIKE @where")}
             ORDER BY sh.name, i.name, ic.key_ordinal
@@ -107,7 +108,13 @@ public partial class SqlServerMethods
             bool is_unique,
             bool is_primary_key,
             bool is_unique_constraint
-        )>(db, constraintsSql, new { schemaName, where }, tx: tx)
+        )>(
+                db,
+                constraintsSql,
+                new { schemaName, where },
+                tx: tx,
+                cancellationToken: cancellationToken
+            )
             .ConfigureAwait(false);
 
         var foreignKeysSql = $"""
@@ -125,13 +132,13 @@ public partial class SqlServerMethods
                         FROM INFORMATION_SCHEMA.REFERENTIAL_CONSTRAINTS rc
                             JOIN INFORMATION_SCHEMA.KEY_COLUMN_USAGE kfk ON rc.CONSTRAINT_NAME = kfk.CONSTRAINT_NAME
                             JOIN INFORMATION_SCHEMA.KEY_COLUMN_USAGE kpk ON rc.UNIQUE_CONSTRAINT_NAME = kpk.CONSTRAINT_NAME
-                        WHERE 
+                        WHERE
                             kfk.TABLE_SCHEMA = @schemaName
                             {(
                 string.IsNullOrWhiteSpace(where) ? null : " AND kfk.TABLE_NAME LIKE @where"
             )}
                         ORDER BY kfk.TABLE_SCHEMA, kfk.TABLE_NAME, rc.CONSTRAINT_NAME
-                    
+
             """;
         var foreignKeyResults = await QueryAsync<(
             string schema_name,
@@ -143,12 +150,18 @@ public partial class SqlServerMethods
             string referenced_column_name,
             string update_rule,
             string delete_rule
-        )>(db, foreignKeysSql, new { schemaName, where }, tx: tx)
+        )>(
+                db,
+                foreignKeysSql,
+                new { schemaName, where },
+                tx: tx,
+                cancellationToken: cancellationToken
+            )
             .ConfigureAwait(false);
 
         var checkConstraintsSql = $"""
 
-                        select 
+                        select
                             schema_name(t.schema_id) AS schema_name,
                             t.[name] AS table_name,
                             col.[name] AS column_name,
@@ -157,14 +170,14 @@ public partial class SqlServerMethods
                         from sys.check_constraints con
                             left outer join sys.objects t on con.parent_object_id = t.object_id
                             left outer join sys.all_columns col on con.parent_column_id = col.column_id and con.parent_object_id = col.object_id
-                        where 
+                        where
                             con.[definition] IS NOT NULL
                             and schema_name(t.schema_id) = @schemaName
                             {(
                 string.IsNullOrWhiteSpace(where) ? null : " AND t.[name] LIKE @where"
             )}
-                        order by schema_name, table_name, column_name, constraint_name            
-                        
+                        order by schema_name, table_name, column_name, constraint_name
+
             """;
         var checkConstraintResults = await QueryAsync<(
             string schema_name,
@@ -172,12 +185,18 @@ public partial class SqlServerMethods
             string? column_name,
             string constraint_name,
             string check_expression
-        )>(db, checkConstraintsSql, new { schemaName, where }, tx: tx)
+        )>(
+                db,
+                checkConstraintsSql,
+                new { schemaName, where },
+                tx: tx,
+                cancellationToken: cancellationToken
+            )
             .ConfigureAwait(false);
 
         var defaultConstraintsSql = $"""
 
-                        select 
+                        select
                             schema_name(t.schema_id) AS schema_name,
                             t.[name] AS table_name,
                             col.[name] AS column_name,
@@ -186,13 +205,13 @@ public partial class SqlServerMethods
                         from sys.default_constraints con
                             left outer join sys.objects t on con.parent_object_id = t.object_id
                             left outer join sys.all_columns col on con.parent_column_id = col.column_id and con.parent_object_id = col.object_id
-                        where 
+                        where
                             schema_name(t.schema_id) = @schemaName
                             {(
                 string.IsNullOrWhiteSpace(where) ? null : " AND t.[name] LIKE @where"
             )}
-                        order by schema_name, table_name, column_name, constraint_name            
-                        
+                        order by schema_name, table_name, column_name, constraint_name
+
             """;
         var defaultConstraintResults = await QueryAsync<(
             string schema_name,
@@ -200,7 +219,13 @@ public partial class SqlServerMethods
             string column_name,
             string constraint_name,
             string default_expression
-        )>(db, defaultConstraintsSql, new { schemaName, where }, tx: tx)
+        )>(
+                db,
+                defaultConstraintsSql,
+                new { schemaName, where },
+                tx: tx,
+                cancellationToken: cancellationToken
+            )
             .ConfigureAwait(false);
 
         var tables = new List<DxTable>();
@@ -228,7 +253,7 @@ public partial class SqlServerMethods
                     t.constraint_name,
                     t.referenced_table_name,
                     t.update_rule,
-                    t.delete_rule
+                    t.delete_rule,
                 })
                 .Select(gb =>
                 {
@@ -291,12 +316,12 @@ public partial class SqlServerMethods
 
             // extract unique constraint information from constraints query
             var uniqueConstraintsInfo = tableConstraints
-                .Where(t => t is { is_unique_constraint: true, is_primary_key: false })
+                .Where(t => t is { is_unique_constraint: true, is_primary_key: false, })
                 .GroupBy(t => new
                 {
                     t.schema_name,
                     t.table_name,
-                    t.constraint_name
+                    t.constraint_name,
                 })
                 .ToArray();
             var uniqueConstraints = uniqueConstraintsInfo
@@ -315,12 +340,12 @@ public partial class SqlServerMethods
 
             // extract index information from constraints query
             var indexesInfo = tableConstraints
-                .Where(t => t is { is_primary_key: false, is_unique_constraint: false })
+                .Where(t => t is { is_primary_key: false, is_unique_constraint: false, })
                 .GroupBy(t => new
                 {
                     t.schema_name,
                     t.table_name,
-                    t.constraint_name
+                    t.constraint_name,
                 })
                 .ToArray();
             var indexes = indexesInfo
@@ -343,7 +368,7 @@ public partial class SqlServerMethods
             {
                 var columnIsUniqueViaUniqueConstraintOrIndex =
                     uniqueConstraints.Any(dxuc =>
-                        dxuc.Columns.Length == 1
+                        dxuc.Columns.Count == 1
                         && dxuc.Columns.Any(c =>
                             c.ColumnName.Equals(
                                 tableColumn.column_name,
@@ -352,7 +377,7 @@ public partial class SqlServerMethods
                         )
                     )
                     || indexes.Any(i =>
-                        i is { IsUnique: true, Columns.Length: 1 }
+                        i is { IsUnique: true, Columns.Count: 1 }
                         && i.Columns.Any(c =>
                             c.ColumnName.Equals(
                                 tableColumn.column_name,
@@ -398,7 +423,7 @@ public partial class SqlServerMethods
                     dotnetTypeDescriptor.DotnetType,
                     new Dictionary<DbProviderType, string>
                     {
-                        { ProviderType, tableColumn.data_type }
+                        { ProviderType, tableColumn.data_type },
                     },
                     tableColumn.max_length,
                     tableColumn.numeric_precision,
@@ -461,6 +486,7 @@ public partial class SqlServerMethods
         return tables;
     }
 
+    /// <inheritdoc/>
     protected override async Task<List<DxIndex>> GetIndexesInternalAsync(
         IDbConnection db,
         string? schemaName,
@@ -481,7 +507,7 @@ public partial class SqlServerMethods
             : ToLikeString(indexNameFilter);
 
         var sql = $"""
-            SELECT 
+            SELECT
                 SCHEMA_NAME(t.schema_id) as schema_name,
                 t.name as table_name,
                 ind.name as index_name,
@@ -490,22 +516,22 @@ public partial class SqlServerMethods
                 ic.key_ordinal as key_ordinal,
                 ic.is_descending_key as is_descending_key
             FROM sys.indexes ind
-                INNER JOIN sys.tables t ON ind.object_id = t.object_id 
+                INNER JOIN sys.tables t ON ind.object_id = t.object_id
                 INNER JOIN sys.index_columns ic ON  ind.object_id = ic.object_id and ind.index_id = ic.index_id
-                INNER JOIN sys.columns col ON ic.object_id = col.object_id and ic.column_id = col.column_id 
-            WHERE 
+                INNER JOIN sys.columns col ON ic.object_id = col.object_id and ic.column_id = col.column_id
+            WHERE
                 ind.is_primary_key = 0 AND ind.is_unique_constraint = 0 AND t.is_ms_shipped = 0
                 {(
                 string.IsNullOrWhiteSpace(whereSchemaLike)
-                    ? ""
+                    ? string.Empty
                     : " AND SCHEMA_NAME(t.schema_id) LIKE @whereSchemaLike"
             )}
                 {(
-                string.IsNullOrWhiteSpace(whereTableLike) ? "" : " AND t.name LIKE @whereTableLike"
+                string.IsNullOrWhiteSpace(whereTableLike) ? string.Empty : " AND t.name LIKE @whereTableLike"
             )}
                 {(
                 string.IsNullOrWhiteSpace(whereIndexLike)
-                    ? ""
+                    ? string.Empty
                     : " AND ind.name LIKE @whereIndexLike"
             )}
             ORDER BY schema_name, table_name, index_name, key_ordinal
@@ -526,9 +552,10 @@ public partial class SqlServerMethods
                 {
                     whereSchemaLike,
                     whereTableLike,
-                    whereIndexLike
+                    whereIndexLike,
                 },
-                tx
+                tx: tx,
+                cancellationToken: cancellationToken
             )
             .ConfigureAwait(false);
 

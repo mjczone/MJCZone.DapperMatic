@@ -6,10 +6,14 @@ namespace DapperMatic.Providers.Sqlite;
 public partial class SqliteMethods
 {
     /// <summary>
-    /// The restrictions on creating a column in a SQLite database are too many.
-    /// Unfortunately, we have to re-create the table in SQLite to avoid these limitations.
-    /// See: https://www.sqlite.org/lang_altertable.html
+    /// Creates a column if it does not already exist in the specified table.
     /// </summary>
+    /// <param name="db">The database connection.</param>
+    /// <param name="column">The column to create.</param>
+    /// <param name="tx">The transaction to use, or null.</param>
+    /// <param name="cancellationToken">The cancellation token.</param>
+    /// <returns>A task that represents the asynchronous operation. The task result contains a boolean indicating whether the column was created.</returns>
+    /// <exception cref="ArgumentException">Thrown when the table name or column name is null or whitespace.</exception>
     public override async Task<bool> CreateColumnIfNotExistsAsync(
         IDbConnection db,
         DxColumn column,
@@ -18,10 +22,14 @@ public partial class SqliteMethods
     )
     {
         if (string.IsNullOrWhiteSpace(column.TableName))
-            throw new ArgumentException("Table name is required", nameof(column.TableName));
+        {
+            throw new ArgumentException("Table name is required", nameof(column));
+        }
 
         if (string.IsNullOrWhiteSpace(column.ColumnName))
-            throw new ArgumentException("Column name is required", nameof(column.ColumnName));
+        {
+            throw new ArgumentException("Column name is required", nameof(column));
+        }
 
         var (_, tableName, columnName) = NormalizeNames(
             column.SchemaName,
@@ -50,6 +58,16 @@ public partial class SqliteMethods
             .ConfigureAwait(false);
     }
 
+    /// <summary>
+    /// Drops a column if it exists in the specified table.
+    /// </summary>
+    /// <param name="db">The database connection.</param>
+    /// <param name="schemaName">The schema name.</param>
+    /// <param name="tableName">The table name.</param>
+    /// <param name="columnName">The column name.</param>
+    /// <param name="tx">The transaction to use, or null.</param>
+    /// <param name="cancellationToken">The cancellation token.</param>
+    /// <returns>A task that represents the asynchronous operation. The task result contains a boolean indicating whether the column was dropped.</returns>
     public override async Task<bool> DropColumnIfExistsAsync(
         IDbConnection db,
         string? schemaName,

@@ -1,5 +1,8 @@
-namespace DapperMatic;
+namespace DapperMatic.Converters;
 
+/// <summary>
+/// .NET Type to SQL Type converter.
+/// </summary>
 public class DotnetTypeToSqlTypeConverter
     : IDbTypeConverter<DotnetTypeDescriptor, SqlTypeDescriptor?>
 {

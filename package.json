@@ -1,0 +1,23 @@
+{
+  "name": "dappermatic",
+  "version": "1.0.0",
+  "description": "[![.github/workflows/release.yml](https://github.com/mjczone/DapperMatic/actions/workflows/release.yml/badge.svg)](https://github.com/mjczone/DapperMatic/actions/workflows/release.yml)",
+  "main": "index.js",
+  "directories": {
+    "doc": "docs",
+    "test": "tests"
+  },
+  "scripts": {
+    "docs:tools": "dotnet tool install DocFxTocGenerator -g && dotnet tool install DocLanguageTranslator -g && dotnet tool install DocLinkChecker -g && dotnet tool install DocFxOpenApi -g",
+    "docs:links": "DocLinkChecker -d ./docs -a",
+    "docs:toc:general": "DocFxTocGenerator -d ./docs/general -sr --indexing NotExists",
+    "docs:toc:services": "DocFxTocGenerator -d ./docs/services -sr --indexing NotExists",
+    "docs:install": "dotnet tool install docfx -g",
+    "docs:build": "docfx ./docs/docfx.json",
+    "build": "dotnet build",
+    "tests": "dotnet test ./tests/DapperMatic.Tests/DapperMatic.Tests.csproj"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC"
+}

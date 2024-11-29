@@ -8,6 +8,14 @@ public partial class SqlServerMethods
     #endregion // Schema Strings
 
     #region Table Strings
+
+    /// <summary>
+    /// Generates the SQL to rename a table.
+    /// </summary>
+    /// <param name="schemaName">The schema name.</param>
+    /// <param name="tableName">The current table name.</param>
+    /// <param name="newTableName">The new table name.</param>
+    /// <returns>The SQL string to rename the table.</returns>
     protected override string SqlRenameTable(
         string? schemaName,
         string tableName,
@@ -41,12 +49,20 @@ public partial class SqlServerMethods
 
     #region View Strings
 
+    /// <summary>
+    /// Generates the SQL to get view names.
+    /// </summary>
+    /// <param name="schemaName">The schema name.</param>
+    /// <param name="viewNameFilter">The view name filter.</param>
+    /// <returns>A tuple containing the SQL string and parameters.</returns>
     protected override (string sql, object parameters) SqlGetViewNames(
         string? schemaName,
         string? viewNameFilter = null
     )
     {
-        var where = string.IsNullOrWhiteSpace(viewNameFilter) ? "" : ToLikeString(viewNameFilter);
+        var where = string.IsNullOrWhiteSpace(viewNameFilter)
+            ? string.Empty
+            : ToLikeString(viewNameFilter);
 
         var sql = $"""
 
@@ -56,9 +72,11 @@ public partial class SqlServerMethods
                             INNER JOIN sys.sql_modules m ON v.object_id = m.object_id
                         WHERE
                             v.[type] = 'V'
-                            AND v.is_ms_shipped = 0                
+                            AND v.is_ms_shipped = 0
                             AND SCHEMA_NAME(v.schema_id) = @schemaName
-                            {(string.IsNullOrWhiteSpace(where) ? "" : " AND v.[name] LIKE @where")}
+                            {(
+                string.IsNullOrWhiteSpace(where) ? string.Empty : " AND v.[name] LIKE @where"
+            )}
                         ORDER BY
                             SCHEMA_NAME(v.schema_id),
                             v.[name]
@@ -67,12 +85,20 @@ public partial class SqlServerMethods
         return (sql, new { schemaName = NormalizeSchemaName(schemaName), where });
     }
 
+    /// <summary>
+    /// Generates the SQL to get views.
+    /// </summary>
+    /// <param name="schemaName">The schema name.</param>
+    /// <param name="viewNameFilter">The view name filter.</param>
+    /// <returns>A tuple containing the SQL string and parameters.</returns>
     protected override (string sql, object parameters) SqlGetViews(
         string? schemaName,
         string? viewNameFilter
     )
     {
-        var where = string.IsNullOrWhiteSpace(viewNameFilter) ? "" : ToLikeString(viewNameFilter);
+        var where = string.IsNullOrWhiteSpace(viewNameFilter)
+            ? string.Empty
+            : ToLikeString(viewNameFilter);
 
         var sql = $"""
 
@@ -84,9 +110,11 @@ public partial class SqlServerMethods
                             INNER JOIN sys.sql_modules m ON v.object_id = m.object_id
                         WHERE
                             v.[type] = 'V'
-                            AND v.is_ms_shipped = 0                
+                            AND v.is_ms_shipped = 0
                             AND SCHEMA_NAME(v.schema_id) = @schemaName
-                            {(string.IsNullOrWhiteSpace(where) ? "" : " AND v.[name] LIKE @where")}
+                            {(
+                string.IsNullOrWhiteSpace(where) ? string.Empty : " AND v.[name] LIKE @where"
+            )}
                         ORDER BY
                             SCHEMA_NAME(v.schema_id),
                             v.[name]
@@ -95,8 +123,16 @@ public partial class SqlServerMethods
         return (sql, new { schemaName = NormalizeSchemaName(schemaName), where });
     }
 
+#pragma warning disable SA1201 // Elements should appear in the correct order
     private static readonly char[] WhiteSpaceCharacters = [' ', '\t', '\n', '\r'];
+#pragma warning restore SA1201 // Elements should appear in the correct order
 
+    /// <summary>
+    /// Normalizes the view definition by stripping off the CREATE VIEW statement.
+    /// </summary>
+    /// <param name="definition">The view definition.</param>
+    /// <returns>The normalized view definition.</returns>
+    /// <exception cref="Exception">Thrown when the view definition cannot be parsed.</exception>
     protected override string NormalizeViewDefinition(string definition)
     {
         definition = definition.Trim();
@@ -106,9 +142,14 @@ public partial class SqlServerMethods
         for (var i = 0; i < definition.Length; i++)
         {
             if (i == 0)
+            {
                 continue;
+            }
+
             if (i == definition.Length - 2)
+            {
                 break;
+            }
 
             if (
                 !WhiteSpaceCharacters.Contains(definition[i - 1])
@@ -116,13 +157,18 @@ public partial class SqlServerMethods
                 || char.ToUpperInvariant(definition[i + 1]) != 'S'
                 || !WhiteSpaceCharacters.Contains(definition[i + 2])
             )
+            {
                 continue;
+            }
 
             indexOfAs = i;
             break;
         }
         if (indexOfAs == -1)
-            throw new Exception("Could not parse view definition: " + definition);
+        {
+            // throw an exception if the view definition cannot be parsed
+            throw new InvalidDataException("Could not parse view definition: " + definition);
+        }
 
         return definition[(indexOfAs + 3)..].Trim();
     }

@@ -6,6 +6,9 @@ using DapperMatic.Providers;
 
 namespace DapperMatic.Models;
 
+/// <summary>
+/// Factory for creating DxTable instances for types.
+/// </summary>
 public static class DxTableFactory
 {
     private static readonly ConcurrentDictionary<Type, DxTable> _cache = new();
@@ -53,10 +56,16 @@ public static class DxTableFactory
     /// Returns an instance of a DxTable for the given type. If the type is not a valid DxTable,
     /// denoted by the use of a DxTableAAttribute on the class, this method returns null.
     /// </summary>
+    /// <param name="type">The type to map to a DxTable instance.</param>
+    /// <returns>A DxTable instance representing the type.</returns>
     public static DxTable GetTable(Type type)
     {
+        ArgumentNullException.ThrowIfNull(type, nameof(type));
+
         if (_cache.TryGetValue(type, out var table))
+        {
             return table;
+        }
 
         var propertyNameToColumnMap = new Dictionary<string, DxColumn>();
         table = GetTableInternal(type, propertyNameToColumnMap);
@@ -68,12 +77,18 @@ public static class DxTableFactory
         return table;
     }
 
+    /// <summary>
+    /// Generates a DxTable instance for the given type, including all column mappings and constraints.
+    /// </summary>
+    /// <param name="type">The type to map to a DxTable instance.</param>
+    /// <param name="propertyMappings">A dictionary to store property to column mappings.</param>
+    /// <returns>A DxTable instance representing the type.</returns>
     private static DxTable GetTableInternal(
         Type type,
         Dictionary<string, DxColumn> propertyMappings
     )
     {
-        var classAttributes = type.GetCustomAttributes();
+        var classAttributes = type.GetCustomAttributes().ToArray();
 
         var tableAttribute =
             type.GetCustomAttribute<DxTableAttribute>() ?? new DxTableAttribute(null, type.Name);
@@ -84,19 +99,26 @@ public static class DxTableFactory
                 {
                     var paType = ca.GetType();
                     if (ca is DxTableAttribute dca && !string.IsNullOrWhiteSpace(dca.SchemaName))
+                    {
                         return dca.SchemaName;
+                    }
                     // EF Core
                     if (
                         ca is System.ComponentModel.DataAnnotations.Schema.TableAttribute ta
                         && !string.IsNullOrWhiteSpace(ta.Schema)
                     )
+                    {
                         return ta.Schema;
+                    }
                     // ServiceStack.OrmLite
                     if (
                         paType.Name == "SchemaAttribute"
                         && ca.TryGetPropertyValue<string>("Name", out var name)
                     )
+                    {
                         return name;
+                    }
+
                     return null;
                 })
                 .FirstOrDefault(n => !string.IsNullOrWhiteSpace(n))
@@ -109,19 +131,26 @@ public static class DxTableFactory
                 {
                     var paType = ca.GetType();
                     if (ca is DxTableAttribute dca && !string.IsNullOrWhiteSpace(dca.TableName))
+                    {
                         return dca.TableName;
+                    }
                     // EF Core
                     if (
                         ca is System.ComponentModel.DataAnnotations.Schema.TableAttribute ta
                         && !string.IsNullOrWhiteSpace(ta.Name)
                     )
+                    {
                         return ta.Name;
+                    }
                     // ServiceStack.OrmLite
                     if (
                         paType.Name == "AliasAttribute"
                         && ca.TryGetPropertyValue<string>("Name", out var name)
                     )
+                    {
                         return name;
+                    }
+
                     return null;
                 })
                 .FirstOrDefault(n => !string.IsNullOrWhiteSpace(n))
@@ -142,7 +171,7 @@ public static class DxTableFactory
 
         foreach (var property in properties)
         {
-            var propertyAttributes = property.GetCustomAttributes();
+            var propertyAttributes = property.GetCustomAttributes().ToArray();
 
             var hasIgnoreAttribute = propertyAttributes.Any(pa =>
             {
@@ -155,7 +184,9 @@ public static class DxTableFactory
             });
 
             if (hasIgnoreAttribute)
+            {
                 continue;
+            }
 
             var columnAttribute = property.GetCustomAttribute<DxColumnAttribute>();
             var columnName =
@@ -164,16 +195,23 @@ public static class DxTableFactory
                     {
                         var paType = pa.GetType();
                         if (pa is DxColumnAttribute dca)
+                        {
                             return dca.ColumnName;
+                        }
                         // EF Core
                         if (pa is System.ComponentModel.DataAnnotations.Schema.ColumnAttribute ca)
+                        {
                             return ca.Name;
+                        }
                         // ServiceStack.OrmLite
                         if (
                             paType.Name == "AliasAttribute"
                             && pa.TryGetPropertyValue<string>("Name", out var name)
                         )
+                        {
                             return name;
+                        }
+
                         return null;
                     })
                     .FirstOrDefault(n => !string.IsNullOrWhiteSpace(n))
@@ -422,7 +460,9 @@ public static class DxTableFactory
 
                 column.IsIndexed = true;
                 if (index.IsUnique)
+                {
                     column.IsUnique = true;
+                }
             }
             else
             {
@@ -451,7 +491,9 @@ public static class DxTableFactory
 
                     column.IsIndexed = true;
                     if (index.IsUnique)
+                    {
                         column.IsUnique = true;
+                    }
                 }
             }
 
@@ -513,7 +555,7 @@ public static class DxTableFactory
                     // TODO: figure out a way to derive the referenced column name
                     var referencedColumnNames = new[]
                     {
-                        inversePropertyAttribute?.Property ?? "id"
+                        inversePropertyAttribute?.Property ?? "id",
                     };
                     var onDelete = DxForeignKeyAction.NoAction;
                     var onUpdate = DxForeignKeyAction.NoAction;
@@ -544,7 +586,9 @@ public static class DxTableFactory
             }
 
             if (columnAttribute == null)
+            {
                 continue;
+            }
 
             columns.Add(column);
         }
@@ -573,7 +617,9 @@ public static class DxTableFactory
                     col.ColumnName.Equals(c.ColumnName, StringComparison.OrdinalIgnoreCase)
                 );
                 if (column != null)
+                {
                     column.IsPrimaryKey = true;
+                }
             }
         }
 
@@ -590,7 +636,9 @@ public static class DxTableFactory
         foreach (var cca in ccas)
         {
             if (string.IsNullOrWhiteSpace(cca.Expression))
+            {
                 continue;
+            }
 
             var constraintName = !string.IsNullOrWhiteSpace(cca.ConstraintName)
                 ? cca.ConstraintName
@@ -605,7 +653,9 @@ public static class DxTableFactory
         foreach (var uca in ucas)
         {
             if (uca.Columns == null)
+            {
                 continue;
+            }
 
             var constraintName = !string.IsNullOrWhiteSpace(uca.ConstraintName)
                 ? uca.ConstraintName
@@ -627,7 +677,9 @@ public static class DxTableFactory
                     )
                 );
                 if (column != null)
+                {
                     column.IsUnique = true;
+                }
             }
         }
 
@@ -635,7 +687,9 @@ public static class DxTableFactory
         foreach (var cia in cias)
         {
             if (cia.Columns == null)
+            {
                 continue;
+            }
 
             var indexName = !string.IsNullOrWhiteSpace(cia.IndexName)
                 ? cia.IndexName
@@ -660,7 +714,9 @@ public static class DxTableFactory
                 {
                     column.IsIndexed = true;
                     if (cia.IsUnique)
+                    {
                         column.IsUnique = true;
+                    }
                 }
             }
         }
@@ -676,7 +732,9 @@ public static class DxTableFactory
                 || cfk.ReferencedColumnNames.Length == 0
                 || cfk.SourceColumnNames.Length != cfk.ReferencedColumnNames.Length
             )
+            {
                 continue;
+            }
 
             var constraintName = !string.IsNullOrWhiteSpace(cfk.ConstraintName)
                 ? cfk.ConstraintName

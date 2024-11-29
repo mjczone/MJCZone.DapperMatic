@@ -5,15 +5,25 @@ using System.Text.RegularExpressions;
 
 namespace DapperMatic;
 
-[SuppressMessage("ReSharper", "UnusedMember.Global")]
-[SuppressMessage("ReSharper", "MemberCanBePrivate.Global")]
+[SuppressMessage("ReSharper", "UnusedMember.Global", Justification = "Utility methods.")]
+[SuppressMessage("ReSharper", "MemberCanBePrivate.Global", Justification = "Utility methods.")]
 internal static partial class ExtensionMethods
 {
+    /// <summary>
+    /// Determines if the specified type is a struct.
+    /// </summary>
+    /// <param name="type">The type to check.</param>
+    /// <returns>True if the type is a struct; otherwise, false.</returns>
     public static bool IsStruct(this Type type)
     {
         return type.IsValueType && !type.IsEnum && !typeof(Delegate).IsAssignableFrom(type);
     }
 
+    /// <summary>
+    /// Returns the underlying type if the specified type is nullable.
+    /// </summary>
+    /// <param name="type">The type to check.</param>
+    /// <returns>The underlying type if the specified type is nullable; otherwise, the original type.</returns>
     public static Type OrUnderlyingTypeIfNullable(this Type type)
     {
         return (type.IsGenericType && type.GetGenericTypeDefinition() == typeof(Nullable<>))
@@ -21,6 +31,11 @@ internal static partial class ExtensionMethods
             : type;
     }
 
+    /// <summary>
+    /// Converts an object to a dictionary of property names and values.
+    /// </summary>
+    /// <param name="source">The object to convert.</param>
+    /// <returns>A dictionary of property names and values.</returns>
     public static IDictionary<string, object?> ToObjectDictionary(this object source)
     {
         if (source is IDictionary<string, object?> dict2)
@@ -40,7 +55,9 @@ internal static partial class ExtensionMethods
         {
             var type = source.GetType();
             if (type == null)
+            {
                 return new Dictionary<string, object?>();
+            }
 
             return type.GetProperties()
                 .ToDictionary(
@@ -50,16 +67,25 @@ internal static partial class ExtensionMethods
         }
     }
 
+    /// <summary>
+    /// Gets the friendly name of the specified type.
+    /// </summary>
+    /// <param name="type">The type to get the friendly name for.</param>
+    /// <returns>The friendly name of the type.</returns>
     public static string GetFriendlyName(this Type type)
     {
         if (type == null)
+        {
             return "(Unknown Type)";
+        }
 
         if (!type.IsGenericType)
+        {
             return type.Name;
+        }
 
         var genericTypeName = type.GetGenericTypeDefinition().Name;
-        var friendlyGenericTypeName = genericTypeName[..genericTypeName.LastIndexOf("`")];
+        var friendlyGenericTypeName = genericTypeName[..genericTypeName.LastIndexOf('`')];
 
         var genericArguments = type.GetGenericArguments();
         var genericArgumentNames = genericArguments.Select(GetFriendlyName).ToArray();
@@ -68,6 +94,13 @@ internal static partial class ExtensionMethods
         return $"{friendlyGenericTypeName}<{genericTypeArgumentsString}>";
     }
 
+    /// <summary>
+    /// Gets the value of a field from an object.
+    /// </summary>
+    /// <typeparam name="TValue">The type of the field value.</typeparam>
+    /// <param name="instance">The object instance.</param>
+    /// <param name="name">The name of the field.</param>
+    /// <returns>The value of the field.</returns>
     public static TValue? GetFieldValue<TValue>(this object instance, string name)
     {
         var type = instance.GetType();
@@ -81,6 +114,13 @@ internal static partial class ExtensionMethods
         return (TValue?)field?.GetValue(instance) ?? default;
     }
 
+    /// <summary>
+    /// Gets the value of a property from an object.
+    /// </summary>
+    /// <typeparam name="TValue">The type of the property value.</typeparam>
+    /// <param name="instance">The object instance.</param>
+    /// <param name="name">The name of the property.</param>
+    /// <returns>The value of the property.</returns>
     public static TValue? GetPropertyValue<TValue>(this object instance, string name)
     {
         var type = instance.GetType();
@@ -94,6 +134,14 @@ internal static partial class ExtensionMethods
         return (TValue?)property?.GetValue(instance);
     }
 
+    /// <summary>
+    /// Tries to get the value of a field from an object.
+    /// </summary>
+    /// <typeparam name="TValue">The type of the field value.</typeparam>
+    /// <param name="instance">The object instance.</param>
+    /// <param name="name">The name of the field.</param>
+    /// <param name="value">The value of the field if found; otherwise, the default value.</param>
+    /// <returns>True if the field value was found; otherwise, false.</returns>
     public static bool TryGetFieldValue<TValue>(
         this object instance,
         string name,
@@ -104,6 +152,14 @@ internal static partial class ExtensionMethods
         return value != null;
     }
 
+    /// <summary>
+    /// Tries to get the value of a property from an object.
+    /// </summary>
+    /// <typeparam name="TValue">The type of the property value.</typeparam>
+    /// <param name="instance">The object instance.</param>
+    /// <param name="name">The name of the property.</param>
+    /// <param name="value">The value of the property if found; otherwise, the default value.</param>
+    /// <returns>True if the property value was found; otherwise, false.</returns>
     public static bool TryGetPropertyValue<TValue>(
         this object instance,
         string name,
@@ -117,7 +173,14 @@ internal static partial class ExtensionMethods
     [GeneratedRegex(@"\d+")]
     private static partial Regex ExtractNumbersRegex();
 
+    /// <summary>
+    /// Extracts numbers from a string.
+    /// </summary>
+    /// <param name="input">The input string.</param>
+    /// <returns>An array of extracted numbers.</returns>
+#pragma warning disable SA1202 // Elements should be ordered by access
     public static int[] ExtractNumbers(this string input)
+#pragma warning restore SA1202 // Elements should be ordered by access
     {
         MatchCollection matches = ExtractNumbersRegex().Matches(input);
 
@@ -125,28 +188,45 @@ internal static partial class ExtensionMethods
         foreach (Match match in matches)
         {
             if (int.TryParse(match.Value, out var number))
+            {
                 numbers.Add(number);
+            }
         }
 
         return [.. numbers];
     }
 
+    /// <summary>
+    /// Discards length, precision, and scale from a SQL type name.
+    /// </summary>
+    /// <param name="sqlTypeName">The SQL type name.</param>
+    /// <returns>The SQL type name without length, precision, and scale.</returns>
     public static string DiscardLengthPrecisionAndScaleFromSqlTypeName(this string sqlTypeName)
     {
         // extract the type name from the sql type name where a sqlTypeName might be "time(5, 2) without time zone" and the return value would be "time without time zone",
         // it could also be "time (  122, 2 ) without time zone" and the return value would be "time without time zone
-        var openIndex = sqlTypeName.IndexOf('(');
-        var closeIndex = sqlTypeName.IndexOf(')');
+        var openIndex = sqlTypeName.IndexOf('(', StringComparison.OrdinalIgnoreCase);
+        var closeIndex = sqlTypeName.IndexOf(')', StringComparison.OrdinalIgnoreCase);
         var txt = (
             openIndex > 0 && closeIndex > 0
                 ? sqlTypeName.Remove(openIndex, closeIndex - openIndex + 1)
                 : sqlTypeName
         ).Trim();
-        while (txt.Contains("  "))
-            txt = txt.Replace("  ", " ");
+        while (txt.Contains("  ", StringComparison.OrdinalIgnoreCase))
+        {
+            txt = txt.Replace("  ", " ", StringComparison.OrdinalIgnoreCase);
+        }
+
         return txt;
     }
 
+    /// <summary>
+    /// Converts a string to a quoted SQL identifier.
+    /// </summary>
+    /// <param name="prefix">The prefix for the identifier.</param>
+    /// <param name="quoteChar">The quote characters.</param>
+    /// <param name="identifierSegments">The identifier segments.</param>
+    /// <returns>The quoted SQL identifier.</returns>
     public static string ToQuotedIdentifier(
         this string prefix,
         char[] quoteChar,
@@ -162,17 +242,20 @@ internal static partial class ExtensionMethods
     }
 
     /// <summary>
-    /// Returns a string as a valid unquoted raw SQL identifier.
-    /// All non-alphanumeric characters are removed from segment string values.
-    /// The segment string values are joined using an underscore.
+    /// Converts a string to a valid unquoted raw SQL identifier.
     /// </summary>
+    /// <param name="prefix">The prefix for the identifier.</param>
+    /// <param name="identifierSegments">The identifier segments.</param>
+    /// <returns>The unquoted raw SQL identifier.</returns>
     public static string ToRawIdentifier(this string prefix, params string[] identifierSegments)
     {
         var sb = new StringBuilder(prefix.ToAlphaNumeric("_"));
         foreach (var segment in identifierSegments)
         {
             if (string.IsNullOrWhiteSpace(segment))
+            {
                 continue;
+            }
 
             sb.Append('_');
             sb.Append(segment.ToAlphaNumeric("_"));
@@ -180,26 +263,42 @@ internal static partial class ExtensionMethods
         return sb.ToString().Trim('_');
     }
 
+    /// <summary>
+    /// Determines if a character is alphanumeric.
+    /// </summary>
+    /// <param name="c">The character to check.</param>
+    /// <returns>True if the character is alphanumeric; otherwise, false.</returns>
     public static bool IsAlphaNumeric(this char c)
     {
         return c is >= 'A' and <= 'Z' or >= 'a' and <= 'z' or >= '0' and <= '9';
     }
 
+    /// <summary>
+    /// Determines if a character is alphabetic.
+    /// </summary>
+    /// <param name="c">The character to check.</param>
+    /// <returns>True if the character is alphabetic; otherwise, false.</returns>
     public static bool IsAlpha(this char c)
     {
         return c is >= 'A' and <= 'Z' or >= 'a' and <= 'z';
     }
 
+    /// <summary>
+    /// Converts a string to an alphanumeric string.
+    /// </summary>
+    /// <param name="text">The input string.</param>
+    /// <param name="additionalAllowedCharacters">Additional characters to allow.</param>
+    /// <returns>The alphanumeric string.</returns>
     public static string ToAlphaNumeric(this string text, string additionalAllowedCharacters = "")
     {
         // using Regex
         // var rgx = new Regex("[^a-zA-Z0-9_.]");
-        // return rgx.Replace(text, "");
+        // return rgx.Replace(text, string.Empty, StringComparison.OrdinalIgnoreCase);
 
         // using IsLetterOrDigit (faster, BUT allows non-ASCII letters and digits)
         // char[] allowed = additionalAllowedCharacters.ToCharArray();
         // char[] arr = text.Where(c =>
-        //         char.IsLetterOrDigit(c) || char.IsWhiteSpace(c) || allowed.Contains(c)
+        //         char.IsLetterOrDigit(c) || char.IsWhiteSpace(c) || allowed.Contains(c, StringComparison.OrdinalIgnoreCase)
         //     )
         //     .ToArray();
         // return new string(arr);
@@ -207,21 +306,35 @@ internal static partial class ExtensionMethods
         return string.Concat(
             Array.FindAll(
                 text.ToCharArray(),
-                c => c.IsAlphaNumeric() || additionalAllowedCharacters.Contains(c)
+                c => c.IsAlphaNumeric() || additionalAllowedCharacters.Contains(c, StringComparison.OrdinalIgnoreCase)
             )
         );
     }
 
+    /// <summary>
+    /// Converts a string to an alphabetic string.
+    /// </summary>
+    /// <param name="text">The input string.</param>
+    /// <param name="additionalAllowedCharacters">Additional characters to allow.</param>
+    /// <returns>The alphabetic string.</returns>
     public static string ToAlpha(this string text, string additionalAllowedCharacters = "")
     {
         return string.Concat(
             Array.FindAll(
                 text.ToCharArray(),
-                c => c.IsAlpha() || additionalAllowedCharacters.Contains(c)
+                c => c.IsAlpha() || additionalAllowedCharacters.Contains(c, StringComparison.OrdinalIgnoreCase)
             )
         );
     }
 
+    /// <summary>
+    /// Determines if two strings are equal when converted to alphabetic strings.
+    /// </summary>
+    /// <param name="text">The first string.</param>
+    /// <param name="textToDetermineMatch">The second string.</param>
+    /// <param name="ignoreCase">Whether to ignore case when comparing.</param>
+    /// <param name="additionalAllowedCharacters">Additional characters to allow.</param>
+    /// <returns>True if the strings are equal; otherwise, false.</returns>
     public static bool EqualsAlpha(
         this string text,
         string textToDetermineMatch,
@@ -236,6 +349,14 @@ internal static partial class ExtensionMethods
             );
     }
 
+    /// <summary>
+    /// Determines if two strings are equal when converted to alphanumeric strings.
+    /// </summary>
+    /// <param name="text">The first string.</param>
+    /// <param name="textToDetermineMatch">The second string.</param>
+    /// <param name="ignoreCase">Whether to ignore case when comparing.</param>
+    /// <param name="additionalAllowedCharacters">Additional characters to allow.</param>
+    /// <returns>True if the strings are equal; otherwise, false.</returns>
     public static bool EqualsAlphaNumeric(
         this string text,
         string textToDetermineMatch,
@@ -251,8 +372,10 @@ internal static partial class ExtensionMethods
     }
 
     /// <summary>
-    /// Converts a string to snake case, e.g. "MyProperty" becomes "my_property", and "IOas_d_DEfH" becomes "i_oas_d_d_ef_h".
+    /// Converts a string to snake case.
     /// </summary>
+    /// <param name="str">The input string.</param>
+    /// <returns>The snake case string.</returns>
     public static string ToSnakeCase(this string str)
     {
         str = str.Trim();
@@ -273,19 +396,13 @@ internal static partial class ExtensionMethods
         return sb.ToString();
     }
 
-    // create a wildcard pattern matching algorithm that accepts wildcards (*) and questions (?)
-    // for example:
-    // *abc* should match abc, abcd, abcdabc, etc.
-    // a?c should match ac, abc, abcc, etc.
-    // the method should take in a string and a wildcard pattern and return true/false whether the string
-    // matches the wildcard pattern.
     /// <summary>
-    /// Wildcard pattern matching algorithm. Accepts wildcards (*) and question marks (?)
+    /// Wildcard pattern matching algorithm. Accepts wildcards (*) and question marks (?).
     /// </summary>
-    /// <param name="text">A string</param>
-    /// <param name="wildcardPattern">Wildcard pattern string</param>
-    /// <param name="ignoreCase">Ignore the case of the string when evaluating a match</param>
-    /// <returns>bool</returns>
+    /// <param name="text">A string.</param>
+    /// <param name="wildcardPattern">Wildcard pattern string.</param>
+    /// <param name="ignoreCase">Ignore the case of the string when evaluating a match.</param>
+    /// <returns>True if the string matches the wildcard pattern; otherwise, false.</returns>
     public static bool IsWildcardPatternMatch(
         this string text,
         string wildcardPattern,
@@ -293,7 +410,9 @@ internal static partial class ExtensionMethods
     )
     {
         if (string.IsNullOrWhiteSpace(text) || string.IsNullOrWhiteSpace(wildcardPattern))
+        {
             return false;
+        }
 
         if (ignoreCase)
         {

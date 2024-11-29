@@ -31,7 +31,9 @@ public abstract partial class DatabaseMethodsTests
         );
 
         if (exists)
+        {
             await db.DropCheckConstraintIfExistsAsync(schemaName, testTableName, constraintName);
+        }
 
         await db.CreateCheckConstraintIfNotExistsAsync(
             schemaName,
@@ -50,19 +52,27 @@ public abstract partial class DatabaseMethodsTests
             constraintName
         );
         if (!supportsCheckConstraints)
+        {
             Assert.Null(existingConstraint);
+        }
         else
+        {
             Assert.Equal(
                 constraintName,
                 existingConstraint?.ConstraintName,
                 StringComparer.OrdinalIgnoreCase
             );
+        }
 
         var checkConstraintNames = await db.GetCheckConstraintNamesAsync(schemaName, testTableName);
         if (!supportsCheckConstraints)
+        {
             Assert.Empty(checkConstraintNames);
+        }
         else
+        {
             Assert.Contains(constraintName, checkConstraintNames, StringComparer.OrdinalIgnoreCase);
+        }
 
         var dropped = await db.DropCheckConstraintIfExistsAsync(
             schemaName,
@@ -70,7 +80,9 @@ public abstract partial class DatabaseMethodsTests
             constraintName
         );
         if (!supportsCheckConstraints)
+        {
             Assert.False(dropped);
+        }
         else
         {
             Assert.True(dropped);
@@ -107,9 +119,13 @@ public abstract partial class DatabaseMethodsTests
             "testColumn2"
         );
         if (!supportsCheckConstraints)
+        {
             Assert.Null(checkConstraint);
+        }
         else
+        {
             Assert.NotNull(checkConstraint);
+        }
 
         await db.DropTableIfExistsAsync(schemaName, testTableName);
     }

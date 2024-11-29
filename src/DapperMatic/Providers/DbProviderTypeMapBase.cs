@@ -1,11 +1,13 @@
 ﻿using System.Collections;
 using System.Collections.Concurrent;
 using System.Reflection;
+using DapperMatic.Converters;
 
 namespace DapperMatic.Providers;
 
 // Add RegisterSqlTypeToDotnetTypeDescriptorConverter method to allow for custom type mappings
 // Add RegisterDotnetTypeDescriptorToSqlTypeConverter method to allow for custom type mappings
+
 /// <summary>
 /// Manages mappings between .NET types and database types.
 /// </summary>
@@ -21,53 +23,72 @@ namespace DapperMatic.Providers;
 /// whether the type is nullable, fixed length, auto-incrementing, etc. This class is designed
 /// to provide a way to map .NET types to database types in a way that is flexible and extensible.
 /// </remarks>
-/// <typeparam name="TImpl"></typeparam>
-
+/// <typeparam name="TImpl">The type of the derived class.</typeparam>
 public abstract partial class DbProviderTypeMapBase<TImpl> : IDbProviderTypeMap
     where TImpl : IDbProviderTypeMap
 {
+    /// <summary>
+    /// The list of converters that convert .NET types to SQL types.
+    /// </summary>
+    /// <remarks>
+    /// The key is the .NET type, and the value is a list of converters that convert the .NET type to a SQL type.
+    /// </remarks>
     protected static readonly ConcurrentDictionary<
         Type,
         List<DotnetTypeToSqlTypeConverter>
     > DotnetTypeToSqlTypeConverters = new();
+
+    /// <summary>
+    /// The list of converters that convert SQL types to .NET types.
+    /// </summary>
+    /// <remarks>
+    /// The key is the base type name of the SQL type, and the value is a list of converters that convert the SQL type to a .NET type.
+    /// </remarks>
     protected static readonly ConcurrentDictionary<
         string,
         List<SqlTypeToDotnetTypeConverter>
     > SqlTypeToDotnetTypeConverters = new();
 
+    /// <summary>
+    /// Initializes a new instance of the <see cref="DbProviderTypeMapBase{TImpl}"/> class.
+    /// </summary>
     protected DbProviderTypeMapBase()
     {
         if (DotnetTypeToSqlTypeConverters.IsEmpty)
+        {
             RegisterDotnetTypeToSqlTypeConverters();
+        }
+
         if (SqlTypeToDotnetTypeConverters.IsEmpty)
+        {
             RegisterSqlTypeToDotnetTypeConverters();
+        }
     }
 
-    protected abstract void RegisterDotnetTypeToSqlTypeConverters();
-    protected abstract void RegisterSqlTypeToDotnetTypeConverters();
-
-    protected SqlTypeDescriptor GetSqlTypeDescriptor(string fullSqlType)
-    {
-        return new SqlTypeDescriptor(fullSqlType);
-    }
-
-    protected DotnetTypeDescriptor GetDotnetTypeDescriptor(Type type)
-    {
-        return new DotnetTypeDescriptor(type);
-    }
-
+    /// <summary>
+    /// Tries to get the .NET type descriptor that matches the specified full SQL type name.
+    /// </summary>
+    /// <param name="sqlTypeName">The full SQL type name.</param>
+    /// <param name="dotnetTypeDescriptor">The .NET type descriptor, if found.</param>
+    /// <returns>True if a matching .NET type descriptor is found; otherwise, false.</returns>
     public bool TryGetDotnetTypeDescriptorMatchingFullSqlTypeName(
-        string fullSqlType,
+        string sqlTypeName,
         out DotnetTypeDescriptor? dotnetTypeDescriptor
     )
     {
-        var sqlTypeDescriptor = GetSqlTypeDescriptor(fullSqlType);
+        var sqlTypeDescriptor = GetSqlTypeDescriptor(sqlTypeName);
         return TryGetDotnetTypeDescriptorMatchingFullSqlTypeName(
             sqlTypeDescriptor,
             out dotnetTypeDescriptor
         );
     }
 
+    /// <summary>
+    /// Tries to get the .NET type descriptor that matches the specified SQL type descriptor.
+    /// </summary>
+    /// <param name="sqlTypeDescriptor">The SQL type descriptor.</param>
+    /// <param name="dotnetTypeDescriptor">The .NET type descriptor, if found.</param>
+    /// <returns>True if a matching .NET type descriptor is found; otherwise, false.</returns>
     public bool TryGetDotnetTypeDescriptorMatchingFullSqlTypeName(
         SqlTypeDescriptor sqlTypeDescriptor,
         out DotnetTypeDescriptor? dotnetTypeDescriptor
@@ -101,6 +122,12 @@ public abstract partial class DbProviderTypeMapBase<TImpl> : IDbProviderTypeMap
         return false;
     }
 
+    /// <summary>
+    /// Tries to get the SQL type descriptor that matches the specified .NET type.
+    /// </summary>
+    /// <param name="type">The .NET type.</param>
+    /// <param name="sqlTypeDescriptor">The SQL type descriptor, if found.</param>
+    /// <returns>True if a matching SQL type descriptor is found; otherwise, false.</returns>
     public bool TryGetProviderSqlTypeMatchingDotnetType(
         Type type,
         out SqlTypeDescriptor? sqlTypeDescriptor
@@ -110,6 +137,12 @@ public abstract partial class DbProviderTypeMapBase<TImpl> : IDbProviderTypeMap
         return TryGetProviderSqlTypeMatchingDotnetType(dotnetTypeDescriptor, out sqlTypeDescriptor);
     }
 
+    /// <summary>
+    /// Tries to get the SQL type descriptor that matches the specified .NET type descriptor.
+    /// </summary>
+    /// <param name="dotnetTypeDescriptor">The .NET type descriptor.</param>
+    /// <param name="sqlTypeDescriptor">The SQL type descriptor, if found.</param>
+    /// <returns>True if a matching SQL type descriptor is found; otherwise, false.</returns>
     public bool TryGetProviderSqlTypeMatchingDotnetType(
         DotnetTypeDescriptor dotnetTypeDescriptor,
         out SqlTypeDescriptor? sqlTypeDescriptor
@@ -167,7 +200,9 @@ public abstract partial class DbProviderTypeMapBase<TImpl> : IDbProviderTypeMap
                         || typeof(IEnumerable).IsAssignableFrom(registeredType)
                         || (!registeredType.IsClass && !registeredType.IsInterface)
                     )
+                    {
                         continue;
+                    }
 
                     if (registeredType.IsAssignableFrom(dotnetTypeDescriptor.DotnetType))
                     {
@@ -206,17 +241,53 @@ public abstract partial class DbProviderTypeMapBase<TImpl> : IDbProviderTypeMap
         sqlTypeDescriptor = null;
         return false;
     }
+
+    /// <summary>
+    /// Registers the converters that convert .NET types to SQL types.
+    /// </summary>
+    /// <remarks>
+    /// This method should be called in the constructor of the derived class to register the converters.
+    /// </remarks>
+    protected abstract void RegisterDotnetTypeToSqlTypeConverters();
+
+    /// <summary>
+    /// Registers the converters that convert SQL types to .NET types.
+    /// </summary>
+    /// <remarks>
+    /// This method should be called in the constructor of the derived class to register the converters.
+    /// </remarks>
+    protected abstract void RegisterSqlTypeToDotnetTypeConverters();
+
+    /// <summary>
+    /// Gets the SQL type descriptor for the specified full SQL type name.
+    /// </summary>
+    /// <param name="fullSqlType">The full SQL type name.</param>
+    /// <returns>The SQL type descriptor.</returns>
+    protected SqlTypeDescriptor GetSqlTypeDescriptor(string fullSqlType)
+    {
+        return new SqlTypeDescriptor(fullSqlType);
+    }
+
+    /// <summary>
+    /// Gets the .NET type descriptor for the specified type.
+    /// </summary>
+    /// <param name="type">The .NET type.</param>
+    /// <returns>The .NET type descriptor.</returns>
+    protected DotnetTypeDescriptor GetDotnetTypeDescriptor(Type type)
+    {
+        return new DotnetTypeDescriptor(type);
+    }
 }
 
 public abstract partial class DbProviderTypeMapBase<TImpl> : IDbProviderTypeMap
     where TImpl : IDbProviderTypeMap
 {
     /// <summary>
-    /// Provides a way to extend the type mapping for a given .NET type to a SQL type.
+    /// Registers a converter for a given .NET type to a SQL type.
     /// </summary>
     /// <param name="type">The .NET type to convert to a SQL type.</param>
-    /// <param name="converter">The converter to register</param>
-    /// <returns>self for a fluent api</returns>
+    /// <param name="converter">The converter to register.</param>
+    /// <param name="prepend">Whether to prepend the converter to the list of converters.</param>
     public static void RegisterConverter(
         Type type,
         DotnetTypeToSqlTypeConverter converter,
@@ -224,7 +295,9 @@ public abstract partial class DbProviderTypeMapBase<TImpl> : IDbProviderTypeMap
     )
     {
         if (converter == null)
+        {
             return;
+        }
 
         if (!DotnetTypeToSqlTypeConverters.TryGetValue(type, out var converters))
         {
@@ -233,22 +306,63 @@ public abstract partial class DbProviderTypeMapBase<TImpl> : IDbProviderTypeMap
         }
 
         if (prepend)
+        {
             converters.Insert(0, converter);
+        }
         else
+        {
             converters.Add(converter);
+        }
     }
 
     /// <summary>
-    /// Provides a way to extend the type mapping for a given .NET type to a SQL type.
+    /// Registers a converter for a given .NET type to a SQL type.
     /// </summary>
     /// <typeparam name="T">The .NET type to convert to a SQL type.</typeparam>
-    /// <param name="converter">The converter to register</param>
-    /// <returns>self for a fluent api</returns>
+    /// <param name="converter">The converter to register.</param>
     public static void RegisterConverter<T>(DotnetTypeToSqlTypeConverter converter)
     {
         RegisterConverter(typeof(T), converter);
     }
 
+    /// <summary>
+    /// Registers a converter for a given SQL type to a .NET type.
+    /// </summary>
+    /// <param name="baseTypeName">The base type name to convert to a .NET type.</param>
+    /// <param name="converter">The converter to register.</param>
+    /// <param name="prepend">Whether to prepend the converter to the list of converters.</param>
+    public static void RegisterConverter(
+        string baseTypeName,
+        SqlTypeToDotnetTypeConverter converter,
+        bool prepend = false
+    )
+    {
+        if (converter == null)
+        {
+            return;
+        }
+
+        if (!SqlTypeToDotnetTypeConverters.TryGetValue(baseTypeName, out var converters))
+        {
+            converters = [];
+            SqlTypeToDotnetTypeConverters[baseTypeName] = converters;
+        }
+
+        if (prepend)
+        {
+            converters.Insert(0, converter);
+        }
+        else
+        {
+            converters.Add(converter);
+        }
+    }
+
+    /// <summary>
+    /// Registers a converter for multiple .NET types to a SQL type.
+    /// </summary>
+    /// <param name="converter">The converter to register.</param>
+    /// <param name="types">The .NET types to convert to a SQL type.</param>
     protected static void RegisterConverterForTypes(
         DotnetTypeToSqlTypeConverter converter,
         params Type?[] types
@@ -263,6 +377,11 @@ public abstract partial class DbProviderTypeMapBase<TImpl> : IDbProviderTypeMap
         }
     }
 
+    /// <summary>
+    /// Registers a converter for multiple .NET types to a SQL type using type names.
+    /// </summary>
+    /// <param name="converter">The converter to register.</param>
+    /// <param name="clrTypeNames">The .NET type names to convert to a SQL type.</param>
     protected static void RegisterConverterForTypes(
         DotnetTypeToSqlTypeConverter converter,
         params string[] clrTypeNames
@@ -271,49 +390,40 @@ public abstract partial class DbProviderTypeMapBase<TImpl> : IDbProviderTypeMap
         foreach (var typeName in clrTypeNames)
         {
             if (Type.GetType(typeName, false, true) is Type type)
+            {
                 RegisterConverter(type, converter);
+            }
         }
     }
 
     /// <summary>
-    /// Provides a way to extend the type mapping for a given SQL type to a .NET type.
+    /// Registers a converter for multiple SQL types to a .NET type.
     /// </summary>
-    /// <param name="baseTypeName">The base type name to convert to a .NET type.</param>
-    /// <param name="converter">The converter to register</param>
-    /// <returns>self for a fluent api</returns>
-    public static void RegisterConverter(
-        string baseTypeName,
-        SqlTypeToDotnetTypeConverter converter,
-        bool prepend = false
-    )
-    {
-        if (converter == null)
-            return;
-
-        if (!SqlTypeToDotnetTypeConverters.TryGetValue(baseTypeName, out var converters))
-        {
-            converters = [];
-            SqlTypeToDotnetTypeConverters[baseTypeName] = converters;
-        }
-
-        if (prepend)
-            converters.Insert(0, converter);
-        else
-            converters.Add(converter);
-    }
-
+    /// <param name="converter">The converter to register.</param>
+    /// <param name="baseTypeNames">The base type names to convert to a .NET type.</param>
     protected static void RegisterConverterForTypes(
         SqlTypeToDotnetTypeConverter converter,
         params string[] baseTypeNames
     )
     {
         foreach (var baseTypeName in baseTypeNames)
+        {
             RegisterConverter(baseTypeName, converter);
+        }
     }
 }
 
+/// <summary>
+/// An internal placeholder type for enum types.
+/// </summary>
 internal class InternalEnumTypePlaceholder { }
 
+/// <summary>
+/// An internal placeholder type for array types.
+/// </summary>
 internal class InternalArrayTypePlaceholder { }
 
+/// <summary>
+/// An internal placeholder type for POCO types.
+/// </summary>
 internal class InternalPocoTypePlaceholder { }

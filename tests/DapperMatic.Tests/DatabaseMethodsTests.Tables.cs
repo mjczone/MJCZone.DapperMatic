@@ -19,7 +19,9 @@ public abstract partial class DatabaseMethodsTests
 
         var exists = await db.DoesTableExistAsync(schemaName, tableName);
         if (exists)
+        {
             await db.DropTableIfExistsAsync(schemaName, tableName);
+        }
 
         exists = await db.DoesTableExistAsync(schemaName, tableName);
         Assert.False(exists);

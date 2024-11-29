@@ -5,6 +5,15 @@ namespace DapperMatic.Providers.Base;
 
 public abstract partial class DatabaseMethodsBase
 {
+    /// <summary>
+    /// Checks if a primary key constraint exists on the specified table.
+    /// </summary>
+    /// <param name="db">The database connection.</param>
+    /// <param name="schemaName">The schema name.</param>
+    /// <param name="tableName">The table name.</param>
+    /// <param name="tx">The transaction to use, or null.</param>
+    /// <param name="cancellationToken">The cancellation token.</param>
+    /// <returns>True if the primary key constraint exists, otherwise false.</returns>
     public virtual async Task<bool> DoesPrimaryKeyConstraintExistAsync(
         IDbConnection db,
         string? schemaName,
@@ -17,6 +26,14 @@ public abstract partial class DatabaseMethodsBase
                 .ConfigureAwait(false) != null;
     }
 
+    /// <summary>
+    /// Creates a primary key constraint if it does not already exist.
+    /// </summary>
+    /// <param name="db">The database connection.</param>
+    /// <param name="constraint">The primary key constraint details.</param>
+    /// <param name="tx">The transaction to use, or null.</param>
+    /// <param name="cancellationToken">The cancellation token.</param>
+    /// <returns>True if the primary key constraint was created, otherwise false.</returns>
     public virtual async Task<bool> CreatePrimaryKeyConstraintIfNotExistsAsync(
         IDbConnection db,
         DxPrimaryKeyConstraint constraint,
@@ -29,12 +46,23 @@ public abstract partial class DatabaseMethodsBase
             constraint.SchemaName,
             constraint.TableName,
             constraint.ConstraintName,
-            constraint.Columns,
+            [.. constraint.Columns],
             tx,
             cancellationToken
-        );
+        ).ConfigureAwait(false);
     }
 
+    /// <summary>
+    /// Creates a primary key constraint if it does not already exist.
+    /// </summary>
+    /// <param name="db">The database connection.</param>
+    /// <param name="schemaName">The schema name.</param>
+    /// <param name="tableName">The table name.</param>
+    /// <param name="constraintName">The constraint name.</param>
+    /// <param name="columns">The columns that make up the primary key.</param>
+    /// <param name="tx">The transaction to use, or null.</param>
+    /// <param name="cancellationToken">The cancellation token.</param>
+    /// <returns>True if the primary key constraint was created, otherwise false.</returns>
     public virtual async Task<bool> CreatePrimaryKeyConstraintIfNotExistsAsync(
         IDbConnection db,
         string? schemaName,
@@ -46,13 +74,19 @@ public abstract partial class DatabaseMethodsBase
     )
     {
         if (string.IsNullOrWhiteSpace(tableName))
+        {
             throw new ArgumentException("Table name is required.", nameof(tableName));
+        }
 
         if (string.IsNullOrWhiteSpace(constraintName))
+        {
             throw new ArgumentException("Constraint name is required.", nameof(constraintName));
+        }
 
         if (columns.Length == 0)
+        {
             throw new ArgumentException("At least one column must be specified.", nameof(columns));
+        }
 
         if (
             await DoesPrimaryKeyConstraintExistAsync(
@@ -64,7 +98,9 @@ public abstract partial class DatabaseMethodsBase
                 )
                 .ConfigureAwait(false)
         )
+        {
             return false;
+        }
 
         var supportsOrderedKeysInConstraints = await SupportsOrderedKeysInConstraintsAsync(
                 db,
@@ -81,11 +117,21 @@ public abstract partial class DatabaseMethodsBase
             supportsOrderedKeysInConstraints
         );
 
-        await ExecuteAsync(db, sql, tx: tx).ConfigureAwait(false);
+        await ExecuteAsync(db, sql, tx: tx, cancellationToken: cancellationToken)
+            .ConfigureAwait(false);
 
         return true;
     }
 
+    /// <summary>
+    /// Gets the primary key constraint for the specified table.
+    /// </summary>
+    /// <param name="db">The database connection.</param>
+    /// <param name="schemaName">The schema name.</param>
+    /// <param name="tableName">The table name.</param>
+    /// <param name="tx">The transaction to use, or null.</param>
+    /// <param name="cancellationToken">The cancellation token.</param>
+    /// <returns>The primary key constraint, or null if it does not exist.</returns>
     public virtual async Task<DxPrimaryKeyConstraint?> GetPrimaryKeyConstraintAsync(
         IDbConnection db,
         string? schemaName,
@@ -96,13 +142,24 @@ public abstract partial class DatabaseMethodsBase
     {
         var table = await GetTableAsync(db, schemaName, tableName, tx, cancellationToken)
             .ConfigureAwait(false);
-            
+
         if (table?.PrimaryKeyConstraint is null)
+        {
             return null;
+        }
 
         return table.PrimaryKeyConstraint;
     }
 
+    /// <summary>
+    /// Drops the primary key constraint if it exists.
+    /// </summary>
+    /// <param name="db">The database connection.</param>
+    /// <param name="schemaName">The schema name.</param>
+    /// <param name="tableName">The table name.</param>
+    /// <param name="tx">The transaction to use, or null.</param>
+    /// <param name="cancellationToken">The cancellation token.</param>
+    /// <returns>True if the primary key constraint was dropped, otherwise false.</returns>
     public virtual async Task<bool> DropPrimaryKeyConstraintIfExistsAsync(
         IDbConnection db,
         string? schemaName,
@@ -112,19 +169,27 @@ public abstract partial class DatabaseMethodsBase
     )
     {
         var primaryKeyConstraint = await GetPrimaryKeyConstraintAsync(
-            db,
-            schemaName,
-            tableName,
-            tx,
-            cancellationToken
-        );
+                db,
+                schemaName,
+                tableName,
+                tx,
+                cancellationToken
+            )
+            .ConfigureAwait(false);
 
         if (string.IsNullOrWhiteSpace(primaryKeyConstraint?.ConstraintName))
+        {
             return false;
+        }
 
-        var sql = SqlDropPrimaryKeyConstraint(schemaName, tableName, primaryKeyConstraint.ConstraintName);
+        var sql = SqlDropPrimaryKeyConstraint(
+            schemaName,
+            tableName,
+            primaryKeyConstraint.ConstraintName
+        );
 
-        await ExecuteAsync(db, sql, tx: tx).ConfigureAwait(false);
+        await ExecuteAsync(db, sql, tx: tx, cancellationToken: cancellationToken)
+            .ConfigureAwait(false);
 
         return true;
     }

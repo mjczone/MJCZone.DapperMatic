@@ -5,6 +5,16 @@ namespace DapperMatic.Providers.Base;
 
 public abstract partial class DatabaseMethodsBase
 {
+    /// <summary>
+    /// Checks if a check constraint exists in the specified table.
+    /// </summary>
+    /// <param name="db">The database connection.</param>
+    /// <param name="schemaName">The schema name.</param>
+    /// <param name="tableName">The table name.</param>
+    /// <param name="constraintName">The constraint name.</param>
+    /// <param name="tx">The transaction.</param>
+    /// <param name="cancellationToken">The cancellation token.</param>
+    /// <returns>True if the check constraint exists, otherwise false.</returns>
     public virtual async Task<bool> DoesCheckConstraintExistAsync(
         IDbConnection db,
         string? schemaName,
@@ -15,7 +25,9 @@ public abstract partial class DatabaseMethodsBase
     )
     {
         if (!await SupportsCheckConstraintsAsync(db, tx, cancellationToken).ConfigureAwait(false))
+        {
             return false;
+        }
 
         return await GetCheckConstraintAsync(
                     db,
@@ -28,6 +40,16 @@ public abstract partial class DatabaseMethodsBase
                 .ConfigureAwait(false) != null;
     }
 
+    /// <summary>
+    /// Checks if a check constraint exists on a specific column in the specified table.
+    /// </summary>
+    /// <param name="db">The database connection.</param>
+    /// <param name="schemaName">The schema name.</param>
+    /// <param name="tableName">The table name.</param>
+    /// <param name="columnName">The column name.</param>
+    /// <param name="tx">The transaction.</param>
+    /// <param name="cancellationToken">The cancellation token.</param>
+    /// <returns>True if the check constraint exists on the column, otherwise false.</returns>
     public virtual async Task<bool> DoesCheckConstraintExistOnColumnAsync(
         IDbConnection db,
         string? schemaName,
@@ -38,7 +60,9 @@ public abstract partial class DatabaseMethodsBase
     )
     {
         if (!await SupportsCheckConstraintsAsync(db, tx, cancellationToken).ConfigureAwait(false))
+        {
             return false;
+        }
 
         return await GetCheckConstraintOnColumnAsync(
                     db,
@@ -51,6 +75,14 @@ public abstract partial class DatabaseMethodsBase
                 .ConfigureAwait(false) != null;
     }
 
+    /// <summary>
+    /// Creates a check constraint if it does not already exist.
+    /// </summary>
+    /// <param name="db">The database connection.</param>
+    /// <param name="constraint">The check constraint details.</param>
+    /// <param name="tx">The transaction.</param>
+    /// <param name="cancellationToken">The cancellation token.</param>
+    /// <returns>True if the check constraint was created, otherwise false.</returns>
     public virtual async Task<bool> CreateCheckConstraintIfNotExistsAsync(
         IDbConnection db,
         DxCheckConstraint constraint,
@@ -59,7 +91,9 @@ public abstract partial class DatabaseMethodsBase
     )
     {
         if (!await SupportsCheckConstraintsAsync(db, tx, cancellationToken).ConfigureAwait(false))
+        {
             return false;
+        }
 
         return await CreateCheckConstraintIfNotExistsAsync(
                 db,
@@ -74,6 +108,18 @@ public abstract partial class DatabaseMethodsBase
             .ConfigureAwait(false);
     }
 
+    /// <summary>
+    /// Creates a check constraint if it does not already exist.
+    /// </summary>
+    /// <param name="db">The database connection.</param>
+    /// <param name="schemaName">The schema name.</param>
+    /// <param name="tableName">The table name.</param>
+    /// <param name="columnName">The column name.</param>
+    /// <param name="constraintName">The constraint name.</param>
+    /// <param name="expression">The check constraint expression.</param>
+    /// <param name="tx">The transaction.</param>
+    /// <param name="cancellationToken">The cancellation token.</param>
+    /// <returns>True if the check constraint was created, otherwise false.</returns>
     public virtual async Task<bool> CreateCheckConstraintIfNotExistsAsync(
         IDbConnection db,
         string? schemaName,
@@ -86,16 +132,24 @@ public abstract partial class DatabaseMethodsBase
     )
     {
         if (string.IsNullOrWhiteSpace(tableName))
+        {
             throw new ArgumentException("Table name is required.", nameof(tableName));
+        }
 
         if (string.IsNullOrWhiteSpace(constraintName))
+        {
             throw new ArgumentException("Constraint name is required.", nameof(constraintName));
+        }
 
         if (string.IsNullOrWhiteSpace(expression))
+        {
             throw new ArgumentException("Expression is required.", nameof(expression));
+        }
 
         if (!await SupportsCheckConstraintsAsync(db, tx, cancellationToken).ConfigureAwait(false))
+        {
             return false;
+        }
 
         if (
             await DoesCheckConstraintExistAsync(
@@ -108,7 +162,9 @@ public abstract partial class DatabaseMethodsBase
                 )
                 .ConfigureAwait(false)
         )
+        {
             return false;
+        }
 
         var sql = SqlAlterTableAddCheckConstraint(
             schemaName,
@@ -117,11 +173,22 @@ public abstract partial class DatabaseMethodsBase
             expression
         );
 
-        await ExecuteAsync(db, sql, tx: tx).ConfigureAwait(false);
+        await ExecuteAsync(db, sql, tx: tx, cancellationToken: cancellationToken)
+            .ConfigureAwait(false);
 
         return true;
     }
 
+    /// <summary>
+    /// Gets the details of a check constraint.
+    /// </summary>
+    /// <param name="db">The database connection.</param>
+    /// <param name="schemaName">The schema name.</param>
+    /// <param name="tableName">The table name.</param>
+    /// <param name="constraintName">The constraint name.</param>
+    /// <param name="tx">The transaction.</param>
+    /// <param name="cancellationToken">The cancellation token.</param>
+    /// <returns>The check constraint details, or null if not found.</returns>
     public virtual async Task<DxCheckConstraint?> GetCheckConstraintAsync(
         IDbConnection db,
         string? schemaName,
@@ -132,7 +199,9 @@ public abstract partial class DatabaseMethodsBase
     )
     {
         if (string.IsNullOrWhiteSpace(constraintName))
+        {
             throw new ArgumentException("Constraint name is required.", nameof(constraintName));
+        }
 
         var checkConstraints = await GetCheckConstraintsAsync(
                 db,
@@ -147,6 +216,16 @@ public abstract partial class DatabaseMethodsBase
         return checkConstraints.SingleOrDefault();
     }
 
+    /// <summary>
+    /// Gets the name of a check constraint on a specific column.
+    /// </summary>
+    /// <param name="db">The database connection.</param>
+    /// <param name="schemaName">The schema name.</param>
+    /// <param name="tableName">The table name.</param>
+    /// <param name="columnName">The column name.</param>
+    /// <param name="tx">The transaction.</param>
+    /// <param name="cancellationToken">The cancellation token.</param>
+    /// <returns>The check constraint name, or null if not found.</returns>
     public virtual async Task<string?> GetCheckConstraintNameOnColumnAsync(
         IDbConnection db,
         string? schemaName,
@@ -157,7 +236,9 @@ public abstract partial class DatabaseMethodsBase
     )
     {
         if (string.IsNullOrWhiteSpace(columnName))
+        {
             throw new ArgumentException("Column name is required.", nameof(columnName));
+        }
 
         var checkConstraints = await GetCheckConstraintsAsync(
                 db,
@@ -177,6 +258,16 @@ public abstract partial class DatabaseMethodsBase
             ?.ConstraintName;
     }
 
+    /// <summary>
+    /// Gets the names of all check constraints in the specified table.
+    /// </summary>
+    /// <param name="db">The database connection.</param>
+    /// <param name="schemaName">The schema name.</param>
+    /// <param name="tableName">The table name.</param>
+    /// <param name="constraintNameFilter">The constraint name filter.</param>
+    /// <param name="tx">The transaction.</param>
+    /// <param name="cancellationToken">The cancellation token.</param>
+    /// <returns>A list of check constraint names.</returns>
     public virtual async Task<List<string>> GetCheckConstraintNamesAsync(
         IDbConnection db,
         string? schemaName,
@@ -199,6 +290,16 @@ public abstract partial class DatabaseMethodsBase
         return checkConstraints.Select(c => c.ConstraintName).ToList();
     }
 
+    /// <summary>
+    /// Gets the details of a check constraint on a specific column.
+    /// </summary>
+    /// <param name="db">The database connection.</param>
+    /// <param name="schemaName">The schema name.</param>
+    /// <param name="tableName">The table name.</param>
+    /// <param name="columnName">The column name.</param>
+    /// <param name="tx">The transaction.</param>
+    /// <param name="cancellationToken">The cancellation token.</param>
+    /// <returns>The check constraint details, or null if not found.</returns>
     public virtual async Task<DxCheckConstraint?> GetCheckConstraintOnColumnAsync(
         IDbConnection db,
         string? schemaName,
@@ -209,7 +310,9 @@ public abstract partial class DatabaseMethodsBase
     )
     {
         if (string.IsNullOrWhiteSpace(columnName))
+        {
             throw new ArgumentException("Column name is required.", nameof(columnName));
+        }
 
         var checkConstraints = await GetCheckConstraintsAsync(
                 db,
@@ -227,6 +330,16 @@ public abstract partial class DatabaseMethodsBase
         );
     }
 
+    /// <summary>
+    /// Gets the details of all check constraints in the specified table.
+    /// </summary>
+    /// <param name="db">The database connection.</param>
+    /// <param name="schemaName">The schema name.</param>
+    /// <param name="tableName">The table name.</param>
+    /// <param name="constraintNameFilter">The constraint name filter.</param>
+    /// <param name="tx">The transaction.</param>
+    /// <param name="cancellationToken">The cancellation token.</param>
+    /// <returns>A list of check constraint details.</returns>
     public virtual async Task<List<DxCheckConstraint>> GetCheckConstraintsAsync(
         IDbConnection db,
         string? schemaName,
@@ -237,16 +350,22 @@ public abstract partial class DatabaseMethodsBase
     )
     {
         if (string.IsNullOrWhiteSpace(tableName))
+        {
             throw new ArgumentException("Table name is required.", nameof(tableName));
+        }
 
         if (!await SupportsCheckConstraintsAsync(db, tx, cancellationToken).ConfigureAwait(false))
+        {
             return [];
+        }
 
         var table = await GetTableAsync(db, schemaName, tableName, tx, cancellationToken)
             .ConfigureAwait(false);
 
         if (table == null)
+        {
             return [];
+        }
 
         var filter = string.IsNullOrWhiteSpace(constraintNameFilter)
             ? null
@@ -259,6 +378,16 @@ public abstract partial class DatabaseMethodsBase
                 .ToList();
     }
 
+    /// <summary>
+    /// Drops a check constraint on a specific column if it exists.
+    /// </summary>
+    /// <param name="db">The database connection.</param>
+    /// <param name="schemaName">The schema name.</param>
+    /// <param name="tableName">The table name.</param>
+    /// <param name="columnName">The column name.</param>
+    /// <param name="tx">The transaction.</param>
+    /// <param name="cancellationToken">The cancellation token.</param>
+    /// <returns>True if the check constraint was dropped, otherwise false.</returns>
     public virtual async Task<bool> DropCheckConstraintOnColumnIfExistsAsync(
         IDbConnection db,
         string? schemaName,
@@ -269,13 +398,19 @@ public abstract partial class DatabaseMethodsBase
     )
     {
         if (string.IsNullOrWhiteSpace(tableName))
+        {
             throw new ArgumentException("Table name is required.", nameof(tableName));
+        }
 
         if (string.IsNullOrWhiteSpace(columnName))
+        {
             throw new ArgumentException("Column name is required.", nameof(columnName));
+        }
 
         if (!await SupportsCheckConstraintsAsync(db, tx, cancellationToken).ConfigureAwait(false))
+        {
             return false;
+        }
 
         var constraintName = await GetCheckConstraintNameOnColumnAsync(
             db,
@@ -284,17 +419,30 @@ public abstract partial class DatabaseMethodsBase
             columnName,
             tx,
             cancellationToken
-        );
+        ).ConfigureAwait(false);
         if (string.IsNullOrWhiteSpace(constraintName))
+        {
             return false;
+        }
 
         var sql = SqlDropCheckConstraint(schemaName, tableName, constraintName);
 
-        await ExecuteAsync(db, sql, tx: tx).ConfigureAwait(false);
+        await ExecuteAsync(db, sql, tx: tx, cancellationToken: cancellationToken)
+            .ConfigureAwait(false);
 
         return true;
     }
 
+    /// <summary>
+    /// Drops a check constraint if it exists.
+    /// </summary>
+    /// <param name="db">The database connection.</param>
+    /// <param name="schemaName">The schema name.</param>
+    /// <param name="tableName">The table name.</param>
+    /// <param name="constraintName">The constraint name.</param>
+    /// <param name="tx">The transaction.</param>
+    /// <param name="cancellationToken">The cancellation token.</param>
+    /// <returns>True if the check constraint was dropped, otherwise false.</returns>
     public virtual async Task<bool> DropCheckConstraintIfExistsAsync(
         IDbConnection db,
         string? schemaName,
@@ -305,13 +453,19 @@ public abstract partial class DatabaseMethodsBase
     )
     {
         if (string.IsNullOrWhiteSpace(tableName))
+        {
             throw new ArgumentException("Table name is required.", nameof(tableName));
+        }
 
         if (string.IsNullOrWhiteSpace(constraintName))
+        {
             throw new ArgumentException("Constraint name is required.", nameof(constraintName));
+        }
 
         if (!await SupportsCheckConstraintsAsync(db, tx, cancellationToken).ConfigureAwait(false))
+        {
             return false;
+        }
 
         if (
             !await DoesCheckConstraintExistAsync(
@@ -324,11 +478,14 @@ public abstract partial class DatabaseMethodsBase
                 )
                 .ConfigureAwait(false)
         )
+        {
             return false;
+        }
 
         var sql = SqlDropCheckConstraint(schemaName, tableName, constraintName);
 
-        await ExecuteAsync(db, sql, tx: tx).ConfigureAwait(false);
+        await ExecuteAsync(db, sql, tx: tx, cancellationToken: cancellationToken)
+            .ConfigureAwait(false);
 
         return true;
     }

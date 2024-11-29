@@ -6,6 +6,16 @@ namespace DapperMatic.Providers.Base;
 
 public abstract partial class DatabaseMethodsBase
 {
+    /// <summary>
+    /// Checks if a column exists in the specified table.
+    /// </summary>
+    /// <param name="db">The database connection.</param>
+    /// <param name="schemaName">The schema name.</param>
+    /// <param name="tableName">The table name.</param>
+    /// <param name="columnName">The column name.</param>
+    /// <param name="tx">The database transaction.</param>
+    /// <param name="cancellationToken">The cancellation token.</param>
+    /// <returns>True if the column exists, otherwise false.</returns>
     public virtual async Task<bool> DoesColumnExistAsync(
         IDbConnection db,
         string? schemaName,
@@ -19,6 +29,14 @@ public abstract partial class DatabaseMethodsBase
                 .ConfigureAwait(false) != null;
     }
 
+    /// <summary>
+    /// Creates a column if it does not already exist in the specified table.
+    /// </summary>
+    /// <param name="db">The database connection.</param>
+    /// <param name="column">The column definition.</param>
+    /// <param name="tx">The database transaction.</param>
+    /// <param name="cancellationToken">The cancellation token.</param>
+    /// <returns>True if the column was created, otherwise false.</returns>
     public virtual async Task<bool> CreateColumnIfNotExistsAsync(
         IDbConnection db,
         DxColumn column,
@@ -27,10 +45,14 @@ public abstract partial class DatabaseMethodsBase
     )
     {
         if (string.IsNullOrWhiteSpace(column.TableName))
-            throw new ArgumentException("Table name is required", nameof(column.TableName));
+        {
+            throw new ArgumentException("Table name is required", nameof(column));
+        }
 
         if (string.IsNullOrWhiteSpace(column.ColumnName))
-            throw new ArgumentException("Column name is required", nameof(column.ColumnName));
+        {
+            throw new ArgumentException("Column name is required", nameof(column));
+        }
 
         var table = await GetTableAsync(
                 db,
@@ -42,14 +64,18 @@ public abstract partial class DatabaseMethodsBase
             .ConfigureAwait(false);
 
         if (string.IsNullOrWhiteSpace(table?.TableName))
+        {
             return false;
+        }
 
         if (
             table.Columns.Any(c =>
                 c.ColumnName.Equals(column.ColumnName, StringComparison.OrdinalIgnoreCase)
             )
         )
+        {
             return false;
+        }
 
         var dbVersion = await GetDatabaseVersionAsync(db, tx, cancellationToken)
             .ConfigureAwait(false);
@@ -58,7 +84,9 @@ public abstract partial class DatabaseMethodsBase
 
         // attach the existing primary key constraint if it exists to ensure that it doesn't get recreated
         if (table.PrimaryKeyConstraint != null)
+        {
             tableConstraints.PrimaryKeyConstraint = table.PrimaryKeyConstraint;
+        }
 
         var columnDefinitionSql = SqlInlineColumnDefinition(
             table,
@@ -72,7 +100,8 @@ public abstract partial class DatabaseMethodsBase
             $"ALTER TABLE {GetSchemaQualifiedIdentifierName(column.SchemaName, column.TableName)} ADD {columnDefinitionSql}"
         );
 
-        await ExecuteAsync(db, sql.ToString(), tx).ConfigureAwait(false);
+        await ExecuteAsync(db, sql.ToString(), tx: tx, cancellationToken: cancellationToken)
+            .ConfigureAwait(false);
 
         // ONLY add the primary key constraint if it didn't exist before and if it wasn't
         // already added as part of the column definition (in which case that tableConstraints.PrimaryKeyConstraint will be null)
@@ -91,41 +120,45 @@ public abstract partial class DatabaseMethodsBase
         foreach (var checkConstraint in tableConstraints.CheckConstraints)
         {
             await CreateCheckConstraintIfNotExistsAsync(
-                db,
-                checkConstraint,
-                tx: tx,
-                cancellationToken: cancellationToken
-            );
+                    db,
+                    checkConstraint,
+                    tx: tx,
+                    cancellationToken: cancellationToken
+                )
+                .ConfigureAwait(false);
         }
 
         foreach (var defaultConstraint in tableConstraints.DefaultConstraints)
         {
             await CreateDefaultConstraintIfNotExistsAsync(
-                db,
-                defaultConstraint,
-                tx: tx,
-                cancellationToken: cancellationToken
-            );
+                    db,
+                    defaultConstraint,
+                    tx: tx,
+                    cancellationToken: cancellationToken
+                )
+                .ConfigureAwait(false);
         }
 
         foreach (var uniqueConstraint in tableConstraints.UniqueConstraints)
         {
             await CreateUniqueConstraintIfNotExistsAsync(
-                db,
-                uniqueConstraint,
-                tx: tx,
-                cancellationToken: cancellationToken
-            );
+                    db,
+                    uniqueConstraint,
+                    tx: tx,
+                    cancellationToken: cancellationToken
+                )
+                .ConfigureAwait(false);
         }
 
         foreach (var foreignKeyConstraint in tableConstraints.ForeignKeyConstraints)
         {
             await CreateForeignKeyConstraintIfNotExistsAsync(
-                db,
-                foreignKeyConstraint,
-                tx: tx,
-                cancellationToken: cancellationToken
-            );
+                    db,
+                    foreignKeyConstraint,
+                    tx: tx,
+                    cancellationToken: cancellationToken
+                )
+                .ConfigureAwait(false);
         }
 
         foreach (var index in tableConstraints.Indexes)
@@ -142,6 +175,33 @@ public abstract partial class DatabaseMethodsBase
         return true;
     }
 
+    /// <summary>
+    /// Creates a column with the specified properties if it does not already exist in the specified table.
+    /// </summary>
+    /// <param name="db">The database connection.</param>
+    /// <param name="schemaName">The schema name.</param>
+    /// <param name="tableName">The table name.</param>
+    /// <param name="columnName">The column name.</param>
+    /// <param name="dotnetType">The .NET type of the column.</param>
+    /// <param name="providerDataType">The provider-specific data type.</param>
+    /// <param name="length">The length of the column.</param>
+    /// <param name="precision">The precision of the column.</param>
+    /// <param name="scale">The scale of the column.</param>
+    /// <param name="checkExpression">The check constraint expression.</param>
+    /// <param name="defaultExpression">The default value expression.</param>
+    /// <param name="isNullable">Indicates if the column is nullable.</param>
+    /// <param name="isPrimaryKey">Indicates if the column is a primary key.</param>
+    /// <param name="isAutoIncrement">Indicates if the column is auto-incremented.</param>
+    /// <param name="isUnique">Indicates if the column is unique.</param>
+    /// <param name="isIndexed">Indicates if the column is indexed.</param>
+    /// <param name="isForeignKey">Indicates if the column is a foreign key.</param>
+    /// <param name="referencedTableName">The referenced table name for foreign key.</param>
+    /// <param name="referencedColumnName">The referenced column name for foreign key.</param>
+    /// <param name="onDelete">The action on delete for foreign key.</param>
+    /// <param name="onUpdate">The action on update for foreign key.</param>
+    /// <param name="tx">The database transaction.</param>
+    /// <param name="cancellationToken">The cancellation token.</param>
+    /// <returns>True if the column was created, otherwise false.</returns>
     public virtual async Task<bool> CreateColumnIfNotExistsAsync(
         IDbConnection db,
         string? schemaName,
@@ -179,7 +239,7 @@ public abstract partial class DatabaseMethodsBase
                         ? null
                         : new Dictionary<DbProviderType, string>
                         {
-                            { ProviderType, providerDataType }
+                            { ProviderType, providerDataType },
                         },
                     length,
                     precision,
@@ -203,6 +263,16 @@ public abstract partial class DatabaseMethodsBase
             .ConfigureAwait(false);
     }
 
+    /// <summary>
+    /// Retrieves a column from the specified table.
+    /// </summary>
+    /// <param name="db">The database connection.</param>
+    /// <param name="schemaName">The schema name.</param>
+    /// <param name="tableName">The table name.</param>
+    /// <param name="columnName">The column name.</param>
+    /// <param name="tx">The database transaction.</param>
+    /// <param name="cancellationToken">The cancellation token.</param>
+    /// <returns>The column definition if found, otherwise null.</returns>
     public virtual async Task<DxColumn?> GetColumnAsync(
         IDbConnection db,
         string? schemaName,
@@ -218,6 +288,16 @@ public abstract partial class DatabaseMethodsBase
         ).FirstOrDefault();
     }
 
+    /// <summary>
+    /// Retrieves the names of columns from the specified table.
+    /// </summary>
+    /// <param name="db">The database connection.</param>
+    /// <param name="schemaName">The schema name.</param>
+    /// <param name="tableName">The table name.</param>
+    /// <param name="columnNameFilter">The column name filter.</param>
+    /// <param name="tx">The database transaction.</param>
+    /// <param name="cancellationToken">The cancellation token.</param>
+    /// <returns>A list of column names.</returns>
     public virtual async Task<List<string>> GetColumnNamesAsync(
         IDbConnection db,
         string? schemaName,
@@ -239,6 +319,16 @@ public abstract partial class DatabaseMethodsBase
         return columns.Select(x => x.ColumnName).ToList();
     }
 
+    /// <summary>
+    /// Retrieves columns from the specified table.
+    /// </summary>
+    /// <param name="db">The database connection.</param>
+    /// <param name="schemaName">The schema name.</param>
+    /// <param name="tableName">The table name.</param>
+    /// <param name="columnNameFilter">The column name filter.</param>
+    /// <param name="tx">The database transaction.</param>
+    /// <param name="cancellationToken">The cancellation token.</param>
+    /// <returns>A list of column definitions.</returns>
     public virtual async Task<List<DxColumn>> GetColumnsAsync(
         IDbConnection db,
         string? schemaName,
@@ -249,13 +339,17 @@ public abstract partial class DatabaseMethodsBase
     )
     {
         if (string.IsNullOrWhiteSpace(tableName))
+        {
             throw new ArgumentException("Table name is required.", nameof(tableName));
+        }
 
         var table = await GetTableAsync(db, schemaName, tableName, tx, cancellationToken)
             .ConfigureAwait(false);
 
         if (table == null)
+        {
             return [];
+        }
 
         var filter = string.IsNullOrWhiteSpace(columnNameFilter)
             ? null
@@ -266,6 +360,16 @@ public abstract partial class DatabaseMethodsBase
             : table.Columns.Where(c => c.ColumnName.IsWildcardPatternMatch(filter)).ToList();
     }
 
+    /// <summary>
+    /// Drops a column if it exists in the specified table.
+    /// </summary>
+    /// <param name="db">The database connection.</param>
+    /// <param name="schemaName">The schema name.</param>
+    /// <param name="tableName">The table name.</param>
+    /// <param name="columnName">The column name.</param>
+    /// <param name="tx">The database transaction.</param>
+    /// <param name="cancellationToken">The cancellation token.</param>
+    /// <returns>True if the column was dropped, otherwise false.</returns>
     public virtual async Task<bool> DropColumnIfExistsAsync(
         IDbConnection db,
         string? schemaName,
@@ -279,7 +383,9 @@ public abstract partial class DatabaseMethodsBase
             .ConfigureAwait(false);
 
         if (table == null)
+        {
             return false;
+        }
 
         (schemaName, tableName, columnName) = NormalizeNames(schemaName, tableName, columnName);
 
@@ -288,7 +394,9 @@ public abstract partial class DatabaseMethodsBase
         );
 
         if (column == null)
+        {
             return false;
+        }
 
         // drop any related constraints
         if (column.IsPrimaryKey)
@@ -364,11 +472,23 @@ public abstract partial class DatabaseMethodsBase
 
         var sql = SqlDropColumn(schemaName, tableName, columnName);
 
-        await ExecuteAsync(db, sql, tx: tx).ConfigureAwait(false);
+        await ExecuteAsync(db, sql, tx: tx, cancellationToken: cancellationToken)
+            .ConfigureAwait(false);
 
         return true;
     }
 
+    /// <summary>
+    /// Renames a column if it exists in the specified table.
+    /// </summary>
+    /// <param name="db">The database connection.</param>
+    /// <param name="schemaName">The schema name.</param>
+    /// <param name="tableName">The table name.</param>
+    /// <param name="columnName">The column name.</param>
+    /// <param name="newColumnName">The new column name.</param>
+    /// <param name="tx">The database transaction.</param>
+    /// <param name="cancellationToken">The cancellation token.</param>
+    /// <returns>True if the column was renamed, otherwise false.</returns>
     public virtual async Task<bool> RenameColumnIfExistsAsync(
         IDbConnection db,
         string? schemaName,
@@ -390,7 +510,9 @@ public abstract partial class DatabaseMethodsBase
                 )
                 .ConfigureAwait(false)
         )
+        {
             return false;
+        }
 
         if (
             await DoesColumnExistAsync(
@@ -403,7 +525,9 @@ public abstract partial class DatabaseMethodsBase
                 )
                 .ConfigureAwait(false)
         )
+        {
             return false;
+        }
 
         (schemaName, tableName, columnName) = NormalizeNames(schemaName, tableName, columnName);
 
@@ -413,11 +537,12 @@ public abstract partial class DatabaseMethodsBase
         await ExecuteAsync(
                 db,
                 $"""
-                ALTER TABLE {schemaQualifiedTableName} 
+                ALTER TABLE {schemaQualifiedTableName}
                                     RENAME COLUMN {columnName}
                                             TO {newColumnName}
                 """,
-                tx: tx
+                tx: tx,
+                cancellationToken: cancellationToken
             )
             .ConfigureAwait(false);
 

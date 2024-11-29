@@ -1,7 +1,8 @@
-using DapperMatic.Providers;
+namespace DapperMatic.Converters;
 
-namespace DapperMatic;
-
+/// <summary>
+/// Converts a <see cref="SqlTypeDescriptor"/> to a <see cref="DotnetTypeDescriptor"/>.
+/// </summary>
 public class SqlTypeToDotnetTypeConverter
     : IDbTypeConverter<SqlTypeDescriptor, DotnetTypeDescriptor>
 {

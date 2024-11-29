@@ -122,7 +122,7 @@ public abstract partial class DatabaseMethodsTests
         );
 
         var indexes = await db.GetIndexesAsync(schemaName, tableName);
-        Assert.True(indexes.Count() >= 3);
+        Assert.True(indexes.Count >= 3);
         var idxMulti1 = indexes.SingleOrDefault(i =>
             i.TableName.Equals(tableName, StringComparison.OrdinalIgnoreCase)
             && i.IndexName.Equals(indexName + "_multi", StringComparison.OrdinalIgnoreCase)
@@ -136,14 +136,14 @@ public abstract partial class DatabaseMethodsTests
         Assert.NotNull(idxMulti1);
         Assert.NotNull(idxMulti2);
         Assert.True(idxMulti1.IsUnique);
-        Assert.Equal(2, idxMulti1.Columns.Length);
+        Assert.Equal(2, idxMulti1.Columns.Count);
         if (supportsDescendingColumnSorts)
         {
             Assert.Equal(DxColumnOrder.Descending, idxMulti1.Columns[0].Order);
             Assert.Equal(DxColumnOrder.Ascending, idxMulti1.Columns[1].Order);
         }
         Assert.False(idxMulti2.IsUnique);
-        Assert.True(idxMulti2.Columns.Length == 2);
+        Assert.True(idxMulti2.Columns.Count == 2);
         Assert.Equal(DxColumnOrder.Ascending, idxMulti2.Columns[0].Order);
         if (supportsDescendingColumnSorts)
         {

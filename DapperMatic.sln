@@ -14,6 +14,9 @@ EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Files", "Solution Files", "{93285C01-B819-4C94-8A18-0CCC817EB3EE}"
 	ProjectSection(SolutionItems) = preProject
 		.gitignore = .gitignore
+		src\build\dotnet\CodeAnalysis.ruleset = src\build\dotnet\CodeAnalysis.ruleset
+		src\build\dotnet\common.props = src\build\dotnet\common.props
+		src\Directory.Build.props = src\Directory.Build.props
 	EndProjectSection
 EndProject
 Global

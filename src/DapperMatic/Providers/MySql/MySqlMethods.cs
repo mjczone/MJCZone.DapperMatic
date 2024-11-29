@@ -3,12 +3,34 @@ using DapperMatic.Providers.Base;
 
 namespace DapperMatic.Providers.MySql;
 
+/// <summary>
+/// Provides MySQL specific database methods.
+/// </summary>
 public partial class MySqlMethods : DatabaseMethodsBase<MySqlProviderTypeMap>, IMySqlMethods
 {
-    internal MySqlMethods(): base(DbProviderType.MySql) { }
+    /// <summary>
+    /// Initializes a new instance of the <see cref="MySqlMethods"/> class.
+    /// </summary>
+    internal MySqlMethods()
+        : base(DbProviderType.MySql) { }
 
-    protected override string DefaultSchema => "";
+    /// <summary>
+    /// Gets the characters used for quoting identifiers.
+    /// </summary>
+    public override char[] QuoteChars => ['`'];
 
+    /// <summary>
+    /// Gets the default schema.
+    /// </summary>
+    protected override string DefaultSchema => string.Empty;
+
+    /// <summary>
+    /// Checks if the database supports check constraints.
+    /// </summary>
+    /// <param name="db">The database connection.</param>
+    /// <param name="tx">The transaction to use, or null.</param>
+    /// <param name="cancellationToken">The cancellation token.</param>
+    /// <returns>A task that represents the asynchronous operation. The task result contains a boolean indicating support for check constraints.</returns>
     public override async Task<bool> SupportsCheckConstraintsAsync(
         IDbConnection db,
         IDbTransaction? tx = null,
@@ -16,8 +38,13 @@ public partial class MySqlMethods : DatabaseMethodsBase<MySqlProviderTypeMap>, I
     )
     {
         var versionStr =
-            await ExecuteScalarAsync<string>(db, "SELECT VERSION()", tx: tx).ConfigureAwait(false)
-            ?? "";
+            await ExecuteScalarAsync<string>(
+                    db,
+                    "SELECT VERSION()",
+                    tx: tx,
+                    cancellationToken: cancellationToken
+                )
+                .ConfigureAwait(false) ?? string.Empty;
         var version = DbProviderUtils.ExtractVersionFromVersionString(versionStr);
         return (
                 versionStr.Contains("MariaDB", StringComparison.OrdinalIgnoreCase)
@@ -26,6 +53,13 @@ public partial class MySqlMethods : DatabaseMethodsBase<MySqlProviderTypeMap>, I
             || version >= new Version(8, 0, 16);
     }
 
+    /// <summary>
+    /// Checks if the database supports ordered keys in constraints.
+    /// </summary>
+    /// <param name="db">The database connection.</param>
+    /// <param name="tx">The transaction to use, or null.</param>
+    /// <param name="cancellationToken">The cancellation token.</param>
+    /// <returns>A task that represents the asynchronous operation. The task result contains a boolean indicating support for ordered keys in constraints.</returns>
     public override Task<bool> SupportsOrderedKeysInConstraintsAsync(
         IDbConnection db,
         IDbTransaction? tx = null,
@@ -35,6 +69,13 @@ public partial class MySqlMethods : DatabaseMethodsBase<MySqlProviderTypeMap>, I
         return Task.FromResult(false);
     }
 
+    /// <summary>
+    /// Gets the database version.
+    /// </summary>
+    /// <param name="db">The database connection.</param>
+    /// <param name="tx">The transaction to use, or null.</param>
+    /// <param name="cancellationToken">The cancellation token.</param>
+    /// <returns>A task that represents the asynchronous operation. The task result contains the database version.</returns>
     public override async Task<Version> GetDatabaseVersionAsync(
         IDbConnection db,
         IDbTransaction? tx = null,
@@ -44,9 +85,8 @@ public partial class MySqlMethods : DatabaseMethodsBase<MySqlProviderTypeMap>, I
         // sample output: 8.0.27, 8.4.2
         var sql = @"SELECT VERSION()";
         var versionString =
-            await ExecuteScalarAsync<string>(db, sql, tx: tx).ConfigureAwait(false) ?? "";
+            await ExecuteScalarAsync<string>(db, sql, tx: tx, cancellationToken: cancellationToken)
+                .ConfigureAwait(false) ?? string.Empty;
         return DbProviderUtils.ExtractVersionFromVersionString(versionString);
     }
-
-    public override char[] QuoteChars => ['`'];
 }

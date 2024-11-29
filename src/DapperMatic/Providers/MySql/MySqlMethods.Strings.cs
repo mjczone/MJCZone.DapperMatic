@@ -10,6 +10,12 @@ public partial class MySqlMethods
 
     #region Table Strings
 
+    /// <summary>
+    /// Generates the SQL string for inline column name and type.
+    /// </summary>
+    /// <param name="column">The column definition.</param>
+    /// <param name="dbVersion">The database version.</param>
+    /// <returns>The SQL string for inline column name and type.</returns>
     protected override string SqlInlineColumnNameAndType(DxColumn column, Version dbVersion)
     {
         var nameAndType = base.SqlInlineColumnNameAndType(column, dbVersion);
@@ -18,7 +24,9 @@ public partial class MySqlMethods
             !nameAndType.Contains(" varchar", StringComparison.OrdinalIgnoreCase)
             && !nameAndType.Contains(" text", StringComparison.OrdinalIgnoreCase)
         )
+        {
             return nameAndType;
+        }
 
         var doNotAddUtf8Mb4 =
             dbVersion < new Version(5, 5, 3)
@@ -36,9 +44,13 @@ public partial class MySqlMethods
         return nameAndType;
     }
 
-    // MySQL requires the AUTO_INCREMENT keyword to appear in the column definition, also
-    // MySQL DOES NOT ALLOW a named constraint in the column definition, so we HAVE to create
-    // the primary key constraint in the table constraints section
+    /// <summary>
+    /// Generates the SQL string for inline primary key column constraint.
+    /// </summary>
+    /// <param name="column">The column definition.</param>
+    /// <param name="constraintName">The constraint name.</param>
+    /// <param name="useTableConstraint">Indicates whether to use table constraint.</param>
+    /// <returns>The SQL string for inline primary key column constraint.</returns>
     protected override string SqlInlinePrimaryKeyColumnConstraint(
         DxColumn column,
         string constraintName,
@@ -46,19 +58,28 @@ public partial class MySqlMethods
     )
     {
         useTableConstraint = true;
-        return column.IsAutoIncrement ? "AUTO_INCREMENT" : "";
+        return column.IsAutoIncrement ? "AUTO_INCREMENT" : string.Empty;
 
         // the following code doesn't work because MySQL doesn't allow named constraints in the column definition
-        // return $"CONSTRAINT {NormalizeName(constraintName)} {(column.IsAutoIncrement ? $"{SqlInlinePrimaryKeyAutoIncrementColumnConstraint(column)} " : "")}PRIMARY KEY".Trim();
+        // return $"CONSTRAINT {NormalizeName(constraintName)} {(column.IsAutoIncrement ? $"{SqlInlinePrimaryKeyAutoIncrementColumnConstraint(column)} " : string.Empty)}PRIMARY KEY".Trim();
     }
 
+    /// <summary>
+    /// Generates the SQL string for inline primary key auto-increment column constraint.
+    /// </summary>
+    /// <param name="column">The column definition.</param>
+    /// <returns>The SQL string for inline primary key auto-increment column constraint.</returns>
     protected override string SqlInlinePrimaryKeyAutoIncrementColumnConstraint(DxColumn column)
     {
         return "AUTO_INCREMENT";
     }
 
-    // MySQL doesn't allow default constraints to be named, so we just set the default without a name
-    [SuppressMessage("Performance", "CA1866:Use char overload")]
+    /// <summary>
+    /// Generates the SQL string for inline default column constraint.
+    /// </summary>
+    /// <param name="constraintName">The constraint name.</param>
+    /// <param name="defaultExpression">The default expression.</param>
+    /// <returns>The SQL string for inline default column constraint.</returns>
     protected override string SqlInlineDefaultColumnConstraint(
         string constraintName,
         string defaultExpression
@@ -66,7 +87,7 @@ public partial class MySqlMethods
     {
         defaultExpression = defaultExpression.Trim();
         var addParentheses =
-            defaultExpression.Contains(' ')
+            defaultExpression.Contains(' ', StringComparison.OrdinalIgnoreCase)
             && !(defaultExpression.StartsWith('(') && defaultExpression.EndsWith(')'))
             && !(defaultExpression.StartsWith('"') && defaultExpression.EndsWith('"'))
             && !(defaultExpression.StartsWith('\'') && defaultExpression.EndsWith('\''));
@@ -74,8 +95,13 @@ public partial class MySqlMethods
         return $"DEFAULT {(addParentheses ? $"({defaultExpression})" : defaultExpression)}";
     }
 
-    // MySQL DOES NOT ALLOW a named constraint in the column definition, so we HAVE to create
-    // the check constraint in the table constraints section
+    /// <summary>
+    /// Generates the SQL string for inline check column constraint.
+    /// </summary>
+    /// <param name="constraintName">The constraint name.</param>
+    /// <param name="checkExpression">The check expression.</param>
+    /// <param name="useTableConstraint">Indicates whether to use table constraint.</param>
+    /// <returns>The SQL string for inline check column constraint.</returns>
     protected override string SqlInlineCheckColumnConstraint(
         string constraintName,
         string checkExpression,
@@ -83,22 +109,35 @@ public partial class MySqlMethods
     )
     {
         useTableConstraint = true;
-        return "";
+        return string.Empty;
     }
 
-    // MySQL DOES NOT ALLOW a named constraint in the column definition, so we HAVE to create
-    // the unique constraint in the table constraints section
+    /// <summary>
+    /// Generates the SQL string for inline unique column constraint.
+    /// </summary>
+    /// <param name="constraintName">The constraint name.</param>
+    /// <param name="useTableConstraint">Indicates whether to use table constraint.</param>
+    /// <returns>The SQL string for inline unique column constraint.</returns>
     protected override string SqlInlineUniqueColumnConstraint(
         string constraintName,
         out bool useTableConstraint
     )
     {
         useTableConstraint = true;
-        return "";
+        return string.Empty;
     }
 
-    // MySQL DOES NOT ALLOW a named constraint in the column definition, so we HAVE to create
-    // the foreign key constraint in the table constraints section
+    /// <summary>
+    /// Generates the SQL string for inline foreign key column constraint.
+    /// </summary>
+    /// <param name="schemaName">The schema name.</param>
+    /// <param name="constraintName">The constraint name.</param>
+    /// <param name="referencedTableName">The referenced table name.</param>
+    /// <param name="referencedColumn">The referenced column.</param>
+    /// <param name="onDelete">The action on delete.</param>
+    /// <param name="onUpdate">The action on update.</param>
+    /// <param name="useTableConstraint">Indicates whether to use table constraint.</param>
+    /// <returns>The SQL string for inline foreign key column constraint.</returns>
     protected override string SqlInlineForeignKeyColumnConstraint(
         string? schemaName,
         string constraintName,
@@ -110,9 +149,15 @@ public partial class MySqlMethods
     )
     {
         useTableConstraint = true;
-        return "";
+        return string.Empty;
     }
 
+    /// <summary>
+    /// Generates the SQL string to check if a table exists.
+    /// </summary>
+    /// <param name="schemaName">The schema name.</param>
+    /// <param name="tableName">The table name.</param>
+    /// <returns>The SQL string and parameters to check if a table exists.</returns>
     protected override (string sql, object parameters) SqlDoesTableExist(
         string? schemaName,
         string tableName
@@ -121,7 +166,7 @@ public partial class MySqlMethods
         const string sql = """
             SELECT COUNT(*)
             FROM INFORMATION_SCHEMA.TABLES
-            WHERE TABLE_TYPE = 'BASE TABLE' 
+            WHERE TABLE_TYPE = 'BASE TABLE'
                 and TABLE_SCHEMA = DATABASE()
                 and TABLE_NAME = @tableName
             """;
@@ -131,23 +176,31 @@ public partial class MySqlMethods
             new
             {
                 schemaName = NormalizeSchemaName(schemaName),
-                tableName = NormalizeName(tableName)
+                tableName = NormalizeName(tableName),
             }
         );
     }
 
+    /// <summary>
+    /// Generates the SQL string to get table names.
+    /// </summary>
+    /// <param name="schemaName">The schema name.</param>
+    /// <param name="tableNameFilter">The table name filter.</param>
+    /// <returns>The SQL string and parameters to get table names.</returns>
     protected override (string sql, object parameters) SqlGetTableNames(
         string? schemaName,
         string? tableNameFilter = null
     )
     {
-        var where = string.IsNullOrWhiteSpace(tableNameFilter) ? "" : ToLikeString(tableNameFilter);
+        var where = string.IsNullOrWhiteSpace(tableNameFilter)
+            ? string.Empty
+            : ToLikeString(tableNameFilter);
 
         var sql = $"""
             SELECT TABLE_NAME
             FROM INFORMATION_SCHEMA.TABLES
-            WHERE 
-                TABLE_TYPE = 'BASE TABLE' 
+            WHERE
+                TABLE_TYPE = 'BASE TABLE'
                 AND TABLE_SCHEMA = DATABASE()
                 {(string.IsNullOrWhiteSpace(where) ? null : " AND TABLE_NAME LIKE @where")}
             ORDER BY TABLE_NAME
@@ -164,6 +217,16 @@ public partial class MySqlMethods
     #endregion // Check Constraint Strings
 
     #region Default Constraint Strings
+
+    /// <summary>
+    /// Generates the SQL string to add a default constraint to a table.
+    /// </summary>
+    /// <param name="schemaName">The schema name.</param>
+    /// <param name="tableName">The table name.</param>
+    /// <param name="columnName">The column name.</param>
+    /// <param name="constraintName">The constraint name.</param>
+    /// <param name="expression">The default expression.</param>
+    /// <returns>The SQL string to add a default constraint to a table.</returns>
     protected override string SqlAlterTableAddDefaultConstraint(
         string? schemaName,
         string tableName,
@@ -176,7 +239,7 @@ public partial class MySqlMethods
 
         var defaultExpression = expression.Trim();
         var addParentheses =
-            defaultExpression.Contains(' ')
+            defaultExpression.Contains(' ', StringComparison.OrdinalIgnoreCase)
             && !(defaultExpression.StartsWith('(') && defaultExpression.EndsWith(')'))
             && !(defaultExpression.StartsWith('"') && defaultExpression.EndsWith('"'))
             && !(defaultExpression.StartsWith('\'') && defaultExpression.EndsWith('\''));
@@ -185,12 +248,19 @@ public partial class MySqlMethods
 
                         ALTER TABLE {schemaQualifiedTableName}
                             ALTER COLUMN {NormalizeName(columnName)} SET DEFAULT {(
-                addParentheses ? $"({defaultExpression})" : defaultExpression
-            )}
-                    
+                                addParentheses ? $"({defaultExpression})" : defaultExpression
+                            )}
             """;
     }
 
+    /// <summary>
+    /// Generates the SQL string to drop a default constraint from a table.
+    /// </summary>
+    /// <param name="schemaName">The schema name.</param>
+    /// <param name="tableName">The table name.</param>
+    /// <param name="columnName">The column name.</param>
+    /// <param name="constraintName">The constraint name.</param>
+    /// <returns>The SQL string to drop a default constraint from a table.</returns>
     protected override string SqlDropDefaultConstraint(
         string? schemaName,
         string tableName,
@@ -203,6 +273,14 @@ public partial class MySqlMethods
     #endregion // Default Constraint Strings
 
     #region Primary Key Strings
+
+    /// <summary>
+    /// Generates the SQL string to drop a primary key constraint from a table.
+    /// </summary>
+    /// <param name="schemaName">The schema name.</param>
+    /// <param name="tableName">The table name.</param>
+    /// <param name="constraintName">The constraint name.</param>
+    /// <returns>The SQL string to drop a primary key constraint from a table.</returns>
     protected override string SqlDropPrimaryKeyConstraint(
         string? schemaName,
         string tableName,
@@ -214,6 +292,14 @@ public partial class MySqlMethods
     #endregion // Primary Key Strings
 
     #region Unique Constraint Strings
+
+    /// <summary>
+    /// Generates the SQL string to drop a unique constraint from a table.
+    /// </summary>
+    /// <param name="schemaName">The schema name.</param>
+    /// <param name="tableName">The table name.</param>
+    /// <param name="constraintName">The constraint name.</param>
+    /// <returns>The SQL string to drop a unique constraint from a table.</returns>
     protected override string SqlDropUniqueConstraint(
         string? schemaName,
         string tableName,
@@ -225,6 +311,14 @@ public partial class MySqlMethods
     #endregion // Unique Constraint Strings
 
     #region Foreign Key Constraint Strings
+
+    /// <summary>
+    /// Generates the SQL string to drop a foreign key constraint from a table.
+    /// </summary>
+    /// <param name="schemaName">The schema name.</param>
+    /// <param name="tableName">The table name.</param>
+    /// <param name="constraintName">The constraint name.</param>
+    /// <returns>The SQL string to drop a foreign key constraint from a table.</returns>
     protected override string SqlDropForeignKeyConstraint(
         string? schemaName,
         string tableName,
@@ -240,23 +334,31 @@ public partial class MySqlMethods
 
     #region View Strings
 
+    /// <summary>
+    /// Generates the SQL string to get view names.
+    /// </summary>
+    /// <param name="schemaName">The schema name.</param>
+    /// <param name="viewNameFilter">The view name filter.</param>
+    /// <returns>The SQL string and parameters to get view names.</returns>
     protected override (string sql, object parameters) SqlGetViewNames(
         string? schemaName,
         string? viewNameFilter = null
     )
     {
-        var where = string.IsNullOrWhiteSpace(viewNameFilter) ? "" : ToLikeString(viewNameFilter);
+        var where = string.IsNullOrWhiteSpace(viewNameFilter)
+            ? string.Empty
+            : ToLikeString(viewNameFilter);
 
         var sql = $"""
             SELECT
                                 TABLE_NAME AS ViewName
-                            FROM 
+                            FROM
                                 INFORMATION_SCHEMA.VIEWS
-                            WHERE 
+                            WHERE
                                 VIEW_DEFINITION IS NOT NULL
                                 AND TABLE_SCHEMA = DATABASE()
                                 {(
-                string.IsNullOrWhiteSpace(where) ? "" : " AND TABLE_NAME LIKE @where"
+                string.IsNullOrWhiteSpace(where) ? string.Empty : " AND TABLE_NAME LIKE @where"
             )}
                             ORDER BY
                                 TABLE_SCHEMA, TABLE_NAME
@@ -265,25 +367,33 @@ public partial class MySqlMethods
         return (sql, new { schemaName = NormalizeSchemaName(schemaName), where });
     }
 
+    /// <summary>
+    /// Generates the SQL string to get views.
+    /// </summary>
+    /// <param name="schemaName">The schema name.</param>
+    /// <param name="viewNameFilter">The view name filter.</param>
+    /// <returns>The SQL string and parameters to get views.</returns>
     protected override (string sql, object parameters) SqlGetViews(
         string? schemaName,
         string? viewNameFilter
     )
     {
-        var where = string.IsNullOrWhiteSpace(viewNameFilter) ? "" : ToLikeString(viewNameFilter);
+        var where = string.IsNullOrWhiteSpace(viewNameFilter)
+            ? string.Empty
+            : ToLikeString(viewNameFilter);
 
         var sql = $"""
-            SELECT 
+            SELECT
                                 NULL AS SchemaName,
                                 TABLE_NAME AS ViewName,
                                 VIEW_DEFINITION AS Definition
-                            FROM 
+                            FROM
                                 INFORMATION_SCHEMA.VIEWS
-                            WHERE 
+                            WHERE
                                 VIEW_DEFINITION IS NOT NULL
                                 AND TABLE_SCHEMA = DATABASE()
                                 {(
-                string.IsNullOrWhiteSpace(where) ? "" : "AND TABLE_NAME LIKE @where"
+                string.IsNullOrWhiteSpace(where) ? string.Empty : "AND TABLE_NAME LIKE @where"
             )}
                             ORDER BY
                                 TABLE_SCHEMA, TABLE_NAME

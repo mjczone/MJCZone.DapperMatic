@@ -6,13 +6,20 @@ using System.Numerics;
 using System.Text.Json;
 using System.Text.Json.Nodes;
 using System.Xml.Linq;
+using DapperMatic.Converters;
 
 namespace DapperMatic.Providers.Sqlite;
 
-// See:
-// https://www.sqlite.org/datatype3.html
+/// <summary>
+/// Provides SQLite specific database type mapping.
+/// </summary>
+/// <remarks>
+/// See:
+/// https://www.sqlite.org/datatype3.html.
+/// </remarks>
 public sealed class SqliteProviderTypeMap : DbProviderTypeMapBase<SqliteProviderTypeMap>
 {
+    /// <inheritdoc/>
     protected override void RegisterDotnetTypeToSqlTypeConverters()
     {
         var booleanConverter = GetBooleanToSqlTypeConverter();
@@ -153,6 +160,7 @@ public sealed class SqliteProviderTypeMap : DbProviderTypeMapBase<SqliteProvider
         );
     }
 
+    /// <inheritdoc/>
     protected override void RegisterSqlTypeToDotnetTypeConverters()
     {
         var booleanConverter = GetBooleanToDotnetTypeConverter();
@@ -271,7 +279,7 @@ public sealed class SqliteProviderTypeMap : DbProviderTypeMapBase<SqliteProvider
                     {
                         SqlTypeName = $"decimal({precision},{scale})",
                         Precision = precision,
-                        Scale = scale
+                        Scale = scale,
                     };
                 default:
                     return new(SqliteTypes.sql_int);
@@ -290,12 +298,12 @@ public sealed class SqliteProviderTypeMap : DbProviderTypeMapBase<SqliteProvider
                     ? new(SqliteTypes.sql_nvarchar)
                     {
                         SqlTypeName = "nvarchar(max)",
-                        Length = int.MaxValue
+                        Length = int.MaxValue,
                     }
                     : new(SqliteTypes.sql_varchar)
                     {
                         SqlTypeName = "varchar(max)",
-                        Length = int.MaxValue
+                        Length = int.MaxValue,
                     };
             }
 
@@ -305,12 +313,12 @@ public sealed class SqliteProviderTypeMap : DbProviderTypeMapBase<SqliteProvider
                     ? new(SqliteTypes.sql_nchar)
                     {
                         SqlTypeName = $"nchar({length})",
-                        Length = length
+                        Length = length,
                     }
                     : new(SqliteTypes.sql_char)
                     {
                         SqlTypeName = $"char({length})",
-                        Length = length
+                        Length = length,
                     };
             }
 
@@ -318,12 +326,12 @@ public sealed class SqliteProviderTypeMap : DbProviderTypeMapBase<SqliteProvider
                 ? new(SqliteTypes.sql_nvarchar)
                 {
                     SqlTypeName = $"nvarchar({length})",
-                    Length = length
+                    Length = length,
                 }
                 : new(SqliteTypes.sql_varchar)
                 {
                     SqlTypeName = $"varchar({length})",
-                    Length = length
+                    Length = length,
                 };
         });
     }
@@ -434,7 +442,9 @@ public sealed class SqliteProviderTypeMap : DbProviderTypeMapBase<SqliteProvider
 
     #region SqlTypeToDotnetTypeConverters
 
+#pragma warning disable SA1204 // Static elements should appear before instance elements
     private static SqlTypeToDotnetTypeConverter GetBooleanToDotnetTypeConverter()
+#pragma warning restore SA1204 // Static elements should appear before instance elements
     {
         return new(d =>
         {
@@ -473,7 +483,7 @@ public sealed class SqliteProviderTypeMap : DbProviderTypeMapBase<SqliteProvider
                     return new DotnetTypeDescriptor(typeof(decimal))
                     {
                         Precision = d.Precision ?? 16,
-                        Scale = d.Scale ?? 4
+                        Scale = d.Scale ?? 4,
                     };
                 default:
                     return new DotnetTypeDescriptor(typeof(int));

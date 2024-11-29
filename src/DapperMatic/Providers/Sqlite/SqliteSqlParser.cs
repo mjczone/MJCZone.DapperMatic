@@ -3,13 +3,16 @@ using System.Text;
 using System.Text.RegularExpressions;
 using DapperMatic.Models;
 
-// ReSharper disable ForCanBeConvertedToForeach
-
 namespace DapperMatic.Providers.Sqlite;
 
-[SuppressMessage("ReSharper", "ForeachCanBePartlyConvertedToQueryUsingAnotherGetEnumerator")]
-public static partial class SqliteSqlParser
+internal static partial class SqliteSqlParser
 {
+    /// <summary>
+    /// Parses a CREATE TABLE statement to extract the table schema.
+    /// </summary>
+    /// <param name="createTableSql">The CREATE TABLE statement to parse.</param>
+    /// <param name="providerTypeMap">The provider type map.</param>
+    /// <returns>The table schema, or null if the statement is not a CREATE TABLE statement.</returns>
     public static DxTable? ParseCreateTableStatement(
         string createTableSql,
         IDbProviderTypeMap providerTypeMap
@@ -18,14 +21,20 @@ public static partial class SqliteSqlParser
         var statements = ParseDdlSql(createTableSql);
         if (
             statements.SingleOrDefault() is not SqlCompoundClause createTableStatement
-            || createTableStatement.FindTokenIndex("CREATE") != 0
+            || (
+                createTableStatement.FindTokenIndex("CREATE") != 0
                 && createTableStatement.FindTokenIndex("TABLE") != 1
+            )
         )
+        {
             return null;
+        }
 
         var tableName = createTableStatement.GetChild<SqlWordClause>(2)?.Text;
         if (string.IsNullOrWhiteSpace(tableName))
+        {
             return null;
+        }
 
         var table = new DxTable(null, tableName);
 
@@ -43,7 +52,9 @@ public static partial class SqliteSqlParser
             x.Children.Count > 0 && x.Parenthesis
         );
         if (tableGuts == null || tableGuts.Children.Count == 0)
+        {
             return table;
+        }
 
         // we now iterate over these guts to parse out columns, primary keys, unique constraints, check constraints, default constraints, and foreign key constraints
         // constraint clauses can appear as part of the column definition, or as separate clauses:
@@ -73,17 +84,23 @@ public static partial class SqliteSqlParser
                 // it's a column definition, parse it
                 // see:https://www.sqlite.org/syntax/column-def.html
                 if (clause is not SqlCompoundClause columnDefinition)
+                {
                     continue;
+                }
 
                 // first word in the column name
                 var columnName = columnDefinition.GetChild<SqlWordClause>(0)?.Text;
                 if (string.IsNullOrWhiteSpace(columnName))
+                {
                     continue;
+                }
 
                 // second word is the column type
                 var columnDataType = columnDefinition.GetChild<SqlWordClause>(1)?.Text;
                 if (string.IsNullOrWhiteSpace(columnDataType))
+                {
                     continue;
+                }
 
                 int? length = null;
                 int? precision = null;
@@ -142,7 +159,9 @@ public static partial class SqliteSqlParser
                     )
                     || dotnetTypeDescriptor == null
                 )
+                {
                     continue;
+                }
 
                 var column = new DxColumn(
                     null,
@@ -151,7 +170,7 @@ public static partial class SqliteSqlParser
                     dotnetTypeDescriptor.DotnetType,
                     new Dictionary<DbProviderType, string>
                     {
-                        { DbProviderType.Sqlite, columnDataType }
+                        { DbProviderType.Sqlite, columnDataType },
                     },
                     length,
                     precision,
@@ -161,7 +180,9 @@ public static partial class SqliteSqlParser
 
                 // remaining words are optional in the column definition
                 if (columnDefinition.Children.Count <= remainingWordsIndex)
+                {
                     continue;
+                }
 
                 string? inlineConstraintName = null;
                 for (var i = remainingWordsIndex; i < columnDefinition.Children.Count; i++)
@@ -169,7 +190,7 @@ public static partial class SqliteSqlParser
                     var opt = columnDefinition.Children[i];
                     if (opt is SqlWordClause swc)
                     {
-                        switch (swc.Text.ToUpper())
+                        switch (swc.Text.ToUpperInvariant())
                         {
                             case "NOT NULL":
                                 column.IsNullable = false;
@@ -310,7 +331,9 @@ public static partial class SqliteSqlParser
                                     .GetChild<SqlWordClause>(referenceTableNameIndex)
                                     ?.Text;
                                 if (string.IsNullOrWhiteSpace(referencedTableName))
+                                {
                                     break;
+                                }
 
                                 // skip next opt
                                 i++;
@@ -321,7 +344,9 @@ public static partial class SqliteSqlParser
                                     ?.GetChild<SqlWordClause>(0)
                                     ?.Text;
                                 if (string.IsNullOrWhiteSpace(referenceColumnName))
+                                {
                                     break;
+                                }
 
                                 // skip next opt
                                 i++;
@@ -353,7 +378,9 @@ public static partial class SqliteSqlParser
                                         .GetChild<SqlWordClause>(onDeleteTokenIndex + 1)
                                         ?.Text;
                                     if (!string.IsNullOrWhiteSpace(onDelete))
+                                    {
                                         foreignKey.OnDelete = onDelete.ToForeignKeyAction();
+                                    }
                                 }
 
                                 var onUpdateTokenIndex = columnDefinition.FindTokenIndex(
@@ -365,7 +392,9 @@ public static partial class SqliteSqlParser
                                         .GetChild<SqlWordClause>(onUpdateTokenIndex + 1)
                                         ?.Text;
                                     if (!string.IsNullOrWhiteSpace(onUpdate))
+                                    {
                                         foreignKey.OnUpdate = onUpdate.ToForeignKeyAction();
+                                    }
                                 }
 
                                 column.ReferencedTableName = foreignKey.ReferencedTableName;
@@ -401,7 +430,9 @@ public static partial class SqliteSqlParser
                 // it's a table constraint clause, parse it
                 // see: https://www.sqlite.org/syntax/table-constraint.html
                 if (clause is not SqlCompoundClause tableConstraint)
+                {
                     continue;
+                }
 
                 string? inlineConstraintName = null;
                 for (var i = 0; i < tableConstraint.Children.Count; i++)
@@ -409,7 +440,7 @@ public static partial class SqliteSqlParser
                     var opt = tableConstraint.Children[i];
                     if (opt is SqlWordClause swc)
                     {
-                        switch (swc.Text.ToUpper())
+                        switch (swc.Text.ToUpperInvariant())
                         {
                             case "CONSTRAINT":
                                 inlineConstraintName = tableConstraint
@@ -432,7 +463,9 @@ public static partial class SqliteSqlParser
                                     .ToArray();
 
                                 if (pkColumnNames.Length == 0)
+                                {
                                     continue; // skip this clause as it's invalid
+                                }
 
                                 table.PrimaryKeyConstraint = new DxPrimaryKeyConstraint(
                                     null,
@@ -471,7 +504,9 @@ public static partial class SqliteSqlParser
                                     .ToArray();
 
                                 if (ucColumnNames.Length == 0)
+                                {
                                     continue; // skip this clause as it's invalid
+                                }
 
                                 var ucConstraint = new DxUniqueConstraint(
                                     null,
@@ -484,7 +519,7 @@ public static partial class SqliteSqlParser
                                     ucOrderedColumns
                                 );
                                 table.UniqueConstraints.Add(ucConstraint);
-                                if (ucConstraint.Columns.Length == 1)
+                                if (ucConstraint.Columns.Count == 1)
                                 {
                                     var column = table.Columns.FirstOrDefault(c =>
                                         c.ColumnName.Equals(
@@ -493,7 +528,9 @@ public static partial class SqliteSqlParser
                                         )
                                     );
                                     if (column != null)
+                                    {
                                         column.IsUnique = true;
+                                    }
                                 }
                                 continue; // we're done with this clause, so we can move on to the next constraint
                             case "CHECK":
@@ -511,7 +548,7 @@ public static partial class SqliteSqlParser
                                             tableName,
                                             table.CheckConstraints.Count > 0
                                                 ? $"{table.CheckConstraints.Count}"
-                                                : ""
+                                                : string.Empty
                                         );
                                     table.CheckConstraints.Add(
                                         new DxCheckConstraint(
@@ -528,7 +565,9 @@ public static partial class SqliteSqlParser
                                 var fkSourceColumnsClause =
                                     tableConstraint.GetChild<SqlCompoundClause>(i + 1);
                                 if (fkSourceColumnsClause == null)
+                                {
                                     continue; // skip this clause as it's invalid
+                                }
 
                                 var fkOrderedSourceColumns = ExtractOrderedColumnsFromClause(
                                     fkSourceColumnsClause
@@ -537,13 +576,17 @@ public static partial class SqliteSqlParser
                                     .Select(oc => oc.ColumnName)
                                     .ToArray();
                                 if (fkSourceColumnNames.Length == 0)
+                                {
                                     continue; // skip this clause as it's invalid
+                                }
 
                                 var referencesClauseIndex = tableConstraint.FindTokenIndex(
                                     "REFERENCES"
                                 );
                                 if (referencesClauseIndex == -1)
+                                {
                                     continue; // skip this clause as it's invalid
+                                }
 
                                 var referencedTableName = tableConstraint
                                     .GetChild<SqlWordClause>(referencesClauseIndex + 1)
@@ -556,7 +599,9 @@ public static partial class SqliteSqlParser
                                     string.IsNullOrWhiteSpace(referencedTableName)
                                     || fkReferencedColumnsClause == null
                                 )
+                                {
                                     continue; // skip this clause as it's invalid
+                                }
 
                                 var fkOrderedReferencedColumns = ExtractOrderedColumnsFromClause(
                                     fkReferencedColumnsClause
@@ -565,7 +610,9 @@ public static partial class SqliteSqlParser
                                     .Select(oc => oc.ColumnName)
                                     .ToArray();
                                 if (fkReferencedColumnNames.Length == 0)
+                                {
                                     continue; // skip this clause as it's invalid
+                                }
 
                                 var constraintName =
                                     inlineConstraintName
@@ -594,7 +641,9 @@ public static partial class SqliteSqlParser
                                         .GetChild<SqlWordClause>(onDeleteTokenIndex + 1)
                                         ?.Text;
                                     if (!string.IsNullOrWhiteSpace(onDelete))
+                                    {
                                         foreignKey.OnDelete = onDelete.ToForeignKeyAction();
+                                    }
                                 }
 
                                 var onUpdateTokenIndex = tableConstraint.FindTokenIndex(
@@ -606,7 +655,9 @@ public static partial class SqliteSqlParser
                                         .GetChild<SqlWordClause>(onUpdateTokenIndex + 1)
                                         ?.Text;
                                     if (!string.IsNullOrWhiteSpace(onUpdate))
+                                    {
                                         foreignKey.OnUpdate = onUpdate.ToForeignKeyAction();
+                                    }
                                 }
 
                                 if (
@@ -650,9 +701,11 @@ public static partial class SqliteSqlParser
         if (
             pkColumnsClause == null
             || pkColumnsClause.Children.Count == 0
-            || pkColumnsClause.Parenthesis == false
+            || !pkColumnsClause.Parenthesis
         )
+        {
             return [];
+        }
 
         var pkOrderedColumns = pkColumnsClause
             .Children.Select(child =>
@@ -665,7 +718,10 @@ public static partial class SqliteSqlParser
                     {
                         var ccName = cc.GetChild<SqlWordClause>(0)?.Text;
                         if (string.IsNullOrWhiteSpace(ccName))
+                        {
                             return null;
+                        }
+
                         var ccOrder = DxColumnOrder.Ascending;
                         if (
                             cc.GetChild<SqlWordClause>(1)
@@ -687,11 +743,15 @@ public static partial class SqliteSqlParser
     }
 }
 
-[SuppressMessage("ReSharper", "ForCanBeConvertedToForeach")]
-[SuppressMessage("ReSharper", "ConvertIfStatementToSwitchStatement")]
-[SuppressMessage("ReSharper", "InvertIf")]
-[SuppressMessage("ReSharper", "ForeachCanBeConvertedToQueryUsingAnotherGetEnumerator")]
-public static partial class SqliteSqlParser
+[SuppressMessage("ReSharper", "ForCanBeConvertedToForeach", Justification = "Reviewed")]
+[SuppressMessage("ReSharper", "ConvertIfStatementToSwitchStatement", Justification = "Reviewed")]
+[SuppressMessage("ReSharper", "InvertIf", Justification = "Reviewed")]
+[SuppressMessage(
+    "ReSharper",
+    "ForeachCanBeConvertedToQueryUsingAnotherGetEnumerator",
+    Justification = "Reviewed"
+)]
+internal static partial class SqliteSqlParser
 {
     private static List<SqlClause> ParseDdlSql(string sql)
     {
@@ -705,7 +765,6 @@ public static partial class SqliteSqlParser
             {
                 clauseBuilder.AddPart(part);
             }
-            // clauseBuilder.Complete();
 
             var rootClause = clauseBuilder.GetRootClause();
             rootClause = ClauseBuilder.ReduceNesting(rootClause);
@@ -718,15 +777,15 @@ public static partial class SqliteSqlParser
     private static string StripCommentsFromSql(string sqlQuery)
     {
         // Remove multi-line comments (non-greedy)
-        sqlQuery = MultiLineCommentRegex().Replace(sqlQuery, "");
+        sqlQuery = MultiLineCommentRegex().Replace(sqlQuery, string.Empty);
 
         // Remove single-line comments
-        sqlQuery = SingleLineCommentRegex().Replace(sqlQuery, "");
+        sqlQuery = SingleLineCommentRegex().Replace(sqlQuery, string.Empty);
 
         return sqlQuery;
     }
 
-    [SuppressMessage("ReSharper", "RedundantAssignment")]
+    [SuppressMessage("ReSharper", "RedundantAssignment", Justification = "Reviewed")]
     private static List<string[]> ParseSqlIntoStatementParts(string sql)
     {
         sql = StripCommentsFromSql(sql);
@@ -822,7 +881,9 @@ public static partial class SqliteSqlParser
 
     #region Static Variables
 
+#pragma warning disable SA1300 // Element should begin with upper-case letter
     private static string substitute_encode(string text)
+#pragma warning restore SA1300 // Element should begin with upper-case letter
     {
         foreach (var s in Substitutions)
         {
@@ -831,7 +892,9 @@ public static partial class SqliteSqlParser
         return text;
     }
 
+#pragma warning disable SA1300 // Element should begin with upper-case letter
     private static List<string> substitute_decode(List<string> strings)
+#pragma warning restore SA1300 // Element should begin with upper-case letter
     {
         var parts = new List<string>();
         foreach (var t in strings)
@@ -841,7 +904,9 @@ public static partial class SqliteSqlParser
         return parts;
     }
 
+#pragma warning disable SA1300 // Element should begin with upper-case letter
     private static string substitute_decode(string text)
+#pragma warning restore SA1300 // Element should begin with upper-case letter
     {
         foreach (var s in Substitutions)
         {
@@ -851,9 +916,11 @@ public static partial class SqliteSqlParser
     }
 
     /// <summary>
-    /// Keep certain words together that belong together while parsing a CREATE TABLE statement
+    /// Keep certain words together that belong together while parsing a CREATE TABLE statement.
     /// </summary>
+#pragma warning disable SA1201 // Elements should appear in the correct order
     private static readonly Dictionary<string, string> Substitutions = new List<string>
+#pragma warning restore SA1201 // Elements should appear in the correct order
     {
         "FOREIGN KEY",
         "PRIMARY KEY",
@@ -866,13 +933,15 @@ public static partial class SqliteSqlParser
         "UNSIGNED BIG INT",
         "VARYING CHARACTER",
         "NATIVE CHARACTER",
-        "DOUBLE PRECISION"
+        "DOUBLE PRECISION",
     }.ToDictionary(x => x, v => v.Replace(' ', '_'));
 
     /// <summary>
-    /// Don't mistake words as identifiers with keywords
+    /// Don't mistake words as identifiers with keywords.
     /// </summary>
+#pragma warning disable SA1202 // Elements should be ordered by access
     public static readonly List<string> Keyword =
+#pragma warning restore SA1202 // Elements should be ordered by access
     [
         "ABORT",
         "ACTION",
@@ -1020,31 +1089,67 @@ public static partial class SqliteSqlParser
         "WHERE",
         "WINDOW",
         "WITH",
-        "WITHOUT"
+        "WITHOUT",
     ];
     #endregion // Static Variables
 
     #region ClauseBuilder Classes
 
+    // Regular expression patterns to match single-line and multi-line comments
+    // const string singleLineCommentPattern = @"--.*?$";
+    // const string multiLineCommentPattern = @"/\*.*?\*/";
+
+    [GeneratedRegex(@"/\*.*?\*/", RegexOptions.Singleline)]
+    private static partial Regex MultiLineCommentRegex();
+
+    [GeneratedRegex("--.*?$", RegexOptions.Multiline)]
+    private static partial Regex SingleLineCommentRegex();
+
+    /// <summary>
+    /// Represents a clause in a SQL statement.
+    /// </summary>
     public abstract class SqlClause(SqlCompoundClause? parent)
     {
         private SqlCompoundClause? _parent = parent;
 
+        /// <summary>
+        /// Determines whether this clause has a parent.
+        /// </summary>
+        /// <returns>
+        ///  <c>true</c> if this instance has a parent; otherwise, <c>false</c>.
+        /// </returns>
         public bool HasParent()
         {
             return _parent != null;
         }
 
+        /// <summary>
+        /// Gets the parent clause.
+        /// </summary>
+        /// <returns>
+        /// The parent clause.
+        /// </returns>
         public SqlCompoundClause? GetParent()
         {
             return _parent;
         }
 
+        /// <summary>
+        /// Sets the parent clause.
+        /// </summary>
+        /// <param name="clause">The parent clause.</param>
         public void SetParent(SqlCompoundClause clause)
         {
             _parent = clause;
         }
 
+        /// <summary>
+        /// Finds the index of a token in the clause.
+        /// </summary>
+        /// <param name="token">The token to find.</param>
+        /// <returns>
+        /// The index of the token in the clause, or -1 if the token was not found.
+        /// </returns>
         public int FindTokenIndex(string token)
         {
             if (this is SqlCompoundClause scc)
@@ -1057,36 +1162,68 @@ public static partial class SqliteSqlParser
             return -1;
         }
 
+        /// <summary>
+        /// Gets the child clause at the specified index.
+        /// </summary>
+        /// <typeparam name="TClause">The type of the child clause.</typeparam>
+        /// <param name="index">The index of the child clause.</param>
+        /// <returns>
+        /// The child clause at the specified index, or <c>null</c> if the child clause was not found.
+        /// </returns>
         public TClause? GetChild<TClause>(int index)
             where TClause : SqlClause
         {
             if (this is not SqlCompoundClause scc)
+            {
                 return null;
+            }
 
             if (index >= 0 && index < scc.Children.Count)
+            {
                 return scc.Children[index] as TClause;
+            }
 
             return null;
         }
 
+        /// <summary>
+        /// Gets the child clause that matches the specified predicate.
+        /// </summary>
+        /// <typeparam name="TClause">The type of the child clause.</typeparam>
+        /// <param name="predicate">The predicate to match.</param>
+        /// <returns>
+        /// The child clause that matches the predicate, or <c>null</c> if the child clause was not found.
+        /// </returns>
         public TClause? GetChild<TClause>(Func<TClause, bool> predicate)
             where TClause : SqlClause
         {
             if (this is not SqlCompoundClause scc)
+            {
                 return null;
+            }
 
             foreach (var child in scc.Children)
             {
                 if (child is TClause tc && predicate(tc))
+                {
                     return tc;
+                }
             }
 
             return null;
         }
     }
 
+    /// <summary>
+    /// Represents a word in a SQL clause.
+    /// </summary>
     public class SqlWordClause : SqlClause
     {
+        /// <summary>
+        /// Initializes a new instance of the <see cref="SqlWordClause"/> class.
+        /// </summary>
+        /// <param name="parent">The parent clause.</param>
+        /// <param name="text">The text of the clause.</param>
         public SqlWordClause(SqlCompoundClause? parent, string text)
             : base(parent)
         {
@@ -1117,30 +1254,72 @@ public static partial class SqliteSqlParser
             }
         }
 
+        /// <summary>
+        /// Gets or sets the text of the clause.
+        /// </summary>
+        /// <value>
+        /// The text.
+        /// </value>
         public string Text { get; set; }
 
-        // ReSharper disable once MemberCanBePrivate.Global
+        /// <summary>
+        /// Gets or sets the quotes that were present in the original text.
+        /// </summary>
+        /// <value>
+        /// The quotes.
+        /// </value>
         public char[]? Quotes { get; set; }
 
+        /// <summary>
+        /// Returns the text of the clause, with quotes if they were present in the original text.
+        /// </summary>
+        /// <returns>
+        /// The text of the clause.
+        /// </returns>
         public override string ToString()
         {
             return Quotes is not { Length: 2 } ? Text : $"{Quotes[0]}{Text}{Quotes[1]}";
         }
     }
 
+    /// <summary>
+    /// Represents a SQL statement clause.
+    /// </summary>
     public class SqlStatementClause(SqlCompoundClause? parent) : SqlCompoundClause(parent)
     {
+        /// <summary>
+        /// Returns the text of the clause.
+        /// </summary>
+        /// <returns>
+        /// The text of the clause.
+        /// </returns>
         public override string ToString()
         {
             return $"{base.ToString()};";
         }
     }
 
+    /// <summary>
+    /// Represents a compound SQL clause.
+    /// </summary>
     public class SqlCompoundClause(SqlCompoundClause? parent) : SqlClause(parent)
     {
+        /// <summary>
+        /// Gets or sets the children of the clause.
+        /// </summary>
         public List<SqlClause> Children { get; set; } = [];
+
+        /// <summary>
+        /// Gets or sets a value indicating whether the clause is enclosed in parentheses.
+        /// </summary>
         public bool Parenthesis { get; set; }
 
+        /// <summary>
+        /// Returns the text of the clause.
+        /// </summary>
+        /// <returns>
+        /// The text of the clause.
+        /// </returns>
         public override string ToString()
         {
             var sb = new StringBuilder();
@@ -1152,9 +1331,13 @@ public static partial class SqliteSqlParser
             foreach (var child in Children)
             {
                 if (!first)
+                {
                     sb.Append(Parenthesis ? ", " : " ");
+                }
                 else
+                {
                     first = false;
+                }
 
                 sb.Append(child);
             }
@@ -1166,24 +1349,41 @@ public static partial class SqliteSqlParser
         }
     }
 
+    /// <summary>
+    /// Builds a SQL clause from parts.
+    /// </summary>
     public class ClauseBuilder
     {
         private readonly SqlCompoundClause _rootClause;
-        private SqlCompoundClause _activeClause;
 
         private readonly List<SqlCompoundClause> _allCompoundClauses = [];
 
+        private SqlCompoundClause _activeClause;
+
+        /// <summary>
+        /// Initializes a new instance of the <see cref="ClauseBuilder"/> class.
+        /// </summary>
         public ClauseBuilder()
         {
             _rootClause = new SqlStatementClause(null);
             _activeClause = _rootClause;
         }
 
+        /// <summary>
+        /// Gets the root clause.
+        /// </summary>
+        /// <returns>
+        /// The root clause.
+        /// </returns>
         public SqlClause GetRootClause()
         {
             return _rootClause;
         }
 
+        /// <summary>
+        /// Adds a part to the current active clause.
+        /// </summary>
+        /// <param name="part">The part to add.</param>
         public void AddPart(string part)
         {
             if (part == "(")
@@ -1226,6 +1426,9 @@ public static partial class SqliteSqlParser
             _activeClause.Children.Add(new SqlWordClause(_activeClause, part));
         }
 
+        /// <summary>
+        /// Completes the clause building process.
+        /// </summary>
         public void Complete()
         {
             foreach (
@@ -1233,14 +1436,20 @@ public static partial class SqliteSqlParser
             )
             {
                 if (c.Children.Count != 1)
+                {
                     continue;
+                }
 
                 var child = c.Children[0];
                 if (child is not SqlCompoundClause { Parenthesis: false } scc)
+                {
                     continue;
+                }
 
                 if (scc.Children.Count != 1)
+                {
                     continue;
+                }
 
                 // reduce indentation, reduce nesting
                 var gscc = scc.Children[0];
@@ -1249,10 +1458,19 @@ public static partial class SqliteSqlParser
             }
         }
 
+#pragma warning disable SA1204 // Static elements should appear before instance elements
+        /// <summary>
+        /// Reduces the nesting of a SQL clause.
+        /// </summary>
+        /// <param name="clause">The clause to reduce.</param>
+        /// <returns>The reduced clause.</returns>
         public static SqlClause ReduceNesting(SqlClause clause)
+#pragma warning restore SA1204 // Static elements should appear before instance elements
         {
             if (clause is not SqlCompoundClause scc)
+            {
                 return clause;
+            }
 
             var children = new List<SqlClause>();
             // ReSharper disable once ForeachCanBeConvertedToQueryUsingAnotherGetEnumerator
@@ -1272,16 +1490,6 @@ public static partial class SqliteSqlParser
             return scc;
         }
     }
-
-    // Regular expression patterns to match single-line and multi-line comments
-    // const string singleLineCommentPattern = @"--.*?$";
-    // const string multiLineCommentPattern = @"/\*.*?\*/";
-
-    [GeneratedRegex(@"/\*.*?\*/", RegexOptions.Singleline)]
-    private static partial Regex MultiLineCommentRegex();
-
-    [GeneratedRegex("--.*?$", RegexOptions.Multiline)]
-    private static partial Regex SingleLineCommentRegex();
 
     #endregion // ClauseBuilder Classes
 }
