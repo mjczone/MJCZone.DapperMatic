@@ -100,6 +100,11 @@ DatabaseMethodsProvider.RegisterFactory(
     "ProfiledDbConnection.PostgreSql", new ProfiledPostgreSqlMethodsFactory());
 ```
 
+The test suite uses this method to profile the database and output sql exception details
+to the unit testing logs.
+
+See it in action with the [ProfiledPostgreSqlMethodsFactory](./tests/DapperMatic.Tests/ProviderTests/PostgreSqlDatabaseMethodsTests.cs#L84) class. This factory class demonstrates using a custom `IDbConnection` type `DbQueryLogging.LoggedDbConnection` from the `DbQueryLogging` package. Similar factory classes exist for the other providers.
+
 ## Models
 
 - [DxCheckConstraint](src/DapperMatic/Models/DxCheckConstraint.cs)
