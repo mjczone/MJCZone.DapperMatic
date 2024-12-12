@@ -11,6 +11,7 @@
 *.userosscache
 *.sln.docstates
 __delete/
+nuget.config
 
 # DocFx generated files
 docs/**/toc.yml
