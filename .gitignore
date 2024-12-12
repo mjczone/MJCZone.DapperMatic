@@ -11,6 +11,13 @@
 *.userosscache
 *.sln.docstates
 __delete/
+nuget.config
+
+# DocFx generated files
+docs/**/toc.yml
+docs/reference/
+_site
+_pdf
 
 # User-specific files (MonoDevelop/Xamarin Studio)
 *.userprefs

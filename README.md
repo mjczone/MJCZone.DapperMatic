@@ -1,13 +1,15 @@
-# DapperMatic
+# MJCZone.DapperMatic
 
-[![.github/workflows/release.yml](https://github.com/mjczone/DapperMatic/actions/workflows/release.yml/badge.svg)](https://github.com/mjczone/DapperMatic/actions/workflows/release.yml)
+[![.github/workflows/release.yml](https://github.com/mjczone/MJCZone.DapperMatic/actions/workflows/release.yml/badge.svg)](https://github.com/mjczone/MJCZone.DapperMatic/actions/workflows/release.yml)
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](https://opensource.org/licenses/MIT)
 
 Additional extensions leveraging Dapper
 
-- [DapperMatic](#dappermatic)
-  - [Supported Providers](#supported-providers)
+- [MJCZone.DapperMatic](#dappermatic)
+  - [Method Providers](#method-providers)
+    - [Built-in Providers](#built-in-providers)
+    - [Custom Providers](#custom-providers)
   - [Models](#models)
     - [Model related factory methods](#model-related-factory-methods)
   - [`IDbConnection` CRUD extension methods](#idbconnection-crud-extension-methods)
@@ -25,8 +27,11 @@ Additional extensions leveraging Dapper
   - [Testing](#testing)
   - [Reference](#reference)
     - [Provider documentation links](#provider-documentation-links)
+    - [Future plans (t.b.d.)](#future-plans-tbd)
 
-## Supported Providers
+## Method Providers
+
+### Built-in Providers
 
 Unit tests against versions in parenthesis.
 
@@ -38,44 +43,108 @@ Unit tests against versions in parenthesis.
 - [ ] Oracle
 - [ ] IBM DB2
 
+### Custom Providers
+
+To register a custom provider, first override the `IDatabaseMethods`, and `IDatabaseMethodsFactory` interfaces:
+
+```csharp
+namespace PestControl.Foundry;
+
+public class CentipedeDbConnection: System.Data.Common.DbConnection
+{
+    // ...
+}
+
+public class CentipedeDbMethods: MJCZone.DapperMatic.Interfaces.IDatabaseMethods
+{
+    // ...
+}
+
+public class CentipedeDbMethodsFactory : MJCZone.DapperMatic.Providers.DatabaseMethodsFactoryBase
+{
+    public override bool SupportsConnection(IDbConnection db)
+        => connection.GetType().Name == nameof(CentipedeDbConnection);
+
+    protected override IDatabaseMethods CreateMethodsCore()
+        => new CentipedeDbMethods();
+}
+```
+
+Then register the provider:
+
+```csharp
+DatabaseMethodsProvider.RegisterFactory("CentipedeDb", new PestControl.Foundry.CentipedeDbMethodsFactory());
+```
+
+### Extending an existing Provider Factory
+
+You may want to use a library that wraps an existing `IDbConnection` (e.g., ProfiledDbConnection with MiniProfiler). In that case, you can simply extend
+a built-in factory and register your new factory implementation with MJCZone.DapperMatic.
+
+Your factory class would like like this.
+
+```csharp
+public class ProfiledPostgreSqlMethodsFactory: PostgreSqlMethodsFactory
+{
+    public override bool SupportsConnectionCustom(IDbConnection db)
+    {
+        return (db is ProfiledDbConnection pdc) ? base.SupportsConnectionCustom(pdc.InnerConnection): false;
+    }
+}
+```
+
+Then register the factory as follows.
+
+```csharp
+DatabaseMethodsProvider.RegisterFactory(
+    "ProfiledDbConnection.PostgreSql", new ProfiledPostgreSqlMethodsFactory());
+```
+
+The test suite uses this method to profile the database and output sql exception details
+to the unit testing logs.
+
+See it in action with the [ProfiledPostgreSqlMethodsFactory](./tests/MJCZone.DapperMatic.Tests/ProviderTests/PostgreSqlDatabaseMethodsTests.cs#L84) class. This factory class demonstrates using a custom `IDbConnection` type `DbQueryLogging.LoggedDbConnection` from the `DbQueryLogging` package. Similar factory classes exist for the other providers.
+
 ## Models
 
-- [DxCheckConstraint](src/DapperMatic/Models/DxCheckConstraint.cs)
-- [DxColumn](src/DapperMatic/Models/DxColumn.cs)
-- [DxColumnOrder](src/DapperMatic/Models/DxColumnOrder.cs)
-- [DxConstraint](src/DapperMatic/Models/DxConstraint.cs)
-- [DxConstraintType](src/DapperMatic/Models/DxConstraintType.cs)
-- [DxDefaultConstraint](src/DapperMatic/Models/DxDefaultConstraint.cs)
-- [DxForeignKeyAction](src/DapperMatic/Models/DxForeignKeyAction.cs)
-- [DxForeignKeyContraint](src/DapperMatic/Models/DxForeignKeyContraint.cs)
-- [DxIndex](src/DapperMatic/Models/DxIndex.cs)
-- [DxOrderedColumn](src/DapperMatic/Models/DxOrderedColumn.cs)
-- [DxPrimaryKeyConstraint](src/DapperMatic/Models/DxPrimaryKeyConstraint.cs)
-- [DxTable](src/DapperMatic/Models/DxTable.cs)
-- [DxUniqueConstraint](src/DapperMatic/Models/DxUniqueConstraint.cs)
-- [DxView](src/DapperMatic/Models/DxView.cs)
+- [DmCheckConstraint](src/MJCZone.DapperMatic/Models/DmCheckConstraint.cs)
+- [DmColumn](src/MJCZone.DapperMatic/Models/DmColumn.cs)
+- [DmColumnOrder](src/MJCZone.DapperMatic/Models/DmColumnOrder.cs)
+- [DmConstraint](src/MJCZone.DapperMatic/Models/DmConstraint.cs)
+- [DmConstraintType](src/MJCZone.DapperMatic/Models/DmConstraintType.cs)
+- [DmDefaultConstraint](src/MJCZone.DapperMatic/Models/DmDefaultConstraint.cs)
+- [DmForeignKeyAction](src/MJCZone.DapperMatic/Models/DmForeignKeyAction.cs)
+- [DmForeignKeyConstraint](src/MJCZone.DapperMatic/Models/DmForeignKeyConstraint.cs)
+- [DmIndex](src/MJCZone.DapperMatic/Models/DmIndex.cs)
+- [DmOrderedColumn](src/MJCZone.DapperMatic/Models/DmOrderedColumn.cs)
+- [DmPrimaryKeyConstraint](src/MJCZone.DapperMatic/Models/DmPrimaryKeyConstraint.cs)
+- [DmTable](src/MJCZone.DapperMatic/Models/DmTable.cs)
+- [DmUniqueConstraint](src/MJCZone.DapperMatic/Models/DmUniqueConstraint.cs)
+- [DmView](src/MJCZone.DapperMatic/Models/DmView.cs)
 
 ### Model related factory methods
 
-- [DxTableFactory](src/DapperMatic/Models/DxTableFactory.cs)
+- [DmTableFactory](src/MJCZone.DapperMatic/Models/DmTableFactory.cs)
 
 ```cs
-DxTable table = DxTableFactory.GetTable(typeof(app_employees))
+DmTable table = DmTableFactory.GetTable(typeof(app_employees))
 ```
 
-- [DxViewFactory](src/DapperMatic/Models/DxViewFactory.cs)
+- [DmViewFactory](src/MJCZone.DapperMatic/Models/DmViewFactory.cs)
 
 ```cs
-DxView view = DxViewFactory.GetView(typeof(vw_onboarded_employees))
+DmView view = DmViewFactory.GetView(typeof(vw_onboarded_employees))
 ```
 
 ## `IDbConnection` CRUD extension methods
 
 All methods are async and support an optional transaction (recommended), and cancellation token.
 
-The schema name is nullable on all methods, as many database providers don't support schemas (e.g., SQLite and MySql). If a database supports schemas, and the schema name passed in is `null` or an empty string, then a default schema name is used for that database provider.
+### About `Schemas`
 
-The following default schemas apply:
+The schema name parameter is nullable in all methods, as many database providers don't support schemas (e.g., SQLite and MySql). If a database supports schemas, and the schema name passed in is `null` or an empty string, then a default schema name is used for that database provider.
+
+The following default schema names apply:
 
 - SqLite: "" (empty string)
 - MySql: "" (empty string)
@@ -88,10 +157,21 @@ The following default schemas apply:
 using var db = await connectionFactory.OpenConnectionAsync();
 using var tx = db.BeginTransaction();
 
-Version version = await db.GetDatabaseVersionAsync(tx, cancellationToken);
+// Get the version of the database (e.g., 3.46.1 for a SQLite database)
+Version version = await db.GetDatabaseVersionAsync(tx, cancellationToken).ConfigureAwait(false)
 
-// Check to see if the database supports schemas
-var supportsSchemas = db.SupportsSchemas();
+// Get a .NET type descriptor for a provider specific sql type
+DbProviderDotnetTypeDescriptor descriptor = db.GetDotnetTypeFromSqlType("nvarchar(255)");
+// descriptor.AutoIncrement -> False
+// descriptor.DotnetType -> typeof (String)
+// descriptor.Length -> 255
+// descriptor.Precision -> null
+// descriptor.Scale -> null
+// descriptor.Unicode -> True
+
+// Get a .NET type descriptor for a provider specific sql type
+string sqlType = db.GetSqlTypeFromDotnetType(new DbProviderDotnetTypeDescriptor(typeof(string), 47, unicode: true));
+// sqlType => nvarchar(47)
 
 // Get the mapped .NET type matching a specific provider sql data type (e.g., varchar(255), decimal(15,4))
 var (/* Type */ dotnetType, /* int? */ length, /* int? */ precision, /* int? */ scale) = db.GetDotnetTypeFromSqlType(string sqlType);
@@ -99,7 +179,7 @@ var (/* Type */ dotnetType, /* int? */ length, /* int? */ precision, /* int? */ 
 // Normalize a database name identifier to some idiomatic standard, namely alpha numeric with underscores and without spaces
 var normalizedName = db.NormalizeName(name);
 
-// Get the last sql executed inside DapperMatic
+// Get the last sql executed inside MJCZone.DapperMatic
 var lastSql = db.GetLastSql();
 (string sql, object? parameters) lastSqlWithParams = db.GetLastSqlWithParms();
 ```
@@ -110,8 +190,11 @@ var lastSql = db.GetLastSql();
 using var db = await connectionFactory.OpenConnectionAsync();
 using var tx = db.BeginTransaction();
 
+// Check to see if the database supports schemas
+var supportsSchemas = db.SupportsSchemas();
+
 // EXISTS: Check to see if a database schema exists
-bool exists = await db.DoesSchemaExistAsync("app", tx, cancellationToken);
+bool exists = await db.DoesSchemaExistAsync("app", tx, cancellationToken).ConfigureAwait(false)
 
 // CREATE: Create a database schema
 bool created = await db.CreateSchemaIfNotExistsAsync("app", ...);
@@ -130,27 +213,27 @@ using var db = await connectionFactory.OpenConnectionAsync();
 using var tx = db.BeginTransaction();
 
 // EXISTS: Check to see if a database table exists
-bool exists = await db.DoesTableExistAsync("app","app_employees", tx, cancellationToken);
+bool exists = await db.DoesTableExistAsync("app","app_employees", tx, cancellationToken).ConfigureAwait(false)
 
-// CREATE: Create a database table 
-bool created = await db.CreateTableIfNotExistsAsync("app", /* DxTable */ table);
+// CREATE: Create a database table
+bool created = await db.CreateTableIfNotExistsAsync("app", /* DmTable */ table);
 // or
     created = await db.CreateTableIfNotExistsAsync(
         "app",
         "app_employees",
-        // DxColumn[] columns,
+        // DmColumn[] columns,
         columns,
-        // DxPrimaryKeyConstraint? primaryKey = null,
+        // DmPrimaryKeyConstraint? primaryKey = null,
         primaryKey,
-        // DxCheckConstraint[]? checkConstraints = null,
+        // DmCheckConstraint[]? checkConstraints = null,
         checkConstraints,
-        // DxDefaultConstraint[]? defaultConstraints = null,
+        // DmDefaultConstraint[]? defaultConstraints = null,
         defaultConstraints,
-        // DxUniqueConstraint[]? uniqueConstraints = null,
+        // DmUniqueConstraint[]? uniqueConstraints = null,
         uniqueConstraints,
-        // DxForeignKeyConstraint[]? foreignKeyConstraints = null,
+        // DmForeignKeyConstraint[]? foreignKeyConstraints = null,
         foreignKeyConstraints,
-        // DxIndex[]? indexes = null,
+        // DmIndex[]? indexes = null,
         indexes,
         ...
     );
@@ -159,10 +242,10 @@ bool created = await db.CreateTableIfNotExistsAsync("app", /* DxTable */ table);
 List<string> names = await db.GetTableNamesAsync("app", "app_*", ...);
 
 // GET: Retrieve tables
-List<DxTable> tables = await db.GetTablesAsync("app", "app_*", ...);
+List<DmTable> tables = await db.GetTablesAsync("app", "app_*", ...);
 
 // GET: Retrieve single table
-DxTable? table = await db.GetTableAsync("app", "app_employees", ...);
+DmTable? table = await db.GetTableAsync("app", "app_employees", ...);
 
 // DROP: Drop a database table
 bool dropped = await db.DropTableIfExistsAsync("app", "app_employees", ...);
@@ -181,10 +264,10 @@ using var db = await connectionFactory.OpenConnectionAsync();
 using var tx = db.BeginTransaction();
 
 // EXISTS: Check to see if a table column exists
-bool exists = await db.DoesColumnExistAsync("app", "app_employees", "title", tx, cancellationToken);
+bool exists = await db.DoesColumnExistAsync("app", "app_employees", "title", tx, cancellationToken).ConfigureAwait(false)
 
 // CREATE: Create a table column
-bool created = await db.CreateColumnIfNotExistsAsync("app", /* DxColumn */ column);
+bool created = await db.CreateColumnIfNotExistsAsync("app", /* DmColumn */ column);
 // or
     created = await db.CreateColumnIfNotExistsAsync(
         "app",
@@ -208,8 +291,8 @@ bool created = await db.CreateColumnIfNotExistsAsync("app", /* DxColumn */ colum
         isForeignKey: true,
         referencedTableName: (string?) "app_managers",
         referencedColumnName: (string?) "id",
-        onDelete: (DxForeignKeyAction?) DxForeignKeyAction.Cascade,
-        onUpdate: (DxForeignKeyAction?) DxForeignKeyAction.NoAction,
+        onDelete: (DmForeignKeyAction?) DmForeignKeyAction.Cascade,
+        onUpdate: (DmForeignKeyAction?) DmForeignKeyAction.NoAction,
         ...
     );
 
@@ -217,10 +300,10 @@ bool created = await db.CreateColumnIfNotExistsAsync("app", /* DxColumn */ colum
 List<string> names = await db.GetColumnNamesAsync("app", "app_employees", "*title*", ...);
 
 // GET: Retrieve table columns
-List<DxTable> tables = await db.GetColumnsAsync("app", "app_employees", "*title*", ...);
+List<DmTable> tables = await db.GetColumnsAsync("app", "app_employees", "*title*", ...);
 
 // GET: Retrieve single table column
-DxColumn? column = await db.GetColumnAsync("app", "app_employees", "title", ...);
+DmColumn? column = await db.GetColumnAsync("app", "app_employees", "title", ...);
 
 // DROP: Drop a table column
 bool dropped = await db.DropColumnIfExistsAsync("app", "app_employees", "title", ...);
@@ -238,13 +321,13 @@ using var tx = db.BeginTransaction();
 var constraintName = ProviderUtils.GenerateCheckConstraintName("app_employees", "age");
 
 // EXISTS: Check to see if a check constraint exists
-bool exists = await db.DoesCheckConstraintExistAsync("app","app_employees", constraintName, tx, cancellationToken);
+bool exists = await db.DoesCheckConstraintExistAsync("app","app_employees", constraintName, tx, cancellationToken).ConfigureAwait(false)
 
 // EXISTS: Check to see if a check constraint exists on a column
-exists = await db.DoesCheckConstraintExistOnColumnAsync("app","app_employees", "age", tx, cancellationToken);
+exists = await db.DoesCheckConstraintExistOnColumnAsync("app","app_employees", "age", tx, cancellationToken).ConfigureAwait(false)
 
 // CREATE: Create a check constraint
-bool created = await db.CreateCheckConstraintIfNotExistsAsync("app", /* DxCheckConstraint */ checkConstraint);
+bool created = await db.CreateCheckConstraintIfNotExistsAsync("app", /* DmCheckConstraint */ checkConstraint);
 // or
     created = await db.CreateCheckConstraintIfNotExistsAsync(
         "app",
@@ -264,10 +347,10 @@ List<string> names = await db.GetCheckConstraintNamesAsync("app", "app_employees
 string name = await db.GetCheckConstraintNameOnColumnAsync("app", "app_employees", "age", ...);
 
 // GET: Retrieve check constraints
-List<DxCheckConstraint> checkConstraints = await db.GetCheckConstraintsAsync("app", "app_employees", "ck_*", ...);
+List<DmCheckConstraint> checkConstraints = await db.GetCheckConstraintsAsync("app", "app_employees", "ck_*", ...);
 
 // GET: Retrieve single check constraint
-DxCheckConstraint? checkConstraint = await db.GetCheckConstraintAsync("app", "app_employees", constraintName, ...);
+DmCheckConstraint? checkConstraint = await db.GetCheckConstraintAsync("app", "app_employees", constraintName, ...);
 
 // GET: Retrieve single check constraint on column
 checkConstraint = await db.GetCheckConstraintOnColumnAsync("app", "app_employees", "age", ...);
@@ -288,13 +371,13 @@ using var tx = db.BeginTransaction();
 var constraintName = ProviderUtils.GenerateDefaultConstraintName("app_employees", "age");
 
 // EXISTS: Check to see if a default constraint exists
-bool exists = await db.DoesDefaultConstraintExistAsync("app","app_employees", constraintName, tx, cancellationToken);
+bool exists = await db.DoesDefaultConstraintExistAsync("app","app_employees", constraintName, tx, cancellationToken).ConfigureAwait(false)
 
 // EXISTS: Check to see if a default constraint exists on a column
-exists = await db.DoesDefaultConstraintExistOnColumnAsync("app","app_employees", "age", tx, cancellationToken);
+exists = await db.DoesDefaultConstraintExistOnColumnAsync("app","app_employees", "age", tx, cancellationToken).ConfigureAwait(false)
 
 // CREATE: Create a default constraint
-bool created = await db.CreateDefaultConstraintIfNotExistsAsync("app", /* DxDefaultConstraint */ defaultConstraint);
+bool created = await db.CreateDefaultConstraintIfNotExistsAsync("app", /* DmDefaultConstraint */ defaultConstraint);
 // or
     created = await db.CreateDefaultConstraintIfNotExistsAsync(
         "app",
@@ -314,10 +397,10 @@ List<string> names = await db.GetDefaultConstraintNamesAsync("app", "app_employe
 string name = await db.GetDefaultConstraintNameOnColumnAsync("app", "app_employees", "age", ...);
 
 // GET: Retrieve default constraints
-List<DxDefaultConstraint> defaultConstraints = await db.GetDefaultConstraintsAsync("app", "app_employees", "df*", ...);
+List<DmDefaultConstraint> defaultConstraints = await db.GetDefaultConstraintsAsync("app", "app_employees", "df*", ...);
 
 // GET: Retrieve single default constraint
-DxDefaultConstraint? defaultConstraint = await db.GetDefaultConstraintAsync("app", "app_employees", constraintName, ...);
+DmDefaultConstraint? defaultConstraint = await db.GetDefaultConstraintAsync("app", "app_employees", constraintName, ...);
 
 // GET: Retrieve single default constraint on column
 defaultConstraint = await db.GetDefaultConstraintOnColumnAsync("app", "app_employees", "age", ...);
@@ -338,27 +421,27 @@ using var tx = db.BeginTransaction();
 var constraintName = ProviderUtils.GenerateForeignKeyConstraintName("app_employees", "manager_id", "app_managers", "id");
 
 // EXISTS: Check to see if a foreign key exists
-bool exists = await db.DoesForeignKeyConstraintExistAsync("app","app_employees", constraintName, tx, cancellationToken);
+bool exists = await db.DoesForeignKeyConstraintExistAsync("app","app_employees", constraintName, tx, cancellationToken).ConfigureAwait(false)
 
 // EXISTS: Check to see if a foreign key exists on a column
-exists = await db.DoesForeignKeyConstraintExistOnColumnAsync("app","app_employees", "manager_id", tx, cancellationToken);
+exists = await db.DoesForeignKeyConstraintExistOnColumnAsync("app","app_employees", "manager_id", tx, cancellationToken).ConfigureAwait(false)
 
 // CREATE: Create a foreign key
-bool created = await db.CreateForeignKeyConstraintIfNotExistsAsync("app", /* DxForeignKeyConstraint */ foreignKeyConstraint);
+bool created = await db.CreateForeignKeyConstraintIfNotExistsAsync("app", /* DmForeignKeyConstraint */ foreignKeyConstraint);
 // or
     created = await db.CreateForeignKeyConstraintIfNotExistsAsync(
         "app",
         "app_employees",
         // string constraintName,
         constraintName,
-        // DxOrderedColumn[] sourceColumns,
-        [ new DxOrderedColumn("manager_id") ]
+        // DmOrderedColumn[] sourceColumns,
+        [ new DmOrderedColumn("manager_id") ]
         // string referencedTableName,
         "app_managers",
-        // DxOrderedColumn[] referencedColumns,
-        [ new DxOrderedColumn("id") ],
-        onDelete: DxForeignKeyAction.Cascade,
-        onUpdate: DxForeignKeyAction.NoAction,
+        // DmOrderedColumn[] referencedColumns,
+        [ new DmOrderedColumn("id") ],
+        onDelete: DmForeignKeyAction.Cascade,
+        onUpdate: DmForeignKeyAction.NoAction,
         ...
     );
 
@@ -369,10 +452,10 @@ List<string> names = await db.GetForeignKeyConstraintNamesAsync("app", "app_empl
 string name = await db.GetForeignKeyConstraintNameOnColumnAsync("app", "app_employees", "manager_id", ...);
 
 // GET: Retrieve foreign keys
-List<DxForeignKeyConstraint> foreignKeyConstraints = await db.GetForeignKeyConstraintsAsync("app", "app_employees", "fk_*", ...);
+List<DmForeignKeyConstraint> foreignKeyConstraints = await db.GetForeignKeyConstraintsAsync("app", "app_employees", "fk_*", ...);
 
 // GET: Retrieve single foreign key
-DxForeignKeyConstraint? foreignKeyConstraint = await db.GetForeignKeyConstraintAsync("app", "app_employees", constraintName, ...);
+DmForeignKeyConstraint? foreignKeyConstraint = await db.GetForeignKeyConstraintAsync("app", "app_employees", constraintName, ...);
 
 // GET: Retrieve single foreign key on column
 foreignKeyConstraint = await db.GetForeignKeyConstraintOnColumnAsync("app", "app_employees", "manager_id", ...);
@@ -393,21 +476,21 @@ using var tx = db.BeginTransaction();
 var uniqueConstraintName = ProviderUtils.GenerateUniqueConstraintName("app_employees", "email");
 
 // EXISTS: Check to see if a unique constraint exists
-bool exists = await db.DoesUniqueConstraintExistAsync("app","app_employees", uniqueConstraintName, tx, cancellationToken);
+bool exists = await db.DoesUniqueConstraintExistAsync("app","app_employees", uniqueConstraintName, tx, cancellationToken).ConfigureAwait(false)
 
 // EXISTS: Check to see if a unique constraint exists on a column
-exists = await db.DoesUniqueConstraintExistOnColumnAsync("app","app_employees", "email", tx, cancellationToken);
+exists = await db.DoesUniqueConstraintExistOnColumnAsync("app","app_employees", "email", tx, cancellationToken).ConfigureAwait(false)
 
 // CREATE: Create a unique constraint
-bool created = await db.CreateUniqueConstraintIfNotExistsAsync("app", /* DxUniqueConstraint */ uniqueConstraint, ...);
+bool created = await db.CreateUniqueConstraintIfNotExistsAsync("app", /* DmUniqueConstraint */ uniqueConstraint, ...);
 // or
     created = await db.CreateUniqueConstraintIfNotExistsAsync(
         "app",
         "app_employees",
         // string uniqueConstraintName,
         uniqueConstraintName,
-        // DxOrderedColumn[] columns,
-        [ new DxOrderedColumn("email", DxColumnOrder.Descending) ],
+        // DmOrderedColumn[] columns,
+        [ new DmOrderedColumn("email", DmColumnOrder.Descending) ],
         ...
     );
 
@@ -418,10 +501,10 @@ List<string> names = await db.GetUniqueConstraintNamesAsync("app", "app_employee
 names = await db.GetUniqueConstraintNamesOnColumnAsync("app", "app_employees", "email", ...);
 
 // GET: Retrieve uniqueConstraints
-List<DxUniqueConstraint> uniqueConstraints = await db.GetUniqueConstraintsAsync("app", "app_employees", "uc_*", ...);
+List<DmUniqueConstraint> uniqueConstraints = await db.GetUniqueConstraintsAsync("app", "app_employees", "uc_*", ...);
 
 // GET: Retrieve single unique constraint
-DxUniqueConstraint? uniqueConstraint = await db.GetUniqueConstraintAsync("app", "app_employees", uniqueConstraintName, ...);
+DmUniqueConstraint? uniqueConstraint = await db.GetUniqueConstraintAsync("app", "app_employees", uniqueConstraintName, ...);
 
 // GET: Retrieve single unique constraint on column
 uniqueConstraint = await db.GetUniqueConstraintOnColumnAsync("app", "app_employees", "email", ...);
@@ -442,21 +525,21 @@ using var tx = db.BeginTransaction();
 var indexName = ProviderUtils.GenerateIndexName("app_employees", "is_onboarded");
 
 // EXISTS: Check to see if a index exists
-bool exists = await db.DoesIndexExistAsync("app","app_employees", indexName, tx, cancellationToken);
+bool exists = await db.DoesIndexExistAsync("app","app_employees", indexName, tx, cancellationToken).ConfigureAwait(false)
 
 // EXISTS: Check to see if a index exists on a column
-exists = await db.DoesIndexExistOnColumnAsync("app","app_employees", "is_onboarded", tx, cancellationToken);
+exists = await db.DoesIndexExistOnColumnAsync("app","app_employees", "is_onboarded", tx, cancellationToken).ConfigureAwait(false)
 
 // CREATE: Create a index
-bool created = await db.CreateIndexIfNotExistsAsync("app", /* DxIndex */ index);
+bool created = await db.CreateIndexIfNotExistsAsync("app", /* DmIndex */ index);
 // or
     created = await db.CreateIndexIfNotExistsAsync(
         "app",
         "app_employees",
         // string indexName,
         indexName,
-        // DxOrderedColumn[] columns,
-        [ new DxOrderedColumn("is_onboarded", DxColumnOrder.Descending) ],
+        // DmOrderedColumn[] columns,
+        [ new DmOrderedColumn("is_onboarded", DmColumnOrder.Descending) ],
         isUnique: false,
         ...
     );
@@ -467,11 +550,11 @@ List<string> names = await db.GetIndexNamesAsync("app", "app_employees", "ix_*",
 // GET: Retrieve index names on column
 names = await db.GetIndexNamesOnColumnAsync("app", "app_employees", "is_onboarded", ...);
 
-// GET: Retrieve indexs
-List<DxIndex> indexes = await db.GetIndexesAsync("app", "app_employees", "ix_*", ...);
+// GET: Retrieve indexes
+List<DmIndex> indexes = await db.GetIndexesAsync("app", "app_employees", "ix_*", ...);
 
 // GET: Retrieve single index
-DxIndex? index = await db.GetIndexAsync("app", "app_employees", indexName, ...);
+DmIndex? index = await db.GetIndexAsync("app", "app_employees", indexName, ...);
 
 // GET: Retrieve single index on column
 index = await db.GetIndexOnColumnAsync("app", "app_employees", "is_onboarded", ...);
@@ -492,23 +575,23 @@ using var tx = db.BeginTransaction();
 var primaryKeyConstraintName = ProviderUtils.GeneratePrimaryKeyConstraintName("app_employees", "email");
 
 // EXISTS: Check to see if a primary key constraint exists
-bool exists = await db.DoesPrimaryKeyConstraintExistAsync("app","app_employees", tx, cancellationToken);
+bool exists = await db.DoesPrimaryKeyConstraintExistAsync("app","app_employees", tx, cancellationToken).ConfigureAwait(false)
 
 // CREATE: Create a primary key constraint
-bool created = await db.CreatePrimaryKeyConstraintIfNotExistsAsync("app", /* DxPrimaryKeyConstraint */ primaryKeyConstraint, ...);
+bool created = await db.CreatePrimaryKeyConstraintIfNotExistsAsync("app", /* DmPrimaryKeyConstraint */ primaryKeyConstraint, ...);
 // or
     created = await db.CreatePrimaryKeyConstraintIfNotExistsAsync(
         "app",
         "app_employees",
         // string primaryKeyConstraintName,
         primaryKeyConstraintName,
-        // DxOrderedColumn[] columns,
-        [ new DxOrderedColumn("email", DxColumnOrder.Descending) ],
+        // DmOrderedColumn[] columns,
+        [ new DmOrderedColumn("email", DmColumnOrder.Descending) ],
         ...
     );
 
 // GET: Retrieve single primary key constraint
-DxPrimaryKeyConstraint? primaryKeyConstraint = await db.GetPrimaryKeyConstraintAsync("app", "app_employees", ...);
+DmPrimaryKeyConstraint? primaryKeyConstraint = await db.GetPrimaryKeyConstraintAsync("app", "app_employees", ...);
 
 // DROP: Drop a primary key constraint
 bool dropped = await db.DropPrimaryKeyConstraintIfExistsAsync("app", "app_employees", primaryKeyConstraintName, ...);
@@ -523,10 +606,10 @@ using var tx = db.BeginTransaction();
 var viewName = "vw_employees_not_yet_onboarded";
 
 // EXISTS: Check to see if a view exists
-bool exists = await db.DoesViewExistAsync("app", viewName, tx, cancellationToken);
+bool exists = await db.DoesViewExistAsync("app", viewName, tx, cancellationToken).ConfigureAwait(false)
 
 // CREATE: Create a view
-bool created = await db.CreateViewIfNotExistsAsync("app", /* DxView */ view, ...);
+bool created = await db.CreateViewIfNotExistsAsync("app", /* DmView */ view, ...);
 // or
     created = await db.CreateViewIfNotExistsAsync(
         "app",
@@ -551,21 +634,21 @@ bool updated = await db.CreateViewIfNotExistsAsync(
 List<string> viewNames = await db.GetViewNames("app", "vw_*", ...);
 
 // GET: Retrieve single view
-List<DxView> views = await db.GetViewsAsync("app", "vw_*", ...);
+List<DmView> views = await db.GetViewsAsync("app", "vw_*", ...);
 
 // GET: Retrieve single view
-DxView? view = await db.GetViewAsync("app", viewName, ...);
+DmView? view = await db.GetViewAsync("app", viewName, ...);
 
 // DROP: Drop a view
 bool dropped = await db.DropViewIfExistsAsync("app", viewName, ...);
 
 // RENAME: Rename a view
 bool dropped = await db.RenameViewIfExistsAsync(
-    "app", 
+    "app",
     // string viewName,
-    "vw_employees_not_yet_onboarded", 
+    "vw_employees_not_yet_onboarded",
     // string newViewName,
-    "vw_current_employees_not_yet_onboarded", 
+    "vw_current_employees_not_yet_onboarded",
     ...
 );
 ```

@@ -1,0 +1,143 @@
+{
+  "title": "DapperMatic",
+  "repositoryUrl": "https://github.com/mjczone/MJCZone.DapperMatic",
+  "version": "VERSION_NUMBER",
+  "content": {
+    "label": "Guides",
+    "expanded": ["/getting-started", "/usage"],
+    "items": [
+      {
+        "id": "/",
+        "label": "Welcome",
+        "selectable": true,
+        "children": []
+      },
+      {
+        "id": "/getting-started",
+        "label": "Getting Started",
+        "selectable": false,
+        "children": [
+          {
+            "id": "/getting-started/installation",
+            "label": "Installation",
+            "selectable": true
+          },
+          {
+            "id": "/getting-started/providers",
+            "label": "Providers",
+            "selectable": true
+          },
+          {
+            "id": "/getting-started/models",
+            "label": "Models",
+            "selectable": true
+          }
+        ]
+      },
+      {
+        "id": "/usage",
+        "label": "Usage",
+        "selectable": true,
+        "children": [
+          {
+            "id": "/usage/extension-methods",
+            "label": "Extension Methods",
+            "selectable": true,
+            "children": [
+              {
+                "id": "/usage/extension-methods/general-methods",
+                "label": "General Methods",
+                "selectable": true
+              },
+              {
+                "id": "/usage/extension-methods/schema-methods",
+                "label": "Schema Methods",
+                "selectable": true
+              },
+              {
+                "id": "/usage/extension-methods/table-methods",
+                "label": "Table Methods",
+                "selectable": true
+              },
+              {
+                "id": "/usage/extension-methods/column-methods",
+                "label": "Column Methods",
+                "selectable": true
+              },
+              {
+                "id": "/usage/extension-methods/primary-key-constraint-methods",
+                "label": "Primary Key Constraint Methods",
+                "selectable": true
+              },
+              {
+                "id": "/usage/extension-methods/check-constraint-methods",
+                "label": "Check Constraint Methods",
+                "selectable": true
+              },
+              {
+                "id": "/usage/extension-methods/default-constraint-methods",
+                "label": "Default Constraint Methods",
+                "selectable": true
+              },
+              {
+                "id": "/usage/extension-methods/foreign-key-constraint-methods",
+                "label": "Foreign Key Constraint Methods",
+                "selectable": true
+              },
+              {
+                "id": "/usage/extension-methods/unique-constraint-methods",
+                "label": "Unique Constraint Methods",
+                "selectable": true
+              },
+              {
+                "id": "/usage/extension-methods/index-methods",
+                "label": "Index Methods",
+                "selectable": true
+              },
+              {
+                "id": "/usage/extension-methods/view-methods",
+                "label": "View Methods",
+                "selectable": true
+              }
+            ]
+          },
+          {
+            "id": "/usage/testing",
+            "label": "Testing",
+            "selectable": true
+          }
+        ]
+      }
+    ]
+  },
+  "packages": {
+    "label": "Packages",
+    "expanded": [],
+    "items": [
+      {
+        "id": "/packages/MJCZone.DapperMatic",
+        "label": "MJCZone.DapperMatic",
+        "selectable": true,
+        "children": []
+      }
+    ]
+  },
+  "about": {
+    "label": "About",
+    "expanded": ["/about"],
+    "items": [
+      {
+        "id": "/about",
+        "label": "About",
+        "selectable": true,
+        "children": []
+      },
+      {
+        "id": "/about/roadmap",
+        "label": "Roadmap",
+        "selectable": true,
+        "children": []
+      }
+    ]
+  }
+}

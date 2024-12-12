@@ -1,0 +1,14 @@
+{
+  "name": "mjczone.dappermatic",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "build": "dotnet build",
+    "docs": "npx serve ./docs/",
+    "test": "dotnet test"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC"
+}
