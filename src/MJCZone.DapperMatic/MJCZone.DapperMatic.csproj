@@ -1,18 +1,19 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
+    <Product>DapperMatic</Product>
     <PackageId>MJCZone.DapperMatic</PackageId>
     <PackageTags>dotnet dapper mysql sqlserver postgresql sqlite</PackageTags>
     <!-- <PackageIconUrl></PackageIconUrl> -->
     <!-- <PackageReleaseNotes></PackageReleaseNotes> -->
-    <PackageLicenseUrl>https://github.com/mjczone/MJCZone.DapperMatic/LICENSE</PackageLicenseUrl>
+    <PackageReadmeFile>README.md</PackageReadmeFile>
     <PackageProjectUrl>https://github.com/mjczone/MJCZone.DapperMatic/</PackageProjectUrl>
+    <PublishRepositoryUrl>true</PublishRepositoryUrl>
     <RepositoryUrl>https://github.com/mjczone/MJCZone.DapperMatic/</RepositoryUrl>
 
     <Version>0.0.1</Version>
-    <Description>
-     Additional database extensions (leveraging Dapper).
-    </Description>
+    <Summary>Additional database extensions (leveraging Dapper).</Summary>
+    <Description>Additional database extensions (leveraging Dapper).</Description>
 
     <RootNamespace>MJCZone.DapperMatic</RootNamespace>
     <AssemblyName>MJCZone.DapperMatic</AssemblyName>
