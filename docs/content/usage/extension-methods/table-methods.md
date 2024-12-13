@@ -45,6 +45,6 @@ bool dropped = await db.DropTableIfExistsAsync("app", "app_employees", ...);
 // RENAME: Rename a database table
 bool renamed = await db.RenameTableIfExistsAsync("app", "app_employees", /* new name */ "app_staff", ...);
 
-// TRUNCATE: Drop a database table
+// TRUNCATE: Truncate a database table
 bool truncated = await db.TruncateTableIfExistsAsync("app", "app_employees", ...);
 ```

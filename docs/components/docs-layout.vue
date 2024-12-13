@@ -12,7 +12,7 @@
       v-model:selected-item="selectedPath"
     ></docs-drawer>
     <q-page-container>
-      <q-page v-if="displayComponent">
+      <q-page v-if="displayComponent" :style-fn="qPageStyleFn">
         <component
           :is="displayComponent"
           :config="$store.state.config"
@@ -162,7 +162,14 @@ export default defineComponent({
       { immediate: true }
     );
 
+    function qPageStyleFn(offset, height) {
+      // console.log("qPageStyleFn", offset, height);
+      // return { minHeight: offset + "px" };
+      return {};
+    }
+
     return {
+      qPageStyleFn,
       displayComponent,
       data,
       leftDrawerOpen,
