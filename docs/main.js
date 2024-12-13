@@ -236,7 +236,7 @@ function markdownToHtml(markdown, config) {
       if (href.startsWith("src/") && config && config.repositoryUrl) {
         href = href.replace(
           "src/",
-          `${config.repositoryUrl.trimEnd("/")}/src/`
+          `${config.repositoryUrl.trimEnd("/")}/blob/main/src/`
         );
       }
       if (href.startsWith("http")) {
