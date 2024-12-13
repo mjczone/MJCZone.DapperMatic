@@ -228,6 +228,9 @@ function markdownToHtml(markdown, config) {
     const parser = new DOMParser();
     const doc = parser.parseFromString(html, "text/html");
     doc.querySelectorAll("a").forEach((a) => {
+      let baseUrl = (window.location.origin + window.location.pathname).trimEnd(
+        "/"
+      );
       let href = a.getAttribute("href");
 
       // strip slash from the beginning of the href using regex
@@ -247,7 +250,7 @@ function markdownToHtml(markdown, config) {
         // strip hash from the beginning of the href using regex
         href = href.replace(/^#/, "");
         // make the href an absolute url hash link
-        href = `${window.location.origin}/#/${href}`;
+        href = `${baseUrl}/#/${href}`;
       }
 
       // set the href
