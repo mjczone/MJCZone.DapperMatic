@@ -6,7 +6,8 @@ export default defineComponent({
   props: ["config", "data"],
   setup(props, ctx) {
     const baseUrl = computed(() => {
-      return (window.location.origin + window.location.pathname).trimEnd("/");
+      const x = window.location.origin + window.location.pathname;
+      return x.replace(/\/+$/, "");
     });
     const packageId = computed(() => {
       return (props.data || {}).packageId || "";
