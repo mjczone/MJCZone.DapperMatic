@@ -1,14 +1,19 @@
 <script>
-const { ref, defineComponent } = Vue;
+const { ref, defineComponent, computed } = Vue;
 export default defineComponent({
   name: "DocsHeaderToolbar",
   props: ["title", "repositoryUrl", "version"],
   emits: ["toggleLeftDrawer"],
   setup(props, ctx) {
+    const baseUrl = computed(() => {
+      const x = window.location.origin + window.location.pathname;
+      return x.replace(/\/+$/, "");
+    });
     function toggleLeftDrawer() {
       ctx.emit("toggleLeftDrawer");
     }
     return {
+      baseUrl,
       toggleLeftDrawer,
     };
   },
@@ -25,7 +30,7 @@ export default defineComponent({
             unelevated
             :ripple="false"
             no-caps
-            href="/"
+            :href="`${baseUrl}/`"
             class="btn--no-hover q-px-md q-py-md page-title"
             :label="title"
           >
