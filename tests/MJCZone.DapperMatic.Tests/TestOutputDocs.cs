@@ -62,7 +62,7 @@ public class TestOutputDocs
             )
             .ToList();
 
-        var jsonFile = Path.Combine(assemblyDirectory, $"{assembly.GetName().Name}.json");
+        var akovJsonFile = Path.Combine(assemblyDirectory, $"{assembly.GetName().Name}.docs.json");
         var stringEnumConverter = new System.Text.Json.Serialization.JsonStringEnumConverter();
         var serializationSettings = new JsonSerializerOptions
         {
@@ -85,14 +85,14 @@ public class TestOutputDocs
             },
             data = akovData,
         };
-        File.WriteAllText(jsonFile, JsonSerializer.Serialize(output, serializationSettings));
+        File.WriteAllText(akovJsonFile, JsonSerializer.Serialize(output, serializationSettings));
         //Logger.WriteLine(JsonSerializer.Serialize(akovData, serializationSettings));
 
-        var docsJsonFileName = $"{assembly.GetName().Name}.json";
-        var docsJsonFile = Path.Combine(assemblyDirectory, docsJsonFileName);
-        var docs = new Docs();
-        docs.AddAssembly(assembly, xml);
-        File.WriteAllText(docsJsonFile, JsonSerializer.Serialize(docs, serializationSettings));
+        // var docsJsonFileName = $"{assembly.GetName().Name}.json";
+        // var docsJsonFile = Path.Combine(assemblyDirectory, docsJsonFileName);
+        // var docs = new Docs();
+        // docs.AddAssembly(assembly, xml);
+        // File.WriteAllText(docsJsonFile, JsonSerializer.Serialize(docs, serializationSettings));
         //Logger.WriteLine(JsonSerializer.Serialize(docs, serializationSettings));
 
         // output the file to the docs directory
@@ -108,7 +108,11 @@ public class TestOutputDocs
         }
         var packagesDirectory = Path.Combine(rootDirectory, "docs", "packages");
         Directory.CreateDirectory(packagesDirectory);
-        File.Copy(docsJsonFile, Path.Combine(packagesDirectory, docsJsonFileName), true);
+        File.Copy(
+            akovJsonFile,
+            Path.Combine(packagesDirectory, $"{assembly.GetName().Name}.json"),
+            true
+        );
         return;
 
         // The following is prototypical code created BEFORE the Akov.NetDocsProcessor was used.

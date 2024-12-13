@@ -558,10 +558,9 @@ p > code {
       }
 
       .package-page {
-        // allow wrapping on the package page
         .q-table--no-wrap td,
         .q-table--no-wrap th {
-          white-space: wrap;
+          white-space: wrap !important;
         }
         table {
           min-width: 50%;
