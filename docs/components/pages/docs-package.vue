@@ -5,6 +5,10 @@ export default defineComponent({
   name: "DocsPackage",
   props: ["config", "data"],
   setup(props, ctx) {
+    const baseUrl = computed(() => {
+      const x = window.location.origin + window.location.pathname;
+      return x.replace(/\/+$/, "");
+    });
     const packageId = computed(() => {
       return (props.data || {}).packageId || "";
     });
@@ -66,6 +70,7 @@ export default defineComponent({
     });
 
     return {
+      baseUrl,
       expanded,
       packageId,
       pathParts,
@@ -86,7 +91,7 @@ export default defineComponent({
   <div class="page package-page">
     <h1>
       Package
-      <a :href="`/#/packages/${pathParts[0]}`"
+      <a :href="`${baseUrl}/#/packages/${pathParts[0]}`"
         ><code>{{ pathParts[0] }}</code></a
       >
     </h1>
@@ -102,7 +107,7 @@ export default defineComponent({
           <tr v-for="d in namespaceElements" :key="d.self.displayName">
             <td>
               <a
-                :href="`/#/packages/${pathParts[0]}/ns/${d.self.displayName}/`"
+                :href="`${baseUrl}/#/packages/${pathParts[0]}/ns/${d.self.displayName}/`"
                 >{{ d.self.displayName }}</a
               >
             </td>
@@ -113,7 +118,7 @@ export default defineComponent({
     <div v-if="pathParts.length === 3 && pathParts[1] === 'ns'">
       <h2>
         Namespace
-        <a :href="`/#/packages/${pathParts[0]}/ns/${pathParts[2]}`"
+        <a :href="`${baseUrl}/#/packages/${pathParts[0]}/ns/${pathParts[2]}`"
           ><code>{{ pathParts[2] }}</code></a
         >
       </h2>
@@ -134,7 +139,7 @@ export default defineComponent({
             >
               <td>
                 <a
-                  :href="`/#/packages/${pathParts[0]}/ns/${pathParts[2]}/t/${d.name}/`"
+                  :href="`${baseUrl}/#/packages/${pathParts[0]}/ns/${pathParts[2]}/t/${d.name}/`"
                   >{{ d.name }}</a
                 >
               </td>
@@ -168,7 +173,7 @@ export default defineComponent({
             >
               <td>
                 <a
-                  :href="`/#/packages/${pathParts[0]}/ns/${pathParts[2]}/t/${d.self.displayName}/`"
+                  :href="`${baseUrl}/#/packages/${pathParts[0]}/ns/${pathParts[2]}/t/${d.self.displayName}/`"
                   >{{ d.self.displayName }}</a
                 >
               </td>
@@ -199,7 +204,7 @@ export default defineComponent({
             >
               <td>
                 <a
-                  :href="`/#/packages/${pathParts[0]}/ns/${pathParts[2]}/t/${d.self.displayName}/`"
+                  :href="`${baseUrl}/#/packages/${pathParts[0]}/ns/${pathParts[2]}/t/${d.self.displayName}/`"
                   >{{ d.self.displayName }}</a
                 >
               </td>
@@ -233,7 +238,7 @@ export default defineComponent({
             >
               <td>
                 <a
-                  :href="`/#/packages/${pathParts[0]}/ns/${pathParts[2]}/t/${d.self.displayName}/`"
+                  :href="`${baseUrl}/#/packages/${pathParts[0]}/ns/${pathParts[2]}/t/${d.self.displayName}/`"
                   >{{ d.self.displayName }}</a
                 >
               </td>
@@ -267,7 +272,7 @@ export default defineComponent({
             >
               <td>
                 <a
-                  :href="`/#/packages/${pathParts[0]}/ns/${pathParts[2]}/t/${d.self.displayName}/`"
+                  :href="`${baseUrl}/#/packages/${pathParts[0]}/ns/${pathParts[2]}/t/${d.self.displayName}/`"
                   >{{ d.self.displayName }}</a
                 >
               </td>
@@ -306,11 +311,11 @@ export default defineComponent({
       <h2>
         Type
         <a
-          :href="`/#/packages/${pathParts[0]}/ns/${pathParts[2]}/${pathParts[3]}/${pathParts[4]}`"
+          :href="`${baseUrl}/#/packages/${pathParts[0]}/ns/${pathParts[2]}/${pathParts[3]}/${pathParts[4]}`"
           ><code>{{ type.name }}</code></a
         >
         ( Namespace
-        <a :href="`/#/packages/${pathParts[0]}/ns/${pathParts[2]}`"
+        <a :href="`${baseUrl}/#/packages/${pathParts[0]}/ns/${pathParts[2]}`"
           ><code>{{ type.namespace.displayName }}</code></a
         >
         )
@@ -357,6 +362,49 @@ export default defineComponent({
               <td>
                 <code>{{ p.returnType }}</code>
               </td>
+              <td v-html="getTextAsHtml(p.summary)"></td>
+              <td>
+                <q-badge v-if="p.payloadInfo.isStatic" color="dark"
+                  >Static</q-badge
+                >
+                <q-badge v-if="p.payloadInfo.isAbstract" color="grey"
+                  >Abstract</q-badge
+                >
+                <q-badge v-if="p.payloadInfo.isOverride" color="grey"
+                  >Override</q-badge
+                >
+                <q-badge v-if="p.payloadInfo.isVirtual" color="grey"
+                  >Virtual</q-badge
+                >
+                <q-badge v-if="p.payloadInfo.isReadOnlyField" color="grey"
+                  >ReadOnly</q-badge
+                >
+              </td>
+            </tr>
+          </tbody>
+        </q-markup-table>
+      </template>
+      <template v-if="(type.fields || []).length > 0">
+        <h3>Fields</h3>
+        <q-markup-table dense flat square>
+          <thead>
+            <tr>
+              <th>Name</th>
+              <th>Description</th>
+              <th>Info</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr
+              v-for="p in orderBy(
+                type.fields.filter(
+                  (f) => f.payloadInfo.accessLevel === 'Public'
+                ),
+                (x) => x.name
+              )"
+              :key="p.name"
+            >
+              <td>{{ p.name }}</td>
               <td v-html="getTextAsHtml(p.summary)"></td>
               <td>
                 <q-badge v-if="p.payloadInfo.isStatic" color="dark"
