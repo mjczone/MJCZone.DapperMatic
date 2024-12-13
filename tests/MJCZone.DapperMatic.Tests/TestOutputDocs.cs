@@ -88,7 +88,7 @@ public class TestOutputDocs
         File.WriteAllText(jsonFile, JsonSerializer.Serialize(output, serializationSettings));
         //Logger.WriteLine(JsonSerializer.Serialize(akovData, serializationSettings));
 
-        var docsJsonFileName = $"{assembly.GetName().Name}.docs.json";
+        var docsJsonFileName = $"{assembly.GetName().Name}.json";
         var docsJsonFile = Path.Combine(assemblyDirectory, docsJsonFileName);
         var docs = new Docs();
         docs.AddAssembly(assembly, xml);
