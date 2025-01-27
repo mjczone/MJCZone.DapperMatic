@@ -1,0 +1,38 @@
+# Build and Test
+name: Tests
+
+on:
+  # pull_request:
+  #   branches:
+  #     - main
+  push:
+    branches:
+      - main
+
+jobs:
+  build-and-test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup dotnet
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: |
+            8
+            9
+          source-url: https://nuget.pkg.github.com/mjczone/index.json
+        env:
+          NUGET_AUTH_TOKEN: ${{secrets.GITHUB_TOKEN}} #github action provided token
+
+      - name: Add nuget.org package source
+        shell: bash
+        run: dotnet nuget add source https://api.nuget.org/v3/index.json -n nuget.org
+
+      - name: Build
+        run: dotnet build -c release
+
+      - name: Test
+        run: |
+          dotnet test -c release --no-build

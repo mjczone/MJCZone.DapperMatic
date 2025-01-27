@@ -61,7 +61,7 @@ internal static partial class SqliteSqlParser
         //  - if as part of column definition, they appear inline
         //  - if separate as table constraint definitions, they always start with either the word "CONSTRAINT" or the constraint type identifier "PRIMARY KEY", "FOREIGN KEY", "UNIQUE", "CHECK", "DEFAULT"
 
-        bool IsColumnDefinitionClause(SqlClause clause)
+        static bool IsColumnDefinitionClause(SqlClause clause)
         {
             return !(
                 clause.FindTokenIndex("CONSTRAINT") == 0
