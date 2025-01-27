@@ -26,10 +26,6 @@ jobs:
         env:
           NUGET_AUTH_TOKEN: ${{secrets.GITHUB_TOKEN}} #github action provided token
 
-      - name: Add nuget.org package source
-        shell: bash
-        run: dotnet nuget add source https://api.nuget.org/v3/index.json -n nuget.org
-
       - name: Build
         run: dotnet build -c release
 
