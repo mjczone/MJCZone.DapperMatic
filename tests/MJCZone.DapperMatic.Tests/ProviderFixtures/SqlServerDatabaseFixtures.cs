@@ -19,8 +19,8 @@ public class SqlServer_2019_CU27_DatabaseFixture : SqlServerDatabaseFixture
 public class SqlServer_2017_CU29_DatabaseFixture : SqlServerDatabaseFixture
 {
     public SqlServer_2017_CU29_DatabaseFixture()
-        : base("mcr.microsoft.com/mssql/server:2017-CU29-ubuntu-16.04") { }
-    // : base("mcr.microsoft.com/mssql/server:2017-latest") { }
+        // : base("mcr.microsoft.com/mssql/server:2017-CU29-ubuntu-16.04") { }
+        : base("mcr.microsoft.com/mssql/server:2017-latest") { }
 }
 
 public abstract class SqlServerDatabaseFixture(string imageName)
