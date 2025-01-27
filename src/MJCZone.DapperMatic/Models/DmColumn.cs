@@ -1,6 +1,5 @@
 using System.Diagnostics.CodeAnalysis;
 using System.Runtime.CompilerServices;
-using System.Text.Json;
 
 namespace MJCZone.DapperMatic.Models;
 
@@ -90,19 +89,19 @@ public class DmColumn
     public string? SchemaName { get; set; }
 
     /// <summary>
-    /// Gets the table name.
+    /// Gets or sets the table name.
     /// </summary>
-    public required string TableName { get; init; }
+    public required string TableName { get; set; }
 
     /// <summary>
-    /// Gets the column name.
+    /// Gets or sets the column name.
     /// </summary>
-    public required string ColumnName { get; init; }
+    public required string ColumnName { get; set; }
 
     /// <summary>
-    /// Gets the .NET type of the column.
+    /// Gets or sets the .NET type of the column.
     /// </summary>
-    public required Type DotnetType { get; init; }
+    public required Type DotnetType { get; set; }
 
     /// <summary>
     /// Gets the provider data types. The FULL native provider data type. This is the data type that the provider uses to
@@ -366,7 +365,7 @@ public class DmColumn
     /// <returns>A string representation of the column definition.</returns>
     public override string ToString()
     {
-        return $"{ColumnName} ({JsonSerializer.Serialize(ProviderDataTypes)}) {(IsNullable ? "NULL" : "NOT NULL")}"
+        return $"{ColumnName} ({string.Join(", ", ProviderDataTypes.Select(pdt => $"{pdt.Key}={pdt.Value}"))}) {(IsNullable ? "NULL" : "NOT NULL")}"
             + $"{(IsPrimaryKey ? " PRIMARY KEY" : string.Empty)}"
             + $"{(IsUnique ? " UNIQUE" : string.Empty)}"
             + $"{(IsIndexed ? " INDEXED" : string.Empty)}"

@@ -51,19 +51,19 @@ public class DmDefaultConstraint : DmConstraint
     public string? SchemaName { get; set; }
 
     /// <summary>
-    /// Gets the table name.
+    /// Gets or sets the table name.
     /// </summary>
-    public required string TableName { get; init; }
+    public required string TableName { get; set; }
 
     /// <summary>
-    /// Gets the column name.
+    /// Gets or sets the column name.
     /// </summary>
-    public required string ColumnName { get; init; }
+    public required string ColumnName { get; set; }
 
     /// <summary>
-    /// Gets the expression.
+    /// Gets or sets the expression.
     /// </summary>
-    public required string Expression { get; init; }
+    public required string Expression { get; set; }
 
     /// <summary>
     /// Gets the constraint type.
