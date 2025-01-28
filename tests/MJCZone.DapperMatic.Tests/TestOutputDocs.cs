@@ -107,12 +107,13 @@ public class TestOutputDocs
             }
         }
         var packagesDirectory = Path.Combine(rootDirectory, "docs", "packages");
-        Directory.CreateDirectory(packagesDirectory);
-        File.Copy(
-            akovJsonFile,
-            Path.Combine(packagesDirectory, $"{assembly.GetName().Name}.json"),
-            true
+        var docsAssemblyJsonFile = Path.Combine(
+            packagesDirectory,
+            $"{assembly.GetName().Name}.json"
         );
+        Directory.CreateDirectory(packagesDirectory);
+        File.Copy(akovJsonFile, docsAssemblyJsonFile, true);
+        Logger.WriteLine($"Created {docsAssemblyJsonFile}");
         return;
 
         // The following is prototypical code created BEFORE the Akov.NetDocsProcessor was used.

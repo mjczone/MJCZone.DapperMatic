@@ -30,9 +30,9 @@ jobs:
 
       # Tests are required before we can deploy, as they also generate
       # artifacts used in the documentation
-      - name: Test
+      - name: Build docs assets
         run: |
-          dotnet test --configuration Release /p:Version=${VERSION_NUMBER} --no-build
+          dotnet test --configuration Release /p:Version=${VERSION_NUMBER} --filter "MJCZone.DapperMatic.Tests.TestOutputDocs" --no-build
           # replace VERSION_NUMBER in docs/docs.config.json with ${VERSION_NUMBER}
           sed -i "s/VERSION_NUMBER/${VERSION_NUMBER}/g" docs/docs.config.json
 
@@ -105,10 +105,9 @@ jobs:
           path: nupkgs
           
       - name: Push
-        run: dotnet nuget push nupkgs/${PACKAGE_ID}.${VERSION_NUMBER}.nupkg
+        run: dotnet nuget push nupkgs/*.nupkg --api-key ${{ secrets.NUGET_API_KEY }} --source https://api.nuget.org/v3/index.json
         env:
-          PACKAGE_ID: "MJCZone.DapperMatic"
-          NUGET_API_KEY: ${{secrets.NUGET_API_KEY}}
+          NUGET_API_KEY: ${{secrets.NUGET_API_KEY}} # nuget.org API key stored in GitHub organization secrets
 
   # Deploy to GitHub Pages
   deploy-pages:
