@@ -26,6 +26,21 @@ public interface IDatabaseTableMethods
     );
 
     /// <summary>
+    /// Creates tables if they do not exist.
+    /// </summary>
+    /// <param name="db">The database connection.</param>
+    /// <param name="tables">The table definitions.</param>
+    /// <param name="tx">The database transaction.</param>
+    /// <param name="cancellationToken">The cancellation token.</param>
+    /// <returns>A task that represents the asynchronous operation.</returns>
+    Task CreateTablesIfNotExistsAsync(
+        IDbConnection db,
+        DmTable[] tables,
+        IDbTransaction? tx = null,
+        CancellationToken cancellationToken = default
+    );
+
+    /// <summary>
     /// Creates a table if it does not exist.
     /// </summary>
     /// <param name="db">The database connection.</param>

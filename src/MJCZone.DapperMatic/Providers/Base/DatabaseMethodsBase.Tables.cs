@@ -44,8 +44,8 @@ public abstract partial class DatabaseMethodsBase
     /// <param name="tables">The tables to create.</param>
     /// <param name="tx">The transaction.</param>
     /// <param name="cancellationToken">The cancellation token.</param>
-    /// <returns>True if all tables were created, otherwise false.</returns>
-    public virtual async Task<bool> CreateTablesIfNotExistsAsync(
+    /// <returns>A task that represents the asynchronous operation.</returns>
+    public virtual async Task CreateTablesIfNotExistsAsync(
         IDbConnection db,
         DmTable[] tables,
         IDbTransaction? tx = null,
@@ -67,7 +67,7 @@ public abstract partial class DatabaseMethodsBase
 
             if (!created)
             {
-                return false;
+                return;
             }
         }
 
@@ -86,8 +86,6 @@ public abstract partial class DatabaseMethodsBase
                 )
                 .ConfigureAwait(false);
         }
-
-        return true;
     }
 
     /// <summary>

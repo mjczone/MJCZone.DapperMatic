@@ -30,6 +30,26 @@ public static partial class DbConnectionExtensions
     }
 
     /// <summary>
+    /// Creates tables if they do not exist.
+    /// </summary>
+    /// <param name="db">The database connection.</param>
+    /// <param name="tables">The table definitions.</param>
+    /// <param name="tx">The database transaction.</param>
+    /// <param name="cancellationToken">The cancellation token.</param>
+    /// <returns>A task that represents the asynchronous operation.</returns>
+    public static async Task CreateTablesIfNotExistsAsync(
+        this IDbConnection db,
+        IEnumerable<DmTable> tables,
+        IDbTransaction? tx = null,
+        CancellationToken cancellationToken = default
+    )
+    {
+        await Database(db)
+            .CreateTablesIfNotExistsAsync(db, tables.ToArray(), tx, cancellationToken)
+            .ConfigureAwait(false);
+    }
+
+    /// <summary>
     /// Creates a table if it does not exist.
     /// </summary>
     /// <param name="db">The database connection.</param>
