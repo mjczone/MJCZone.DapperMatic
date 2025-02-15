@@ -459,6 +459,15 @@ public partial class MySqlMethods
 
                 var dotnetTypeDescriptor = GetDotnetTypeFromSqlType(tableColumn.data_type_complete);
 
+                var isUnicode =
+                    dotnetTypeDescriptor.IsUnicode == true
+                    || tableColumn.data_type.StartsWith(
+                        "varchar",
+                        StringComparison.OrdinalIgnoreCase
+                    )
+                    || tableColumn.data_type.StartsWith("char", StringComparison.OrdinalIgnoreCase)
+                    || tableColumn.data_type.StartsWith("text", StringComparison.OrdinalIgnoreCase);
+
                 var column = new DmColumn(
                     tableColumn.schema_name,
                     tableColumn.table_name,
@@ -507,6 +516,7 @@ public partial class MySqlMethods
                         StringComparison.OrdinalIgnoreCase
                     ) == true,
                     columnIsUniqueViaUniqueConstraintOrIndex,
+                    isUnicode,
                     columnIsPartOfIndex,
                     foreignKeyConstraint != null,
                     foreignKeyConstraint?.ReferencedTableName,

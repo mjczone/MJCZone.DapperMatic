@@ -193,6 +193,7 @@ public abstract partial class DatabaseMethodsBase
     /// <param name="isPrimaryKey">Indicates if the column is a primary key.</param>
     /// <param name="isAutoIncrement">Indicates if the column is auto-incremented.</param>
     /// <param name="isUnique">Indicates if the column is unique.</param>
+    /// <param name="isUnicode">Indicates if the column supports unicode characters.</param>
     /// <param name="isIndexed">Indicates if the column is indexed.</param>
     /// <param name="isForeignKey">Indicates if the column is a foreign key.</param>
     /// <param name="referencedTableName">The referenced table name for foreign key.</param>
@@ -218,6 +219,7 @@ public abstract partial class DatabaseMethodsBase
         bool isPrimaryKey = false,
         bool isAutoIncrement = false,
         bool isUnique = false,
+        bool isUnicode = false,
         bool isIndexed = false,
         bool isForeignKey = false,
         string? referencedTableName = null,
@@ -250,6 +252,7 @@ public abstract partial class DatabaseMethodsBase
                     isPrimaryKey,
                     isAutoIncrement,
                     isUnique,
+                    isUnicode,
                     isIndexed,
                     isForeignKey,
                     referencedTableName,

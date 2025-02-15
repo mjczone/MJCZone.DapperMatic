@@ -27,6 +27,7 @@ public sealed class DmColumnAttribute : Attribute
     ///     Defaults to false.
     /// </param>
     /// <param name="isUnique">A boolean value indicating whether the column must contain unique values. Defaults to false.</param>
+    /// <param name="isUnicode">A boolean value indicating whether the column explicitly supports unicode characters. Defaults to false.</param>
     /// <param name="isIndexed">A boolean value indicating whether the column is indexed for faster lookup and sorting operations. Defaults to false.</param>
     /// <param name="isForeignKey">
     ///     A boolean value indicating whether the column participates in a foreign key constraint referencing another table.
@@ -48,6 +49,7 @@ public sealed class DmColumnAttribute : Attribute
         bool isPrimaryKey = false,
         bool isAutoIncrement = false,
         bool isUnique = false,
+        bool isUnicode = false,
         bool isIndexed = false,
         bool isForeignKey = false,
         string? referencedTableName = null,
@@ -67,6 +69,7 @@ public sealed class DmColumnAttribute : Attribute
         IsPrimaryKey = isPrimaryKey;
         IsAutoIncrement = isAutoIncrement;
         IsUnique = isUnique;
+        IsUnicode = isUnicode;
         IsIndexed = isIndexed;
         IsForeignKey = isForeignKey;
         ReferencedTableName = referencedTableName;
@@ -130,6 +133,11 @@ public sealed class DmColumnAttribute : Attribute
     /// Gets a value indicating whether the column is unique.
     /// </summary>
     public bool IsUnique { get; }
+
+    /// <summary>
+    /// Gets or sets a value indicating whether the column explicitly supports unicode characters.
+    /// </summary>
+    public bool IsUnicode { get; set; }
 
     /// <summary>
     /// Gets a value indicating whether the column is indexed.

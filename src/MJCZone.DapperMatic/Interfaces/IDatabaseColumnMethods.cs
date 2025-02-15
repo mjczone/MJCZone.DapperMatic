@@ -41,6 +41,7 @@ public interface IDatabaseColumnMethods
     /// <param name="isPrimaryKey">Whether the column is a primary key.</param>
     /// <param name="isAutoIncrement">Whether the column is auto-incremented.</param>
     /// <param name="isUnique">Whether the column is unique.</param>
+    /// <param name="isUnicode">Whether the column supports unicode characters.</param>
     /// <param name="isIndexed">Whether the column is indexed.</param>
     /// <param name="isForeignKey">Whether the column is a foreign key.</param>
     /// <param name="referencedTableName">The referenced table name for the foreign key.</param>
@@ -66,6 +67,7 @@ public interface IDatabaseColumnMethods
         bool isPrimaryKey = false,
         bool isAutoIncrement = false,
         bool isUnique = false,
+        bool isUnicode = false,
         bool isIndexed = false,
         bool isForeignKey = false,
         string? referencedTableName = null,
