@@ -91,6 +91,16 @@ public partial class SqliteMethods
 
             foreach (var column in table.Columns)
             {
+                var providerDataType = column.GetProviderDataType(DbProviderType.Sqlite);
+
+                column.IsUnicode =
+                    providerDataType != null
+                    && (
+                        providerDataType.StartsWith("nvarchar", StringComparison.OrdinalIgnoreCase)
+                        || providerDataType.StartsWith("nchar", StringComparison.OrdinalIgnoreCase)
+                        || providerDataType.StartsWith("ntext", StringComparison.OrdinalIgnoreCase)
+                    );
+
                 column.IsIndexed = table.Indexes.Any(i =>
                     i.Columns.Any(c =>
                         c.ColumnName.Equals(column.ColumnName, StringComparison.OrdinalIgnoreCase)

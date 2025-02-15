@@ -294,15 +294,20 @@ public sealed class SqliteProviderTypeMap : DbProviderTypeMapBase<SqliteProvider
             var length = d.Length.GetValueOrDefault(255);
             if (length == int.MaxValue)
             {
+                // max is NOT supported by SQLite, instead, we'll can use the text type; however,
+                // using nvarchar and varchar gives DapperMatic a better chance of mapping the
+                // correct type when reading the schema
+                // we'll come up with an artificial length of 32767, which is the max length
+                // for nvarchar and varchar in SQL Server, for the time being
                 return d.IsUnicode == true
                     ? new(SqliteTypes.sql_nvarchar)
                     {
-                        SqlTypeName = "nvarchar(max)",
+                        SqlTypeName = "nvarchar(32767)",
                         Length = int.MaxValue,
                     }
                     : new(SqliteTypes.sql_varchar)
                     {
-                        SqlTypeName = "varchar(max)",
+                        SqlTypeName = "varchar(32767)",
                         Length = int.MaxValue,
                     };
             }

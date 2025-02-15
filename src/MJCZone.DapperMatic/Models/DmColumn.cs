@@ -31,6 +31,7 @@ public class DmColumn
     /// <param name="isPrimaryKey">Indicates whether the column is a primary key.</param>
     /// <param name="isAutoIncrement">Indicates whether the column is auto-incremented.</param>
     /// <param name="isUnique">Indicates whether the column is unique.</param>
+    /// <param name="isUnicode">Indicates whether the column explicitly supports unicode characters.</param>
     /// <param name="isIndexed">Indicates whether the column is indexed.</param>
     /// <param name="isForeignKey">Indicates whether the column is a foreign key.</param>
     /// <param name="referencedTableName">The referenced table name.</param>
@@ -53,6 +54,7 @@ public class DmColumn
         bool isPrimaryKey = false,
         bool isAutoIncrement = false,
         bool isUnique = false,
+        bool isUnicode = false,
         bool isIndexed = false,
         bool isForeignKey = false,
         string? referencedTableName = null,
@@ -75,6 +77,7 @@ public class DmColumn
         IsPrimaryKey = isPrimaryKey;
         IsAutoIncrement = isAutoIncrement;
         IsUnique = isUnique;
+        IsUnicode = isUnicode;
         IsIndexed = isIndexed;
         IsForeignKey = isForeignKey;
         ReferencedTableName = referencedTableName;

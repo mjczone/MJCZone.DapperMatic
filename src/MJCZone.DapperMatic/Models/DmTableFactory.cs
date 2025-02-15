@@ -304,6 +304,7 @@ public static class DmTableFactory
                 columnAttribute?.IsPrimaryKey ?? false,
                 columnAttribute?.IsAutoIncrement ?? false,
                 columnAttribute?.IsUnique ?? false,
+                columnAttribute?.IsUnicode ?? false,
                 columnAttribute?.IsIndexed ?? false,
                 columnAttribute?.IsForeignKey ?? false,
                 string.IsNullOrWhiteSpace(columnAttribute?.ReferencedTableName)

@@ -416,6 +416,18 @@ public partial class SqlServerMethods
 
                 var dotnetTypeDescriptor = GetDotnetTypeFromSqlType(tableColumn.data_type);
 
+                var isUnicode =
+                    dotnetTypeDescriptor.IsUnicode == true
+                    || tableColumn.data_type.StartsWith(
+                        "nvarchar",
+                        StringComparison.OrdinalIgnoreCase
+                    )
+                    || tableColumn.data_type.StartsWith("nchar", StringComparison.OrdinalIgnoreCase)
+                    || tableColumn.data_type.StartsWith(
+                        "ntext",
+                        StringComparison.OrdinalIgnoreCase
+                    );
+
                 var column = new DmColumn(
                     tableColumn.schema_name,
                     tableColumn.table_name,
@@ -456,6 +468,7 @@ public partial class SqlServerMethods
                         ),
                     tableColumn.is_identity,
                     columnIsUniqueViaUniqueConstraintOrIndex,
+                    isUnicode,
                     columnIsPartOfIndex,
                     foreignKeyConstraint != null,
                     foreignKeyConstraint?.ReferencedTableName,
