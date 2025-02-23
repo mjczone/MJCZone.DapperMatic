@@ -1,3 +1,5 @@
+using Microsoft.Extensions.Options;
+
 namespace MJCZone.DapperMatic.WebApi;
 
 /// <summary>
@@ -5,18 +7,15 @@ namespace MJCZone.DapperMatic.WebApi;
 /// </summary>
 public class ConnectionStringFileVault : IConnectionStringVault
 {
-    private readonly string _filePath;
-    private readonly string _encryptionKey;
+    private readonly IOptionsMonitor<DapperMaticOptions> _options;
 
     /// <summary>
     /// Initializes a new instance of the <see cref="ConnectionStringFileVault"/> class.
     /// </summary>
-    /// <param name="filePath">The path to the file containing the connection strings.</param>
-    /// <param name="encryptionKey">The encryption key used to encrypt/decrypt the connection strings.</param>
-    public ConnectionStringFileVault(string filePath, string encryptionKey)
+    /// <param name="options">The options for configuring DapperMatic.</param>
+    public ConnectionStringFileVault(IOptionsMonitor<DapperMaticOptions> options)
     {
-        _filePath = filePath;
-        _encryptionKey = encryptionKey;
+        _options = options;
     }
 
     /// <summary>
@@ -30,20 +29,26 @@ public class ConnectionStringFileVault : IConnectionStringVault
         CancellationToken cancellationToken = default
     )
     {
-        var filePath = EnsureFile(_filePath);
+        var encryptionKey = _options.CurrentValue.ConnectionStringEncryptionKey;
+        if (string.IsNullOrWhiteSpace(_options.CurrentValue.ConnectionStringsFilePath))
+        {
+            throw new ArgumentException("Connection strings file path cannot be null or empty.");
+        }
+        var filePath = EnsureFile(_options.CurrentValue.ConnectionStringsFilePath);
+
         var json = await File.ReadAllTextAsync(filePath, cancellationToken).ConfigureAwait(false);
         var connectionStrings = System.Text.Json.JsonSerializer.Deserialize<
             Dictionary<string, string>
-        >(json);
+        >(json, DapperMaticOptions.JsonSerializerOptions);
 
         if (
             connectionStrings != null
             && connectionStrings.TryGetValue(connectionStringName, out var connectionString)
         )
         {
-            if (!string.IsNullOrWhiteSpace(_encryptionKey))
+            if (!string.IsNullOrWhiteSpace(encryptionKey))
             {
-                connectionString = Crypto.Decrypt(connectionString, _encryptionKey);
+                connectionString = Crypto.Decrypt(connectionString, encryptionKey);
             }
             return connectionString;
         }
@@ -64,17 +69,23 @@ public class ConnectionStringFileVault : IConnectionStringVault
         CancellationToken cancellationToken = default
     )
     {
-        var filePath = EnsureFile(_filePath);
+        var encryptionKey = _options.CurrentValue.ConnectionStringEncryptionKey;
+        if (string.IsNullOrWhiteSpace(_options.CurrentValue.ConnectionStringsFilePath))
+        {
+            throw new ArgumentException("Connection strings file path cannot be null or empty.");
+        }
+        var filePath = EnsureFile(_options.CurrentValue.ConnectionStringsFilePath);
+
         var json = await File.ReadAllTextAsync(filePath, cancellationToken).ConfigureAwait(false);
         var connectionStrings = System.Text.Json.JsonSerializer.Deserialize<
             Dictionary<string, string>
-        >(json);
+        >(json, DapperMaticOptions.JsonSerializerOptions);
 
         connectionStrings ??= [];
 
-        if (!string.IsNullOrWhiteSpace(_encryptionKey))
+        if (!string.IsNullOrWhiteSpace(encryptionKey))
         {
-            connectionString = Crypto.Encrypt(connectionString, _encryptionKey);
+            connectionString = Crypto.Encrypt(connectionString, encryptionKey);
         }
 
         connectionStrings[connectionStringName] = connectionString;

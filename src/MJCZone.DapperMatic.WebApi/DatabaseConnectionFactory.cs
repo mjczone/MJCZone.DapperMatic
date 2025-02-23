@@ -68,20 +68,70 @@ public class DatabaseConnectionFactory : IDatabaseConnectionFactory
             );
         }
 
-        System.Data.Common.DbConnection connection = database.ProviderType switch
+        var providerType = database.ProviderType;
+
+        System.Data.Common.DbConnection connection = GetDbConnection(
+            connectionString,
+            providerType
+        );
+
+        await connection.OpenAsync(cancellationToken).ConfigureAwait(false);
+        return connection;
+    }
+
+    /// <summary>
+    /// Creates a new database connection based on the provided connection string and provider type.
+    /// </summary>
+    /// <param name="connectionString">The database connection string.</param>
+    /// <param name="providerType">The database provider type.</param>
+    /// <returns>A database connection.</returns>
+    internal static System.Data.Common.DbConnection GetDbConnection(
+        string connectionString,
+        DbProviderType? providerType
+    )
+    {
+        return providerType switch
         {
             DbProviderType.SqlServer
                 => new Microsoft.Data.SqlClient.SqlConnection(connectionString),
             DbProviderType.MySql => new MySql.Data.MySqlClient.MySqlConnection(connectionString),
             DbProviderType.PostgreSql => new Npgsql.NpgsqlConnection(connectionString),
-            DbProviderType.Sqlite => new System.Data.SQLite.SQLiteConnection(connectionString),
+            DbProviderType.Sqlite => GetSQLiteConnection(connectionString),
             _
                 => throw new NotSupportedException(
-                    $"The provider type {database.ProviderType} is not supported."
+                    $"The provider type {providerType} is not supported."
                 ),
         };
+    }
 
-        await connection.OpenAsync(cancellationToken).ConfigureAwait(false);
-        return connection;
+    private static System.Data.SQLite.SQLiteConnection GetSQLiteConnection(string connectionString)
+    {
+        var sqliteConnectionStringBuilder = new System.Data.SQLite.SQLiteConnectionStringBuilder(
+            connectionString
+        );
+        var ds = sqliteConnectionStringBuilder.DataSource;
+        if (!File.Exists(ds))
+        {
+            var dir = Path.GetDirectoryName(ds)!;
+            if (!Directory.Exists(dir))
+            {
+                Directory.CreateDirectory(dir);
+            }
+            System.Data.SQLite.SQLiteConnection.CreateFile(ds);
+        }
+        sqliteConnectionStringBuilder.ForeignKeys = true;
+        sqliteConnectionStringBuilder.BinaryGUID = false;
+        sqliteConnectionStringBuilder.DateTimeFormat = System.Data.SQLite.SQLiteDateFormats.ISO8601;
+        sqliteConnectionStringBuilder.JournalMode = System.Data.SQLite.SQLiteJournalModeEnum.Wal;
+        sqliteConnectionStringBuilder.SyncMode = System.Data.SQLite.SynchronizationModes.Full;
+        sqliteConnectionStringBuilder.CacheSize = 10000;
+        sqliteConnectionStringBuilder.PageSize = 4096;
+        sqliteConnectionStringBuilder.LegacyFormat = false;
+        sqliteConnectionStringBuilder.Pooling = true;
+        sqliteConnectionStringBuilder.DefaultTimeout = 30;
+        sqliteConnectionStringBuilder.FailIfMissing = false;
+        sqliteConnectionStringBuilder.ReadOnly = false;
+        sqliteConnectionStringBuilder.UseUTF16Encoding = false;
+        return new System.Data.SQLite.SQLiteConnection(connectionString);
     }
 }

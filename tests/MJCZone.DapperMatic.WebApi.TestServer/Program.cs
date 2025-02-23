@@ -1,6 +1,7 @@
 using System.Text;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.IdentityModel.Tokens;
+using MJCZone.DapperMatic.WebApi;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -20,6 +21,8 @@ builder
     });
 builder.Services.AddAuthorization();
 
+builder.Services.AddDapperMatic();
+
 var app = builder.Build();
 
 app.UseAuthentication();
@@ -27,6 +30,8 @@ app.UseAuthorization();
 
 app.MapGet("/secure-endpoint", () => "This is a secure endpoint").RequireAuthorization();
 app.MapGet("/public-endpoint", () => "This is a public endpoint");
+
+app.UseDapperMatic();
 
 app.Run();
 

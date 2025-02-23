@@ -1,4 +1,5 @@
 using Dapper;
+using MJCZone.DapperMatic.Models;
 using MJCZone.DapperMatic.WebApi.Tables;
 
 namespace MJCZone.DapperMatic.WebApi;
@@ -18,6 +19,25 @@ public class DatabaseRegistry : IDatabaseRegistry
     public DatabaseRegistry(IDatabaseRegistryConnectionFactory connectionFactory)
     {
         _registryConnectionFactory = connectionFactory;
+    }
+
+    /// <summary>
+    /// Initializes the database registry.
+    /// </summary>
+    /// <param name="cancellationToken">The cancellation token.</param>
+    /// <returns>A task that represents the asynchronous operation.</returns>
+    public async Task InitializeAsync(CancellationToken cancellationToken = default)
+    {
+        using var connection = await _registryConnectionFactory
+            .OpenConnectionAsync(cancellationToken)
+            .ConfigureAwait(false);
+
+        await connection
+            .CreateTablesIfNotExistsAsync(
+                [DmTableFactory.GetTable(typeof(web_databases))],
+                cancellationToken: cancellationToken
+            )
+            .ConfigureAwait(false);
     }
 
     /// <summary>
@@ -87,7 +107,7 @@ public class DatabaseRegistry : IDatabaseRegistry
         {
             var count = await connection
                 .ExecuteScalarAsync<int>(
-                    "SELECT count(id) FROM DatabaseEntries WHERE id = @Id"
+                    $"SELECT count(id) FROM {nameof(web_databases)} WHERE id = @Id"
                         + (
                             string.IsNullOrWhiteSpace(database.TenantIdentifier)
                                 ? " AND tenant_identifier IS NULL"
@@ -105,12 +125,32 @@ public class DatabaseRegistry : IDatabaseRegistry
             }
         }
 
+        // the name must be unique
+        var nameCount = await connection
+            .ExecuteScalarAsync<int>(
+                $"SELECT count(id) FROM {nameof(web_databases)} WHERE name = @Name"
+                    + (
+                        string.IsNullOrWhiteSpace(database.TenantIdentifier)
+                            ? " AND tenant_identifier IS NULL"
+                            : " AND tenant_identifier = @TenantIdentifier"
+                    ),
+                new { newDatabase.Name, newDatabase.TenantIdentifier }
+            )
+            .ConfigureAwait(false);
+
+        if (nameCount > 0)
+        {
+            throw new ArgumentException(
+                $"A database with the name {newDatabase.Name} already exists."
+            );
+        }
+
         // the slug must also be unique if set
         if (!string.IsNullOrWhiteSpace(newDatabase.Slug))
         {
             var count = await connection
                 .ExecuteScalarAsync<int>(
-                    "SELECT count(id) FROM DatabaseEntries WHERE slug = @Slug"
+                    $"SELECT count(id) FROM {nameof(web_databases)} WHERE slug = @Slug"
                         + (
                             string.IsNullOrWhiteSpace(database.TenantIdentifier)
                                 ? " AND tenant_identifier IS NULL"
@@ -132,8 +172,8 @@ public class DatabaseRegistry : IDatabaseRegistry
         // write universal sql to insert the database entry and map to
         // the web_databases table
         var sql =
-            @"
-            INSERT INTO web_databases (
+            $@"
+            INSERT INTO {nameof(web_databases)} (
                 id,
                 tenant_identifier,
                 name,
@@ -218,7 +258,7 @@ public class DatabaseRegistry : IDatabaseRegistry
             .OpenConnectionAsync(cancellationToken)
             .ConfigureAwait(false);
 
-        var sql = "DELETE FROM DatabaseEntries WHERE";
+        var sql = $"DELETE FROM {nameof(web_databases)} WHERE";
         if (Guid.TryParse(idOrSlug, out var id) && id != Guid.Empty)
         {
             sql += @" id = @Id";
@@ -279,7 +319,7 @@ public class DatabaseRegistry : IDatabaseRegistry
             .ConfigureAwait(false);
 
         var sql =
-            @"
+            $@"
             SELECT
                 id,
                 tenant_identifier,
@@ -296,7 +336,7 @@ public class DatabaseRegistry : IDatabaseRegistry
                 created_by,
                 updated_by
             FROM
-                web_databases
+                {nameof(web_databases)}
             WHERE";
         if (Guid.TryParse(idOrSlug, out var id) && id != Guid.Empty)
         {
@@ -383,7 +423,7 @@ public class DatabaseRegistry : IDatabaseRegistry
             .ConfigureAwait(false);
 
         var sql =
-            @"
+            $@"
             SELECT
                 id,
                 tenant_identifier,
@@ -400,7 +440,7 @@ public class DatabaseRegistry : IDatabaseRegistry
                 created_by,
                 updated_by
             FROM
-                web_databases
+                {nameof(web_databases)}
             WHERE";
         if (!string.IsNullOrWhiteSpace(tenantIdentifier))
         {
@@ -532,8 +572,8 @@ public class DatabaseRegistry : IDatabaseRegistry
         }
 
         var sql =
-            @"
-            UPDATE web_databases SET
+            $@"
+            UPDATE {nameof(web_databases)} SET
                 name = @Name,
                 slug = @Slug,
                 description = @Description,

@@ -2,6 +2,7 @@
 using Microsoft.AspNetCore.Builder;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
+using MJCZone.DapperMatic.WebApi.Handlers;
 
 [assembly: InternalsVisibleTo("MJCZone.DapperMatic.WebApi.Tests")]
 
@@ -19,7 +20,8 @@ public static class StartupExtensions
     /// <param name="configure">A delegate to configure <see cref="DapperMaticOptions"/>.</param>
     public static void AddDapperMatic(
         this IServiceCollection services,
-        Action<DapperMaticOptions>? configure = null)
+        Action<DapperMaticOptions>? configure = null
+    )
     {
         ArgumentNullException.ThrowIfNull(services);
 
@@ -51,6 +53,14 @@ public static class StartupExtensions
     public static WebApplication UseDapperMatic(this WebApplication app)
     {
         ArgumentNullException.ThrowIfNull(app);
+
+        // initialize the database registry
+        app.Services.GetRequiredService<IDatabaseRegistry>()
+            .InitializeAsync()
+            .GetAwaiter()
+            .GetResult();
+
+        app.AddDatabaseHandlers();
 
         return app;
     }

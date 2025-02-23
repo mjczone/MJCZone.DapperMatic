@@ -11,7 +11,10 @@ internal class FileReader
         var serializer = new XmlSerializer(typeof(XmlDoc));
         using var reader = new StreamReader(path);
         var doc = (XmlDoc?)serializer.Deserialize(reader);
-        return doc ?? throw new InvalidOperationException($"The xml file {path} was not deserialized correctly");
+        return doc
+            ?? throw new InvalidOperationException(
+                $"The xml file {path} was not deserialized correctly"
+            );
     }
 
     public static Assembly ReadAssembly(string path) => Assembly.LoadFile(path);

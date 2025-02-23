@@ -1,4 +1,5 @@
-using MJCZone.DapperMatic.WebApi;
+using Microsoft.Extensions.Options;
+using Moq;
 
 namespace MJCZone.DapperMatic.WebApi.Tests.Vaults;
 
@@ -10,40 +11,49 @@ public class ConnectionStringFileVaultTests : IDisposable
 
     public ConnectionStringFileVaultTests()
     {
-        _vault = new ConnectionStringFileVault(_testFilePath, _testEncryptionKey);
+        var options = new DapperMaticOptions
+        {
+            ConnectionStringEncryptionKey = _testEncryptionKey,
+            ConnectionStringsFilePath = _testFilePath
+        };
+        var monitor = Mock.Of<IOptionsMonitor<DapperMaticOptions>>(_ => _.CurrentValue == options);
+        _vault = new ConnectionStringFileVault(monitor);
     }
 
     [Fact]
-    public void GetConnectionString_ReturnsCorrectConnectionString()
+    public async Task GetConnectionString_ReturnsCorrectConnectionString()
     {
         // Arrange
         var connectionStringName = "TestConnection";
         var connectionStringValue = "Server=myServer;Database=myDB;User Id=myUser;Password=myPass;";
         var encryptedValue = Crypto.Encrypt(connectionStringValue, _testEncryptionKey);
-        File.WriteAllText(_testFilePath, $"{{\"{connectionStringName}\": \"{encryptedValue}\"}}");
+        await File.WriteAllTextAsync(
+            _testFilePath,
+            $"{{\"{connectionStringName}\": \"{encryptedValue}\"}}"
+        );
 
         // Act
-        var result = _vault.GetConnectionString(connectionStringName);
+        var result = await _vault.GetConnectionStringAsync(connectionStringName);
 
         // Assert
         Assert.Equal(connectionStringValue, result);
     }
 
     [Fact]
-    public void SetConnectionString_SavesEncryptedConnectionString()
+    public async Task SetConnectionString_SavesEncryptedConnectionString()
     {
         // Arrange
         var connectionStringName = "TestConnection";
         var connectionStringValue = "Server=myServer;Database=myDB;User Id=myUser;Password=myPass;";
 
         // Act
-        _vault.SetConnectionStringAsync(connectionStringName, connectionStringValue);
+        await _vault.SetConnectionStringAsync(connectionStringName, connectionStringValue);
 
         // Assert
-        var json = File.ReadAllText(_testFilePath);
+        var json = await File.ReadAllTextAsync(_testFilePath);
         var connectionStrings = System.Text.Json.JsonSerializer.Deserialize<
             Dictionary<string, string>
-        >(json);
+        >(json, DapperMaticOptions.JsonSerializerOptions);
         if (connectionStrings == null)
         {
             Assert.Fail("Connection strings dictionary is null.");
@@ -60,13 +70,13 @@ public class ConnectionStringFileVaultTests : IDisposable
     }
 
     [Fact]
-    public void GetConnectionString_ReturnsNullIfNotFound()
+    public async Task GetConnectionString_ReturnsNullIfNotFound()
     {
         // Arrange
         var connectionStringName = "NonExistentConnection";
 
         // Act
-        var result = _vault.GetConnectionString(connectionStringName);
+        var result = await _vault.GetConnectionStringAsync(connectionStringName);
 
         // Assert
         Assert.Null(result);

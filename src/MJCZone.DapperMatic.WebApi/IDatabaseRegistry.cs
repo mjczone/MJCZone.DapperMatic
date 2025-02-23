@@ -6,6 +6,13 @@ namespace MJCZone.DapperMatic.WebApi;
 public interface IDatabaseRegistry
 {
     /// <summary>
+    /// Initializes the database registry.
+    /// </summary>
+    /// <param name="cancellationToken">The cancellation token.</param>
+    /// <returns>A task that represents the asynchronous operation.</returns>
+    Task InitializeAsync(CancellationToken cancellationToken = default);
+
+    /// <summary>
     /// Adds a new database.
     /// </summary>
     /// <param name="database">The database to add.</param>
