@@ -15,6 +15,17 @@ public class DapperMaticOptions
     public const string SectionName = "DapperMatic";
 
     /// <summary>
+    /// Gets the default name of the connection strings vault.
+    /// </summary>
+    public const string DefaultDapperMaticConnectionStringsVaultName = "LocalFile";
+
+    /// <summary>
+    /// Gets the default name of the connection strings vault file.
+    /// </summary>
+    public const string DefaultDapperMaticConnectionStringsVaultFileName =
+        "../data/dappermatic-connection-strings.json";
+
+    /// <summary>
     /// Gets the JSON serializer options for DapperMatic.
     /// </summary>
     internal static readonly JsonSerializerOptions? JsonSerializerOptions =
@@ -38,7 +49,7 @@ public class DapperMaticOptions
                     EncryptionKey = "replace-with-your-encryption-key!",
                     Settings = new Dictionary<string, object?>
                     {
-                        { "FileName", "../data/dappermatic-connection-strings.json" },
+                        { "FileName", DefaultDapperMaticConnectionStringsVaultFileName },
                     },
                 }
             },
@@ -77,7 +88,7 @@ public class DapperMaticOptions
                 }
             },
         };
-        DefaultConnectionStringsVaultName = "LocalFile";
+        DefaultConnectionStringsVaultName = DefaultDapperMaticConnectionStringsVaultName;
 
         // Populate the default database registry options
         DatabaseRegistry = new DatabaseRegistryOptions

@@ -28,16 +28,8 @@ public static class JwtTokenGenerator
 
         var tokenDescriptor = new SecurityTokenDescriptor
         {
-            Subject = new ClaimsIdentity(
-                new[]
-                {
-                    new Claim(ClaimTypes.Name, "TestUser"),
-                    new Claim(ClaimTypes.Role, "Admin") // Add roles if needed
-                }
-            ),
-
+            Subject = new ClaimsIdentity(claims),
             Expires = DateTime.UtcNow.AddHours(1),
-
             SigningCredentials = new SigningCredentials(
                 new SymmetricSecurityKey(key),
                 SecurityAlgorithms.HmacSha256Signature
