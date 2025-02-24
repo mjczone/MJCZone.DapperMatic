@@ -1,27 +1,11 @@
-using System.Data;
 using System.Net;
 using System.Net.Http.Headers;
-using Dapper;
 using MJCZone.DapperMatic.WebApi.Handlers;
 using MJCZone.DapperMatic.WebApi.Models;
 using MJCZone.DapperMatic.WebApi.TestServer;
 using Xunit.Abstractions;
-using static Dapper.SqlMapper;
 
 namespace MJCZone.DapperMatic.WebApi.Tests.Apis;
-
-class GuidHandler : ITypeHandler
-{
-    public object? Parse(Type destinationType, object value)
-    {
-        return Guid.Parse((string)value);
-    }
-
-    public void SetValue(IDbDataParameter parameter, object value)
-    {
-        parameter.Value = value.ToString();
-    }
-}
 
 public class DatabaseApiTests : IClassFixture<WebApiTestFactory>
 {
@@ -36,8 +20,7 @@ public class DatabaseApiTests : IClassFixture<WebApiTestFactory>
         _output = output;
 
         Directory.CreateDirectory(@"..\data");
-
-        SqlMapper.AddTypeHandler(typeof(Guid), new GuidHandler());
+        Dapper.SqlMapper.AddTypeHandler(typeof(Guid), new GuidHandler());
     }
 
     [Fact]
@@ -69,7 +52,7 @@ public class DatabaseApiTests : IClassFixture<WebApiTestFactory>
     }
 
     [Fact]
-    public async Task DatabaeApi_CanAddDatabase()
+    public async Task DatabaseApi_CanAddDatabase()
     {
         var request = new HttpRequestMessage(HttpMethod.Post, "/api/dappermatic/databases");
         request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", _token); // Add token to request
@@ -78,6 +61,7 @@ public class DatabaseApiTests : IClassFixture<WebApiTestFactory>
         var databaseEntry = new DatabaseEntry
         {
             Name = "TestDatabase-" + nameExt,
+            ConnectionStringVaultName = "LocalFile",
             ConnectionStringName =
                 "Data Source=../data/dappermatic-databases.db;Version=3;BinaryGUID=False;",
             ProviderType = DbProviderType.Sqlite,

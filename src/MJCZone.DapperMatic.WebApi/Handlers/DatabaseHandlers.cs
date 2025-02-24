@@ -71,6 +71,7 @@ public static class DatabaseHandlers
             .WithDisplayName("Get Databases")
             .WithSummary("Retrieves a list of databases.")
             .WithTags("DapperMatic")
+            .WithGroupName("Databases")
             .Produces<DatabasesResponse>()
             .Produces(StatusCodes.Status404NotFound)
             .RequireAuthorization();
@@ -112,6 +113,7 @@ public static class DatabaseHandlers
             .WithDisplayName("Get Database")
             .WithSummary("Retrieves a specific database by ID or Slug.")
             .WithTags("DapperMatic")
+            .WithGroupName("Databases")
             .Produces<DatabaseResponse>()
             .Produces(StatusCodes.Status404NotFound)
             .RequireAuthorization();
@@ -163,6 +165,7 @@ public static class DatabaseHandlers
             .WithDisplayName("Add Database")
             .WithSummary("Adds a new database.")
             .WithTags("DapperMatic")
+            .WithGroupName("Databases")
             .Produces<DatabaseResponse>()
             .Produces(StatusCodes.Status404NotFound)
             .RequireAuthorization();
@@ -229,6 +232,7 @@ public static class DatabaseHandlers
             .WithDisplayName("Update Database")
             .WithSummary("Updates an existing database by ID or Slug.")
             .WithTags("DapperMatic")
+            .WithGroupName("Databases")
             .Produces<DatabaseResponse>()
             .Produces(StatusCodes.Status404NotFound)
             .RequireAuthorization();
@@ -273,6 +277,7 @@ public static class DatabaseHandlers
             .WithDisplayName("Delete Database")
             .WithSummary("Deletes a specific database by ID or Slug.")
             .WithTags("DapperMatic")
+            .WithGroupName("Databases")
             .Produces(StatusCodes.Status200OK)
             .Produces(StatusCodes.Status404NotFound)
             .RequireAuthorization();
@@ -316,42 +321,4 @@ public static class DatabaseHandlers
             ? null
             : FilterDatabases(httpContext, [retrieved]).FirstOrDefault();
     }
-}
-
-/// <summary>
-/// Represents a response containing a list of databases.
-/// </summary>
-public class DatabasesResponse : ApiResponse<List<DatabaseEntry>>
-{
-    /// <summary>
-    /// Initializes a new instance of the <see cref="DatabasesResponse"/> class.
-    /// </summary>
-    public DatabasesResponse()
-        : base([], null) { }
-
-    /// <summary>
-    /// Initializes a new instance of the <see cref="DatabasesResponse"/> class.
-    /// </summary>
-    /// <param name="data">The list of databases.</param>
-    public DatabasesResponse(List<DatabaseEntry> data)
-        : base(data, null) { }
-}
-
-/// <summary>
-/// Represents a response containing a list of databases.
-/// </summary>
-public class DatabaseResponse : ApiResponse<DatabaseEntry>
-{
-    /// <summary>
-    /// Initializes a new instance of the <see cref="DatabaseResponse"/> class.
-    /// </summary>
-    public DatabaseResponse()
-        : base(new DatabaseEntry(), null) { }
-
-    /// <summary>
-    /// Initializes a new instance of the <see cref="DatabaseResponse"/> class.
-    /// </summary>
-    /// <param name="data">The list of databases.</param>
-    public DatabaseResponse(DatabaseEntry data)
-        : base(data) { }
 }

@@ -85,6 +85,11 @@ public class DatabaseRegistry : IDatabaseRegistry
                 : database.Description.Trim(),
             Slug = string.IsNullOrWhiteSpace(database.Slug) ? null : database.Slug,
             ProviderType = database.ProviderType!,
+            ConnectionStringVaultName = string.IsNullOrWhiteSpace(
+                database.ConnectionStringVaultName
+            )
+                ? null
+                : database.ConnectionStringVaultName.Trim(),
             ConnectionStringName = string.IsNullOrWhiteSpace(database.ConnectionStringName)
                 ? $"CS_{Guid.NewGuid():N}"
                 : database.ConnectionStringName.Trim(),
@@ -180,6 +185,7 @@ public class DatabaseRegistry : IDatabaseRegistry
                 slug,
                 description,
                 provider_type,
+                connection_string_vault_name,
                 connection_string_name,
                 execution_roles,
                 management_roles,
@@ -195,6 +201,7 @@ public class DatabaseRegistry : IDatabaseRegistry
                 @Slug,
                 @Description,
                 @ProviderType,
+                @ConnectionStringVaultName,
                 @ConnectionStringName,
                 @ExecutionRoles,
                 @ManagementRoles,
@@ -216,6 +223,7 @@ public class DatabaseRegistry : IDatabaseRegistry
                     newDatabase.Slug,
                     newDatabase.Description,
                     ProviderType = newDatabase.ProviderType!.ToString()!.ToLowerInvariant(),
+                    newDatabase.ConnectionStringVaultName,
                     newDatabase.ConnectionStringName,
                     ExecutionRoles = string.Join(';', newDatabase.ExecutionRoles ?? []),
                     ManagementRoles = string.Join(';', newDatabase.ManagementRoles ?? []),
@@ -380,6 +388,7 @@ public class DatabaseRegistry : IDatabaseRegistry
             Slug = database.slug,
             Description = database.description,
             ProviderType = Enum.Parse<DbProviderType>(database.provider_type, true),
+            ConnectionStringVaultName = database.connection_string_vault_name,
             ConnectionStringName = database.connection_string_name,
             ExecutionRoles =
                 database
@@ -431,6 +440,7 @@ public class DatabaseRegistry : IDatabaseRegistry
                 slug,
                 description,
                 provider_type,
+                connection_string_vault_name,
                 connection_string_name,
                 execution_roles,
                 management_roles,
@@ -464,6 +474,11 @@ public class DatabaseRegistry : IDatabaseRegistry
             Slug = database.slug,
             Description = database.description,
             ProviderType = Enum.Parse<DbProviderType>(database.provider_type, true),
+            ConnectionStringVaultName = string.IsNullOrWhiteSpace(
+                database.connection_string_vault_name
+            )
+                ? null
+                : database.connection_string_vault_name,
             ConnectionStringName = database.connection_string_name,
             ExecutionRoles =
                 database
@@ -549,6 +564,10 @@ public class DatabaseRegistry : IDatabaseRegistry
             // we'll allow it for now, but let's monitor the usage
             existingDatabase.ProviderType = database.ProviderType;
         }
+        if (!string.IsNullOrWhiteSpace(database.ConnectionStringVaultName))
+        {
+            existingDatabase.ConnectionStringVaultName = database.ConnectionStringVaultName;
+        }
         if (!string.IsNullOrWhiteSpace(database.ConnectionStringName))
         {
             existingDatabase.ConnectionStringName = database.ConnectionStringName;
@@ -578,6 +597,7 @@ public class DatabaseRegistry : IDatabaseRegistry
                 slug = @Slug,
                 description = @Description,
                 provider_type = @ProviderType,
+                connection_string_vault_name = @ConnectionStringVaultName,
                 connection_string_name = @ConnectionStringName,
                 execution_roles = @ExecutionRoles,
                 management_roles = @ManagementRoles,
@@ -600,6 +620,7 @@ public class DatabaseRegistry : IDatabaseRegistry
                     existingDatabase.Slug,
                     existingDatabase.Description,
                     ProviderType = existingDatabase.ProviderType!.ToString()!.ToLowerInvariant(),
+                    existingDatabase.ConnectionStringVaultName,
                     existingDatabase.ConnectionStringName,
                     ExecutionRoles = string.Join(';', existingDatabase.ExecutionRoles ?? []),
                     ManagementRoles = string.Join(';', existingDatabase.ManagementRoles ?? []),

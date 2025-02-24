@@ -1,3 +1,5 @@
+using Microsoft.Extensions.Options;
+
 namespace MJCZone.DapperMatic.WebApi;
 
 /// <summary>
@@ -5,21 +7,25 @@ namespace MJCZone.DapperMatic.WebApi;
 /// </summary>
 public class DatabaseConnectionFactory : IDatabaseConnectionFactory
 {
-    private readonly IConnectionStringVault _connectionStringVault;
+    private readonly IEnumerable<IConnectionStringsVaultFactory> _connectionStringsVaultFactories;
+    private readonly IOptionsMonitor<DapperMaticOptions> _optionsMonitor;
     private readonly IDatabaseRegistry _databaseRegistry;
 
     /// <summary>
     /// Initializes a new instance of the <see cref="DatabaseConnectionFactory"/> class.
     /// </summary>
-    /// <param name="connectionStringVault">The vault containing the connection strings.</param>
+    /// <param name="connectionStringsVaultFactories">The connection strings vault factories.</param>
+    /// <param name="optionsMonitor">The options monitor.</param>
     /// <param name="databaseRegistry">The database registry containing databases.</param>
     public DatabaseConnectionFactory(
-        IConnectionStringVault connectionStringVault,
+        IEnumerable<IConnectionStringsVaultFactory> connectionStringsVaultFactories,
+        IOptionsMonitor<DapperMaticOptions> optionsMonitor,
         IDatabaseRegistry databaseRegistry
     )
     {
-        this._connectionStringVault = connectionStringVault;
-        this._databaseRegistry = databaseRegistry;
+        _connectionStringsVaultFactories = connectionStringsVaultFactories;
+        _optionsMonitor = optionsMonitor;
+        _databaseRegistry = databaseRegistry;
     }
 
     /// <summary>
@@ -54,11 +60,55 @@ public class DatabaseConnectionFactory : IDatabaseConnectionFactory
             throw new ArgumentException("Connection string name cannot be null or empty.");
         }
 
-        var connectionString = await this
-            ._connectionStringVault.GetConnectionStringAsync(
-                database.ConnectionStringName,
-                cancellationToken
+        var connectionStringVaultName = !string.IsNullOrWhiteSpace(
+            database.ConnectionStringVaultName
+        )
+            ? database.ConnectionStringVaultName
+            : _optionsMonitor.CurrentValue.DefaultConnectionStringsVaultName;
+
+        if (string.IsNullOrWhiteSpace(connectionStringVaultName))
+        {
+            throw new ArgumentException("Connection string vault name cannot be null or empty.");
+        }
+
+        var connectionStringsVaultOptions =
+            _optionsMonitor
+                .CurrentValue.ConnectionStringsVaults?.FirstOrDefault(x =>
+                    x.Key.Equals(connectionStringVaultName, StringComparison.OrdinalIgnoreCase)
+                )
+                .Value ?? null;
+
+        if (
+            connectionStringsVaultOptions == null
+            || string.IsNullOrWhiteSpace(connectionStringsVaultOptions.FactoryName)
+        )
+        {
+            throw new ArgumentException(
+                $"Connection strings vault options for {connectionStringVaultName} not found."
+            );
+        }
+
+        var connectionStringsVaultFactory = _connectionStringsVaultFactories.FirstOrDefault(x =>
+            x.Name.Equals(
+                connectionStringsVaultOptions.FactoryName,
+                StringComparison.OrdinalIgnoreCase
             )
+        );
+
+        if (connectionStringsVaultFactory == null)
+        {
+            throw new ArgumentException(
+                $"Connection strings vault factory for {connectionStringsVaultOptions.FactoryName} not found."
+            );
+        }
+
+        var connectionStringsVault = connectionStringsVaultFactory.Create(
+            connectionStringVaultName,
+            connectionStringsVaultOptions
+        );
+
+        var connectionString = await connectionStringsVault
+            .GetConnectionStringAsync(database.ConnectionStringName, cancellationToken)
             .ConfigureAwait(false);
 
         if (string.IsNullOrWhiteSpace(connectionString))

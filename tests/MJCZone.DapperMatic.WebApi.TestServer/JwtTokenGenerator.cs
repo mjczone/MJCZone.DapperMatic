@@ -8,11 +8,23 @@ namespace MJCZone.DapperMatic.WebApi.TestServer;
 
 public static class JwtTokenGenerator
 {
-    public static string GenerateTestToken()
+    public static string GenerateTestToken(string roles = "")
     {
         var tokenHandler = new JwtSecurityTokenHandler();
 
         var key = Encoding.UTF8.GetBytes(Program.TestKey);
+
+        var claims = new List<Claim> { new Claim(ClaimTypes.Name, "TestUser") };
+        if (!string.IsNullOrEmpty(roles))
+        {
+            var roleClaims = roles
+                .Split(
+                    [',', ';', ' '],
+                    StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries
+                )
+                .Select(role => new Claim(ClaimTypes.Role, role));
+            claims.AddRange(roleClaims);
+        }
 
         var tokenDescriptor = new SecurityTokenDescriptor
         {

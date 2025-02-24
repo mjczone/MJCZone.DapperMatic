@@ -6,6 +6,7 @@ namespace MJCZone.DapperMatic.WebApi.Tables;
 /// <summary>
 /// Represents a web database entity.
 /// </summary>
+[DmTable("web_databases")]
 [DmIndex(true, nameof(tenant_identifier), nameof(name))]
 // Slug is not required, and must only be unique in the tenant scope WHEN provided,
 // which is why we are not making the slug a unique index, just keep this in mind.
@@ -47,6 +48,12 @@ public class web_databases
     /// </summary>
     [StringLength(128)]
     public string provider_type { get; set; } = string.Empty;
+
+    /// <summary>
+    /// Gets or sets the name of the connection string vault.
+    /// </summary>
+    [StringLength(256)]
+    public string? connection_string_vault_name { get; set; }
 
     /// <summary>
     /// Gets or sets the name of the connection string.

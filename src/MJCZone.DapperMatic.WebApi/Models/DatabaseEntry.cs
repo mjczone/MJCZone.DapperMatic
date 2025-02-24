@@ -48,6 +48,11 @@ public class DatabaseEntry
     public DbProviderType? ProviderType { get; set; }
 
     /// <summary>
+    /// Gets or sets the connection string vault name for the database.
+    /// </summary>
+    public string? ConnectionStringVaultName { get; set; }
+
+    /// <summary>
     /// Gets or sets the connection string name for the database.
     /// </summary>
     public string? ConnectionStringName { get; set; }

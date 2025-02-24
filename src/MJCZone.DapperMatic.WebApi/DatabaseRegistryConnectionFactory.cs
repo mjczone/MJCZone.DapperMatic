@@ -28,8 +28,8 @@ public class DatabaseRegistryConnectionFactory : IDatabaseRegistryConnectionFact
         CancellationToken cancellationToken = default
     )
     {
-        var connectionString = _options.CurrentValue.DatabaseRegistryConnectionString;
-        var providerType = _options.CurrentValue.DatabaseRegistryProviderType;
+        var connectionString = _options.CurrentValue.DatabaseRegistry?.ConnectionString;
+        var providerType = _options.CurrentValue.DatabaseRegistry?.ProviderType;
 
         if (string.IsNullOrWhiteSpace(connectionString))
         {

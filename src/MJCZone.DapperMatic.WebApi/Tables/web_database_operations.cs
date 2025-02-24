@@ -1,8 +1,11 @@
+using MJCZone.DapperMatic.DataAnnotations;
+
 namespace MJCZone.DapperMatic.WebApi.Tables;
 
 /// <summary>
 /// Represents a web database operation entity.
 /// </summary>
+[DmTable("web_database_operations")]
 public class web_database_operations
 {
     /// <summary>

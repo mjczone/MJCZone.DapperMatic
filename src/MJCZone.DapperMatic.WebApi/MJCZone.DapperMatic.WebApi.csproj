@@ -13,6 +13,7 @@
 
   <ItemGroup>
     <PackageReference Include="BouncyCastle.Cryptography" Version="2.5.1" />
+    <PackageReference Include="JsonFlatFileDataStore" Version="2.4.2" />
     <PackageReference Include="Microsoft.Data.SqlClient" Version="6.0.1" />
     <PackageReference Include="MJCZone.DapperMatic" Version="0.0.11" />
     <PackageReference Include="MySql.Data" Version="9.2.0" />

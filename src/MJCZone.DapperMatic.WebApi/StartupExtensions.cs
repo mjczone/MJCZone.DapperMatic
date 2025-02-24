@@ -1,4 +1,5 @@
 ﻿using System.Runtime.CompilerServices;
+using Dapper;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
@@ -25,7 +26,13 @@ public static class StartupExtensions
     {
         ArgumentNullException.ThrowIfNull(services);
 
-        services.TryAddSingleton<IConnectionStringVault, ConnectionStringFileVault>();
+        SqlMapper.AddTypeHandler(typeof(Guid), new GuidHandler());
+
+        services.AddSingleton<IConnectionStringsVaultFactory, ConnectionStringsFileVaultFactory>();
+        services.AddSingleton<
+            IConnectionStringsVaultFactory,
+            ConnectionStringsDatabaseVaultFactory
+        >();
         services.TryAddSingleton<IDatabaseRegistry, DatabaseRegistry>();
         services.TryAddSingleton<
             IDatabaseRegistryConnectionFactory,
@@ -61,7 +68,35 @@ public static class StartupExtensions
             .GetResult();
 
         app.AddDatabaseHandlers();
+        app.AddConnectionStringsHandlers();
 
         return app;
+    }
+}
+
+/// <summary>
+/// Represents a type handler for <see cref="Guid"/>.
+/// </summary>
+public class GuidHandler : SqlMapper.ITypeHandler
+{
+    /// <summary>
+    /// Converts the value to a <see cref="Guid"/>.
+    /// </summary>
+    /// <param name="destinationType">The type to convert to.</param>
+    /// <param name="value">The value to convert.</param>
+    /// <returns>The converted value.</returns>
+    public object? Parse(Type destinationType, object value)
+    {
+        return Guid.Parse((string)value);
+    }
+
+    /// <summary>
+    /// Sets the value of a parameter.
+    /// </summary>
+    /// <param name="parameter">The parameter to set the value of.</param>
+    /// <param name="value">The value to set.</param>
+    public void SetValue(IDbDataParameter parameter, object value)
+    {
+        parameter.Value = value.ToString();
     }
 }
