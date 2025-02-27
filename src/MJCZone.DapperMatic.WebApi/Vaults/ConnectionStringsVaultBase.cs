@@ -1,6 +1,8 @@
 ﻿using System.Collections.Concurrent;
 
-namespace MJCZone.DapperMatic.WebApi;
+using MJCZone.DapperMatic.WebApi.Options;
+
+namespace MJCZone.DapperMatic.WebApi.Vaults;
 
 /// <summary>
 /// Provides a base class for connection string vaults.

@@ -4,6 +4,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
 using MJCZone.DapperMatic.WebApi.HandlerTypes;
+using MJCZone.DapperMatic.WebApi.Options;
 
 namespace MJCZone.DapperMatic.WebApi.Handlers;
 

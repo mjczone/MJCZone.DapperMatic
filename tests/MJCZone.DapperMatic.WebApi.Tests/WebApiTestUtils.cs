@@ -1,4 +1,5 @@
 using System.Net.Http.Headers;
+using MJCZone.DapperMatic.WebApi.Options;
 using MJCZone.DapperMatic.WebApi.TestServer;
 
 namespace MJCZone.DapperMatic.WebApi.Tests;

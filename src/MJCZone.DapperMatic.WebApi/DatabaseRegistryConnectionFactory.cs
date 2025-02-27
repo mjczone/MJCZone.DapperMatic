@@ -1,5 +1,7 @@
 using Microsoft.Extensions.Options;
 
+using MJCZone.DapperMatic.WebApi.Options;
+
 namespace MJCZone.DapperMatic.WebApi;
 
 /// <summary>

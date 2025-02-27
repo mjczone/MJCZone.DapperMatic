@@ -1,8 +1,9 @@
 using System.Data.SQLite;
 using System.Text.Json;
+
 using Microsoft.Extensions.Options;
 
-namespace MJCZone.DapperMatic.WebApi;
+namespace MJCZone.DapperMatic.WebApi.Options;
 
 /// <summary>
 /// Represents the options for configuring DapperMatic.

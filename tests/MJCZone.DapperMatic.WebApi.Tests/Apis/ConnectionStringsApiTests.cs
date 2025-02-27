@@ -1,8 +1,7 @@
 using System.Net;
-using System.Net.Http.Headers;
-using MJCZone.DapperMatic.WebApi.Handlers;
 using MJCZone.DapperMatic.WebApi.HandlerTypes;
-using MJCZone.DapperMatic.WebApi.TestServer;
+using MJCZone.DapperMatic.WebApi.Options;
+using MJCZone.DapperMatic.WebApi.Vaults;
 using Xunit.Abstractions;
 
 namespace MJCZone.DapperMatic.WebApi.Tests.Apis;

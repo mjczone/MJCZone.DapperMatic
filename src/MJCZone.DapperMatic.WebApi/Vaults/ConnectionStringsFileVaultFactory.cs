@@ -1,4 +1,6 @@
-namespace MJCZone.DapperMatic.WebApi;
+using MJCZone.DapperMatic.WebApi.Options;
+
+namespace MJCZone.DapperMatic.WebApi.Vaults;
 
 /// <summary>
 /// Provides functionality to create instances of connection string vaults from a file.

@@ -1,4 +1,4 @@
-namespace MJCZone.DapperMatic.WebApi;
+namespace MJCZone.DapperMatic.WebApi.Vaults;
 
 /// <summary>
 /// Provides methods to resolve and manage connection strings.

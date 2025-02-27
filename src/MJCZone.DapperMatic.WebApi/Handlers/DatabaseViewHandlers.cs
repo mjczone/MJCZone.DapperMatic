@@ -4,6 +4,8 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
 using MJCZone.DapperMatic.Models;
+using MJCZone.DapperMatic.WebApi.HandlerTypes;
+using MJCZone.DapperMatic.WebApi.Options;
 
 namespace MJCZone.DapperMatic.WebApi.Handlers;
 
@@ -32,12 +34,18 @@ public static class DatabaseViewHandlers
                     [FromServices] IDatabaseRegistry databaseRegistry,
                     [FromServices] IDatabaseConnectionFactory databaseConnectionFactory,
                     [FromRoute] string databaseIdOrSlug,
-                    [FromRoute] string schemaName,
+                    [FromRoute] string? schemaName,
                     [FromQuery] string? filter = null,
                     [FromQuery] bool expanded = false,
                     CancellationToken cancellationToken = default
                 ) =>
                 {
+                    if (string.IsNullOrWhiteSpace(schemaName) || schemaName == "_")
+                    {
+                        // force using default schema if not specified
+                        schemaName = null;
+                    }
+
                     if (!filter.ValidateFilterExpression())
                     {
                         return Results.BadRequest("The filter expression is invalid.");
@@ -112,11 +120,17 @@ public static class DatabaseViewHandlers
                     [FromServices] IDatabaseRegistry databaseRegistry,
                     [FromServices] IDatabaseConnectionFactory databaseConnectionFactory,
                     [FromRoute] string databaseIdOrSlug,
-                    [FromRoute] string schemaName,
+                    [FromRoute] string? schemaName,
                     [FromRoute] string viewName,
                     CancellationToken cancellationToken = default
                 ) =>
                 {
+                    if (string.IsNullOrWhiteSpace(schemaName) || schemaName == "_")
+                    {
+                        // force using default schema if not specified
+                        schemaName = null;
+                    }
+
                     var database = await DatabaseHandlers
                         .GetDatabaseAsync(
                             context,
@@ -167,11 +181,17 @@ public static class DatabaseViewHandlers
                     [FromServices] IDatabaseRegistry databaseRegistry,
                     [FromServices] IDatabaseConnectionFactory databaseConnectionFactory,
                     [FromRoute] string databaseIdOrSlug,
-                    [FromRoute] string schemaName,
+                    [FromRoute] string? schemaName,
                     [FromBody] CreateViewRequest request,
                     CancellationToken cancellationToken = default
                 ) =>
                 {
+                    if (string.IsNullOrWhiteSpace(schemaName) || schemaName == "_")
+                    {
+                        // force using default schema if not specified
+                        schemaName = null;
+                    }
+
                     if (string.IsNullOrWhiteSpace(request.ViewName))
                     {
                         return Results.BadRequest("The view name is required.");
@@ -260,7 +280,7 @@ public static class DatabaseViewHandlers
                     return view is null
                         ? Results.BadRequest("Failed to create view.")
                         : Results.Created(
-                            $"{prefix}/databases/{databaseIdOrSlug}/schemas/{schemaName}/views/{newView.ViewName}",
+                            $"{prefix}/databases/{databaseIdOrSlug}/schemas/{schemaName ?? "_"}/views/{newView.ViewName}",
                             new ViewResponse(view)
                         );
                 }
@@ -285,11 +305,17 @@ public static class DatabaseViewHandlers
                     [FromServices] IDatabaseRegistry databaseRegistry,
                     [FromServices] IDatabaseConnectionFactory databaseConnectionFactory,
                     [FromRoute] string databaseIdOrSlug,
-                    [FromRoute] string schemaName,
+                    [FromRoute] string? schemaName,
                     [FromRoute] string viewName,
                     CancellationToken cancellationToken = default
                 ) =>
                 {
+                    if (string.IsNullOrWhiteSpace(schemaName) || schemaName == "_")
+                    {
+                        // force using default schema if not specified
+                        schemaName = null;
+                    }
+
                     var database = await DatabaseHandlers
                         .GetDatabaseAsync(
                             context,
@@ -370,12 +396,18 @@ public static class DatabaseViewHandlers
                     [FromServices] IDatabaseRegistry databaseRegistry,
                     [FromServices] IDatabaseConnectionFactory databaseConnectionFactory,
                     [FromRoute] string databaseIdOrSlug,
-                    [FromRoute] string schemaName,
+                    [FromRoute] string? schemaName,
                     [FromRoute] string viewName,
                     [FromBody] UpdateViewRequest request,
                     CancellationToken cancellationToken = default
                 ) =>
                 {
+                    if (string.IsNullOrWhiteSpace(schemaName) || schemaName == "_")
+                    {
+                        // force using default schema if not specified
+                        schemaName = null;
+                    }
+
                     if (string.IsNullOrWhiteSpace(request.Definition))
                     {
                         return Results.BadRequest("The view definition is required.");

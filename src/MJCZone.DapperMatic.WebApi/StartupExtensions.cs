@@ -4,6 +4,8 @@ using Microsoft.AspNetCore.Builder;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using MJCZone.DapperMatic.WebApi.Handlers;
+using MJCZone.DapperMatic.WebApi.Options;
+using MJCZone.DapperMatic.WebApi.Vaults;
 
 [assembly: InternalsVisibleTo("MJCZone.DapperMatic.WebApi.Tests")]
 

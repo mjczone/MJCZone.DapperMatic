@@ -4,6 +4,8 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
 using MJCZone.DapperMatic.Models;
+using MJCZone.DapperMatic.WebApi.HandlerTypes;
+using MJCZone.DapperMatic.WebApi.Options;
 
 namespace MJCZone.DapperMatic.WebApi.Handlers;
 
@@ -31,12 +33,18 @@ public static class DatabaseTableHandlers
                     [FromServices] IDatabaseRegistry databaseRegistry,
                     [FromServices] IDatabaseConnectionFactory databaseConnectionFactory,
                     [FromRoute] string databaseIdOrSlug,
-                    [FromRoute] string schemaName,
+                    [FromRoute] string? schemaName,
                     [FromQuery] string? filter = null,
                     [FromQuery] bool expanded = false,
                     CancellationToken cancellationToken = default
                 ) =>
                 {
+                    if (string.IsNullOrWhiteSpace(schemaName) || schemaName == "_")
+                    {
+                        // force using default schema if not specified
+                        schemaName = null;
+                    }
+
                     if (!filter.ValidateFilterExpression())
                     {
                         return Results.BadRequest("The filter expression is invalid.");
@@ -104,11 +112,17 @@ public static class DatabaseTableHandlers
                     [FromServices] IDatabaseRegistry databaseRegistry,
                     [FromServices] IDatabaseConnectionFactory databaseConnectionFactory,
                     [FromRoute] string databaseIdOrSlug,
-                    [FromRoute] string schemaName,
+                    [FromRoute] string? schemaName,
                     [FromRoute] string tableName,
                     CancellationToken cancellationToken
                 ) =>
                 {
+                    if (string.IsNullOrWhiteSpace(schemaName) || schemaName == "_")
+                    {
+                        // force using default schema if not specified
+                        schemaName = null;
+                    }
+
                     var database = await DatabaseHandlers
                         .GetDatabaseAsync(
                             context,
@@ -158,11 +172,17 @@ public static class DatabaseTableHandlers
                     [FromServices] IDatabaseRegistry databaseRegistry,
                     [FromServices] IDatabaseConnectionFactory databaseConnectionFactory,
                     [FromRoute] string databaseIdOrSlug,
-                    [FromRoute] string schemaName,
+                    [FromRoute] string? schemaName,
                     [FromBody] CreateTableRequest request,
                     CancellationToken cancellationToken
                 ) =>
                 {
+                    if (string.IsNullOrWhiteSpace(schemaName) || schemaName == "_")
+                    {
+                        // force using default schema if not specified
+                        schemaName = null;
+                    }
+
                     if (string.IsNullOrWhiteSpace(request.TableName))
                     {
                         return Results.BadRequest("Table name is required.");
@@ -307,7 +327,7 @@ public static class DatabaseTableHandlers
                     return table is null
                         ? Results.BadRequest("Failed to create table.")
                         : Results.Created(
-                            $"{prefix}/databases/{databaseIdOrSlug}/schemas/{schemaName}/tables/{table!.TableName}",
+                            $"{prefix}/databases/{databaseIdOrSlug}/schemas/{schemaName ?? "_"}/tables/{table!.TableName}",
                             new TableResponse(table)
                         );
                 }
@@ -331,11 +351,17 @@ public static class DatabaseTableHandlers
                     [FromServices] IDatabaseRegistry databaseRegistry,
                     [FromServices] IDatabaseConnectionFactory databaseConnectionFactory,
                     [FromRoute] string databaseIdOrSlug,
-                    [FromRoute] string schemaName,
+                    [FromRoute] string? schemaName,
                     [FromRoute] string tableName,
                     CancellationToken cancellationToken
                 ) =>
                 {
+                    if (string.IsNullOrWhiteSpace(schemaName) || schemaName == "_")
+                    {
+                        // force using default schema if not specified
+                        schemaName = null;
+                    }
+
                     var database = await DatabaseHandlers
                         .GetDatabaseAsync(
                             context,
@@ -415,12 +441,18 @@ public static class DatabaseTableHandlers
                     [FromServices] IDatabaseRegistry databaseRegistry,
                     [FromServices] IDatabaseConnectionFactory databaseConnectionFactory,
                     [FromRoute] string databaseIdOrSlug,
-                    [FromRoute] string schemaName,
+                    [FromRoute] string? schemaName,
                     [FromRoute] string tableName,
                     [FromBody] UpdateTableRequest request,
                     CancellationToken cancellationToken
                 ) =>
                 {
+                    if (string.IsNullOrWhiteSpace(schemaName) || schemaName == "_")
+                    {
+                        // force using default schema if not specified
+                        schemaName = null;
+                    }
+
                     var database = await DatabaseHandlers
                         .GetDatabaseAsync(
                             context,

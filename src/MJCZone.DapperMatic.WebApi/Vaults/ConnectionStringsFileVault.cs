@@ -1,6 +1,8 @@
 using JsonFlatFileDataStore;
 
-namespace MJCZone.DapperMatic.WebApi;
+using MJCZone.DapperMatic.WebApi.Options;
+
+namespace MJCZone.DapperMatic.WebApi.Vaults;
 
 /// <summary>
 /// Provides functionality to resolve and manage connection strings from a file.

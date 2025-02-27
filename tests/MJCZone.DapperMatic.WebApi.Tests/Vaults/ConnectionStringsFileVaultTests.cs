@@ -1,4 +1,6 @@
 using Microsoft.Extensions.Options;
+using MJCZone.DapperMatic.WebApi.Options;
+using MJCZone.DapperMatic.WebApi.Vaults;
 using Moq;
 
 namespace MJCZone.DapperMatic.WebApi.Tests.Vaults;

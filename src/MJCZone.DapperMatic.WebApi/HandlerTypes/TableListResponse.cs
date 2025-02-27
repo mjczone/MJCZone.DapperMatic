@@ -1,6 +1,6 @@
 using MJCZone.DapperMatic.Models;
 
-namespace MJCZone.DapperMatic.WebApi.Handlers;
+namespace MJCZone.DapperMatic.WebApi.HandlerTypes;
 
 /// <summary>
 /// Represents a response containing a list of tables.

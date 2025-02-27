@@ -1,4 +1,4 @@
-namespace MJCZone.DapperMatic.WebApi.Handlers;
+namespace MJCZone.DapperMatic.WebApi.HandlerTypes;
 
 /// <summary>
 /// Represents a request to update a view with various modifications.

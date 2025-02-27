@@ -1,4 +1,4 @@
-namespace MJCZone.DapperMatic.WebApi;
+namespace MJCZone.DapperMatic.WebApi.Options;
 
 /// <summary>
 /// Represents the options for configuring the database registry.

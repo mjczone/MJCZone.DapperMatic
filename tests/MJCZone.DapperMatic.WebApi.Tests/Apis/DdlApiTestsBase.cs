@@ -1,21 +1,18 @@
 using System.Data.SQLite;
 using System.Net;
-using System.Net.Http.Headers;
-using MJCZone.DapperMatic.Models;
-using MJCZone.DapperMatic.WebApi.Handlers;
 using MJCZone.DapperMatic.WebApi.HandlerTypes;
 using MJCZone.DapperMatic.WebApi.Models;
-using MJCZone.DapperMatic.WebApi.TestServer;
+using MJCZone.DapperMatic.WebApi.Options;
 using Xunit.Abstractions;
 
 namespace MJCZone.DapperMatic.WebApi.Tests.Apis;
 
-public class DdlApiTests : IClassFixture<WebApiTestFactory>
+public class DdlApiTestsBase : IClassFixture<WebApiTestFactory>
 {
-    private readonly HttpClient _client;
-    private readonly ITestOutputHelper _output;
+    protected readonly HttpClient _client;
+    protected readonly ITestOutputHelper _output;
 
-    public DdlApiTests(WebApiTestFactory factory, ITestOutputHelper output)
+    protected DdlApiTestsBase(WebApiTestFactory factory, ITestOutputHelper output)
     {
         _client = factory.CreateClient();
         _output = output;
@@ -25,9 +22,9 @@ public class DdlApiTests : IClassFixture<WebApiTestFactory>
     }
 
     // EnsureConnectionStringIsSet
-    private const string _connectionStringName = "TestDdlConnectionString";
+    protected const string _connectionStringName = "TestDdlConnectionString";
 
-    private async Task EnsureConnectionStringAsync()
+    protected async Task EnsureConnectionStringAsync()
     {
         var body = new ConnectionStringsEntryRequest
         {
@@ -56,7 +53,7 @@ public class DdlApiTests : IClassFixture<WebApiTestFactory>
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
     }
 
-    private async Task EnsureDatabaseAsync()
+    protected async Task EnsureDatabaseAsync()
     {
         await EnsureConnectionStringAsync();
 
@@ -98,36 +95,5 @@ public class DdlApiTests : IClassFixture<WebApiTestFactory>
             body
         );
         var response = await _client.SendAsync(addRequest);
-    }
-
-    // Add a test for the DDL API
-    [Fact]
-    public async Task DdlApi_CanGetSchemas()
-    {
-        await EnsureDatabaseAsync();
-
-        // GET /api/db/databases/{databaseSlug}/schemas
-        var request = WebApiTestUtils.CreateAdminRequest(
-            HttpMethod.Get,
-            "/api/db/databases/test-ddl-database/schemas"
-        );
-        var response = await _client.SendAsync(request);
-        var content = await response.Content.ReadAsStringAsync();
-
-        if (!response.IsSuccessStatusCode)
-        {
-            _output.WriteLine(content);
-        }
-
-        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
-
-        // extract the content as a string
-        var apiResponse = System.Text.Json.JsonSerializer.Deserialize<StringListResponse>(
-            content,
-            DapperMaticOptions.JsonSerializerOptions
-        );
-
-        Assert.NotNull(apiResponse);
-        Assert.NotNull(apiResponse.Results);
     }
 }
