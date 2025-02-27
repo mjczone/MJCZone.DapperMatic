@@ -1,4 +1,3 @@
-using System;
 using System.Data.SQLite;
 using System.Text.Json;
 using Microsoft.Extensions.Options;
@@ -55,7 +54,12 @@ public class DapperMaticOptions
                     EncryptionKey = "replace-with-your-encryption-key!",
                     Settings = new Dictionary<string, object?>
                     {
-                        { "FileName", DefaultDapperMaticConnectionStringsVaultFileName },
+                        {
+                            "FileName",
+                            PathUtils.NormalizePath(
+                                DefaultDapperMaticConnectionStringsVaultFileName
+                            )
+                        },
                     },
                 }
             },
@@ -74,7 +78,9 @@ public class DapperMaticOptions
                             "ConnectionString",
                             new SQLiteConnectionStringBuilder
                             {
-                                DataSource = "../data/dappermatic-connection-strings.db",
+                                DataSource = PathUtils.NormalizePath(
+                                    "../data/dappermatic-connection-strings.db"
+                                ),
                                 Version = 3,
                                 SyncMode = SynchronizationModes.Full,
                                 DateTimeFormat = SQLiteDateFormats.ISO8601,
@@ -102,7 +108,7 @@ public class DapperMaticOptions
             ProviderType = DbProviderType.Sqlite,
             ConnectionString = new SQLiteConnectionStringBuilder
             {
-                DataSource = "../data/dappermatic-databases.db",
+                DataSource = PathUtils.NormalizePath("../data/dappermatic-databases.db"),
                 Version = 3,
                 SyncMode = SynchronizationModes.Full,
                 DateTimeFormat = SQLiteDateFormats.ISO8601,

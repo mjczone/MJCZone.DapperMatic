@@ -10,27 +10,24 @@ namespace MJCZone.DapperMatic.WebApi.Tests.Apis;
 public class ConnectionStringsApiTests : IClassFixture<WebApiTestFactory>
 {
     private readonly HttpClient _client;
-    private readonly string _userToken;
-    private readonly string _adminToken;
     private readonly ITestOutputHelper _output;
 
     public ConnectionStringsApiTests(WebApiTestFactory factory, ITestOutputHelper output)
     {
         _client = factory.CreateClient();
-        _userToken = JwtTokenGenerator.GenerateTestToken();
-        _adminToken = JwtTokenGenerator.GenerateTestToken("Admin");
         _output = output;
 
-        Directory.CreateDirectory(@"..\data");
+        Directory.CreateDirectory(PathUtils.NormalizePath("../data")!);
         Dapper.SqlMapper.AddTypeHandler(typeof(Guid), new GuidHandler());
     }
 
     [Fact]
     public async Task ConnectionStringsApi_CanGetConnectionStringVaultFactoryNames()
     {
-        var request = new HttpRequestMessage(HttpMethod.Get, "/api/dappermatic/cs/vault-factories");
-        request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", _userToken); // Add token to request
-
+        var request = WebApiTestUtils.CreateUserRequest(
+            HttpMethod.Get,
+            "/api/db/cs/vault-factories"
+        );
         var response = await _client.SendAsync(request);
 
         // the response should be a 200 OK
@@ -58,10 +55,7 @@ public class ConnectionStringsApiTests : IClassFixture<WebApiTestFactory>
     [Fact]
     public async Task ConnectionStringsApi_CanGetConnectionStringVaults()
     {
-        var request = new HttpRequestMessage(HttpMethod.Get, "/api/dappermatic/cs/vaults");
-        request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", _userToken); // Add token to request
-
-        // get the response as ApiResponse<List<ConnectionStringEntry>>
+        var request = WebApiTestUtils.CreateUserRequest(HttpMethod.Get, "/api/db/cs/vaults");
         var response = await _client.SendAsync(request);
 
         // the response should be a 200 OK
@@ -97,33 +91,14 @@ public class ConnectionStringsApiTests : IClassFixture<WebApiTestFactory>
             Vault = "LocalFile",
         };
 
-        Func<string, HttpRequestMessage> createRequest = (token) =>
-        {
-            var request = new HttpRequestMessage(HttpMethod.Put, "/api/dappermatic/cs/entries");
-            request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token); // Add token to request
-
-            // attach the body to the request
-            request.Content = new StringContent(
-                System.Text.Json.JsonSerializer.Serialize(
-                    body,
-                    DapperMaticOptions.JsonSerializerOptions
-                ),
-                System.Text.Encoding.UTF8,
-                "application/json"
-            );
-
-            return request;
-        };
-
-        // get the response as ApiResponse<List<ConnectionStringEntry>>
-        var request = createRequest(_userToken);
+        var request = WebApiTestUtils.CreateUserRequest(HttpMethod.Put, "/api/db/cs/entries", body);
         var response = await _client.SendAsync(request);
 
         // the response should be a 403 Forbidden
         Assert.Equal(HttpStatusCode.Forbidden, response.StatusCode);
 
         // now change the token to an admin token
-        request = createRequest(_adminToken);
+        request = WebApiTestUtils.CreateAdminRequest(HttpMethod.Put, "/api/db/cs/entries", body);
 
         // get the response as ApiResponse<List<ConnectionStringEntry>>
         response = await _client.SendAsync(request);
@@ -166,29 +141,15 @@ public class ConnectionStringsApiTests : IClassFixture<WebApiTestFactory>
             Vault = "LocalFile",
         };
 
-        Func<string, HttpRequestMessage> createRequest = (token) =>
-        {
-            var request = new HttpRequestMessage(HttpMethod.Delete, "/api/dappermatic/cs/entries");
-            request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token); // Add token to request
-
-            // attach two query strings to the request
-            request.RequestUri = new Uri(
-                $"{request.RequestUri}?name={body.Name}&vault={body.Vault}",
-                UriKind.Relative
-            );
-
-            return request;
-        };
-
         // get the response as ApiResponse<List<ConnectionStringEntry>>
-        var request = createRequest(_userToken);
+        var request = WebApiTestUtils.CreateUserRequest(HttpMethod.Delete, "/api/db/cs/entries");
         var response = await _client.SendAsync(request);
 
         // the response should be a 403 Forbidden
         Assert.Equal(HttpStatusCode.Forbidden, response.StatusCode);
 
         // now change the token to an admin token
-        request = createRequest(_adminToken);
+        request = WebApiTestUtils.CreateAdminRequest(HttpMethod.Delete, "/api/db/cs/entries");
 
         // get the response as ApiResponse<List<ConnectionStringEntry>>
         response = await _client.SendAsync(request);

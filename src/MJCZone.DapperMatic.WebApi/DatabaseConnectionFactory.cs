@@ -163,6 +163,10 @@ public class DatabaseConnectionFactory : IDatabaseConnectionFactory
         if (!File.Exists(ds))
         {
             var dir = Path.GetDirectoryName(ds)!;
+            if (string.IsNullOrWhiteSpace(dir))
+            {
+                dir = Path.GetDirectoryName(Path.GetFullPath(ds))!;
+            }
             if (!Directory.Exists(dir))
             {
                 Directory.CreateDirectory(dir);

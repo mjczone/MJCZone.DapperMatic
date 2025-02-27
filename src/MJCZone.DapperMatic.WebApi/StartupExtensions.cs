@@ -74,6 +74,9 @@ public static class StartupExtensions
 
         app.AddConnectionStringsHandlers();
         app.AddDatabaseHandlers();
+        app.AddDatabaseSchemaHandlers();
+        app.AddDatabaseTableHandlers();
+        app.AddDatabaseViewHandlers();
         app.AddOperationHandlers();
 
         return app;

@@ -31,7 +31,6 @@ public static class DatabaseSchemaHandlers
                     HttpContext context,
                     [FromRoute] string databaseIdOrSlug,
                     [FromServices] IDatabaseRegistry databaseRegistry,
-                    [FromServices] IOperationsManager operationsManager,
                     [FromServices] IDatabaseConnectionFactory databaseConnectionFactory,
                     CancellationToken cancellationToken
                 ) =>
@@ -82,7 +81,6 @@ public static class DatabaseSchemaHandlers
                     [FromRoute] string databaseIdOrSlug,
                     [FromBody] CreateSchemaRequest request,
                     [FromServices] IDatabaseRegistry databaseRegistry,
-                    [FromServices] IOperationsManager operationsManager,
                     [FromServices] IDatabaseConnectionFactory databaseConnectionFactory,
                     CancellationToken cancellationToken
                 ) =>
@@ -147,7 +145,6 @@ public static class DatabaseSchemaHandlers
                     [FromRoute] string databaseIdOrSlug,
                     [FromRoute] string schemaName,
                     [FromServices] IDatabaseRegistry databaseRegistry,
-                    [FromServices] IOperationsManager operationsManager,
                     [FromServices] IDatabaseConnectionFactory databaseConnectionFactory,
                     CancellationToken cancellationToken
                 ) =>

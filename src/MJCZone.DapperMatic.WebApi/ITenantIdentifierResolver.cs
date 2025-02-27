@@ -111,18 +111,16 @@ public class TenantIdentifierResolverMiddleware
     /// </summary>
     /// <param name="httpContext">The HTTP context.</param>
     /// <param name="tenantIdentifierResolvers">The tenant identifier resolver strategies (first hit wins).</param>
-    /// <param name="cancellationToken">The cancellation token.</param>
     /// <returns>A <see cref="Task"/> representing the result of the asynchronous operation.</returns>
     public async Task InvokeAsync(
         HttpContext httpContext,
-        IEnumerable<ITenantIdentifierResolver> tenantIdentifierResolvers,
-        CancellationToken cancellationToken = default
+        IEnumerable<ITenantIdentifierResolver> tenantIdentifierResolvers
     )
     {
         foreach (var resolver in tenantIdentifierResolvers)
         {
             var tenantIdentifier = await resolver
-                .ResolveTenantIdentifierAsync(httpContext, cancellationToken)
+                .ResolveTenantIdentifierAsync(httpContext)
                 .ConfigureAwait(false);
 
             if (!string.IsNullOrWhiteSpace(tenantIdentifier))

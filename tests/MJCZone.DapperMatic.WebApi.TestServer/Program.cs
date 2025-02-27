@@ -16,12 +16,16 @@ builder
             ValidateAudience = false,
             ValidateLifetime = false,
             ValidateIssuerSigningKey = true,
-            IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(TestKey))
+            IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(TestKey)),
+            ValidAlgorithms = [SecurityAlgorithms.HmacSha256]
         };
     });
 builder.Services.AddAuthorization();
 
-builder.Services.AddDapperMatic();
+builder.Services.AddDapperMatic(options =>
+{
+    options.ApiPrefix = "/api/db";
+});
 
 var app = builder.Build();
 
