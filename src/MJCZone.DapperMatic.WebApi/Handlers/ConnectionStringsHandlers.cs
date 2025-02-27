@@ -22,7 +22,7 @@ public static class ConnectionStringsHandlers
             .Services.GetRequiredService<IOptionsMonitor<DapperMaticOptions>>()
             ?.CurrentValue;
 
-        var prefix = $"/{options?.ApiPrefix?.Trim('/') ?? "/api/dappermatic"}";
+        var prefix = options.GetApiPrefix();
 
         app.MapGet(
                 prefix + "/cs/vault-factories",

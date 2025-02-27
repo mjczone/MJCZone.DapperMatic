@@ -41,23 +41,18 @@ public static class DatabaseHandlers
             .Services.GetRequiredService<IOptionsMonitor<DapperMaticOptions>>()
             ?.CurrentValue;
 
-        var prefix = $"/{options?.ApiPrefix?.Trim('/') ?? "/api/dappermatic"}";
+        var prefix = options.GetApiPrefix();
 
         app.MapGet(
                 prefix + "/databases",
                 async (
                     HttpContext httpContext,
-                    [FromServices] IDatabaseRegistry databaseService,
-                    [FromQuery(Name = "tid")] string? tenantIdentifier = null,
+                    [FromServices] IDatabaseRegistry databaseRegistry,
                     CancellationToken cancellationToken = default
                 ) =>
                 {
-                    if (string.IsNullOrWhiteSpace(tenantIdentifier))
-                    {
-                        tenantIdentifier = httpContext.Request.Headers["X-Tenant"];
-                    }
-
-                    var databases = await databaseService
+                    var tenantIdentifier = httpContext.GetTenantIdentifier();
+                    var databases = await databaseRegistry
                         .GetDatabasesAsync(tenantIdentifier, cancellationToken)
                         .ConfigureAwait(false);
 
@@ -82,20 +77,14 @@ public static class DatabaseHandlers
                     HttpContext httpContext,
                     [FromRoute] string idOrSlug,
                     [FromServices] IDatabaseRegistry databaseRegistry,
-                    [FromQuery(Name = "tid")] string? tenantIdentifier = null,
                     CancellationToken cancellationToken = default
                 ) =>
                 {
-                    if (string.IsNullOrWhiteSpace(tenantIdentifier))
-                    {
-                        tenantIdentifier = httpContext.Request.Headers["X-Tenant"];
-                    }
-
-                    var retrieved = await GetEligibleDatabaseAsync(
+                    DatabaseEntry? retrieved = await GetDatabaseAsync(
                             httpContext,
-                            databaseRegistry,
-                            tenantIdentifier,
                             idOrSlug,
+                            databaseRegistry,
+                            false,
                             cancellationToken
                         )
                         .ConfigureAwait(false);
@@ -124,14 +113,10 @@ public static class DatabaseHandlers
                     HttpContext httpContext,
                     [FromBody] DatabaseEntry database,
                     [FromServices] IDatabaseRegistry databaseRegistry,
-                    [FromQuery(Name = "tid")] string? tenantIdentifier = null,
                     CancellationToken cancellationToken = default
                 ) =>
                 {
-                    if (string.IsNullOrWhiteSpace(tenantIdentifier))
-                    {
-                        tenantIdentifier = httpContext.Request.Headers["X-Tenant"];
-                    }
+                    var tenantIdentifier = httpContext.GetTenantIdentifier();
 
                     database.TenantIdentifier = tenantIdentifier;
                     database.CreatedDate = DateTime.UtcNow;
@@ -177,14 +162,10 @@ public static class DatabaseHandlers
                     [FromBody] DatabaseEntry database,
                     [FromRoute] string idOrSlug,
                     [FromServices] IDatabaseRegistry databaseRegistry,
-                    [FromQuery(Name = "tid")] string? tenantIdentifier = null,
                     CancellationToken cancellationToken = default
                 ) =>
                 {
-                    if (string.IsNullOrWhiteSpace(tenantIdentifier))
-                    {
-                        tenantIdentifier = httpContext.Request.Headers["X-Tenant"];
-                    }
+                    var tenantIdentifier = httpContext.GetTenantIdentifier();
 
                     var existing = await GetEligibleDatabaseAsync(
                             httpContext,
@@ -243,14 +224,10 @@ public static class DatabaseHandlers
                     HttpContext httpContext,
                     [FromRoute] string idOrSlug,
                     [FromServices] IDatabaseRegistry databaseRegistry,
-                    [FromQuery(Name = "tid")] string? tenantIdentifier = null,
                     CancellationToken cancellationToken = default
                 ) =>
                 {
-                    if (string.IsNullOrWhiteSpace(tenantIdentifier))
-                    {
-                        tenantIdentifier = httpContext.Request.Headers["X-Tenant"];
-                    }
+                    var tenantIdentifier = httpContext.GetTenantIdentifier();
 
                     var existing = await GetEligibleDatabaseAsync(
                             httpContext,
@@ -283,26 +260,72 @@ public static class DatabaseHandlers
             .RequireAuthorization();
     }
 
+    /// <summary>
+    /// Asynchronously retrieves a specific database by its identifier or slug.
+    /// </summary>
+    /// <param name="httpContext">The <see cref="HttpContext"/>.</param>
+    /// <param name="idOrSlug">The unique identifier or slug of the database to retrieve.</param>
+    /// <param name="databaseRegistry">The <see cref="IDatabaseRegistry"/>.</param>
+    /// <param name="requireManagementRights">A value indicating whether management rights are required to access the database.</param>
+    /// <param name="cancellationToken">A token to monitor for cancellation requests.</param>
+    /// <returns>A task that represents the asynchronous operation. The task result contains the <see cref="DatabaseEntry"/>.</returns>
+    internal static async Task<DatabaseEntry?> GetDatabaseAsync(
+        HttpContext httpContext,
+        string idOrSlug,
+        IDatabaseRegistry databaseRegistry,
+        bool requireManagementRights = false,
+        CancellationToken cancellationToken = default
+    )
+    {
+        var tenantIdentifier = httpContext.GetTenantIdentifier();
+        var retrieved = await GetEligibleDatabaseAsync(
+                httpContext,
+                databaseRegistry,
+                tenantIdentifier,
+                idOrSlug,
+                cancellationToken
+            )
+            .ConfigureAwait(false);
+        return retrieved;
+    }
+
     private static List<DatabaseEntry> FilterDatabases(
         HttpContext httpContext,
-        IEnumerable<DatabaseEntry> databases
+        IEnumerable<DatabaseEntry> databases,
+        bool requireManagementRights = false
     )
     {
         var isAuthenticated = httpContext.User.Identity?.IsAuthenticated == true;
         var user = isAuthenticated ? httpContext.User : null;
 
-        // we only return databases that the user has access to
-        var filtered = databases.Where(d =>
-            // if there are no roles defined, anybody can see these databases
-            // if there are roles defined, only users in those roles can see these databases
-            (
-                (d.ManagementRoles == null || d.ManagementRoles.Count == 0)
-                && (d.ExecutionRoles == null || d.ExecutionRoles.Count == 0)
-            )
-            || (d.ManagementRoles ?? []).Any(r => isAuthenticated && user!.IsInRole(r))
-            || (d.ExecutionRoles ?? []).Any(r => isAuthenticated && user!.IsInRole(r))
-        );
-        return [.. filtered];
+        if (requireManagementRights)
+        {
+            if (!isAuthenticated)
+            {
+                return [];
+            }
+
+            // we only return databases that the user has access to
+            var filtered = databases.Where(d =>
+                (d.ManagementRoles ?? []).Any(r => user!.IsInRole(r))
+            );
+            return [.. filtered];
+        }
+        else
+        {
+            // we only return databases that the user has access to
+            var filtered = databases.Where(d =>
+                // if there are no roles defined, anybody can see these databases
+                // if there are roles defined, only users in those roles can see these databases
+                (
+                    (d.ManagementRoles == null || d.ManagementRoles.Count == 0)
+                    && (d.ExecutionRoles == null || d.ExecutionRoles.Count == 0)
+                )
+                || (d.ManagementRoles ?? []).Any(r => isAuthenticated && user!.IsInRole(r))
+                || (d.ExecutionRoles ?? []).Any(r => isAuthenticated && user!.IsInRole(r))
+            );
+            return [.. filtered];
+        }
     }
 
     private static async Task<DatabaseEntry?> GetEligibleDatabaseAsync(

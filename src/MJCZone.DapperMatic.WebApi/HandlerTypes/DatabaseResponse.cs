@@ -1,7 +1,7 @@
 namespace MJCZone.DapperMatic.WebApi.Handlers;
 
 /// <summary>
-/// Represents a response containing a list of databases.
+/// Represents a response containing a database.
 /// </summary>
 public class DatabaseResponse
 {
@@ -16,7 +16,7 @@ public class DatabaseResponse
     /// <summary>
     /// Initializes a new instance of the <see cref="DatabaseResponse"/> class.
     /// </summary>
-    /// <param name="data">The list of databases.</param>
+    /// <param name="data">The database.</param>
     public DatabaseResponse(DatabaseEntry data)
     {
         Results = data;

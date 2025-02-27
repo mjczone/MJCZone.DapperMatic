@@ -1,6 +1,7 @@
 using System;
 using System.Data.SQLite;
 using System.Text.Json;
+using Microsoft.Extensions.Options;
 
 namespace MJCZone.DapperMatic.WebApi;
 
@@ -13,6 +14,11 @@ public class DapperMaticOptions
     /// Gets the name of the section in the configuration file.
     /// </summary>
     public const string SectionName = "DapperMatic";
+
+    /// <summary>
+    /// Gets the default API prefix for DapperMatic endpoints.
+    /// </summary>
+    public const string DefaultApiPrefix = "/api/dappermatic";
 
     /// <summary>
     /// Gets the default name of the connection strings vault.
@@ -114,7 +120,7 @@ public class DapperMaticOptions
     /// <summary>
     /// Gets or sets the API prefix for DapperMatic endpoints.
     /// </summary>
-    public string? ApiPrefix { get; set; } = "/api/dappermatic";
+    public string? ApiPrefix { get; set; } = DefaultApiPrefix;
 
     /// <summary>
     /// Gets or sets the name of the default connection string vault.
@@ -130,4 +136,30 @@ public class DapperMaticOptions
     /// Gets or sets the options for configuring the database registry.
     /// </summary>
     public DatabaseRegistryOptions? DatabaseRegistry { get; set; }
+}
+
+/// <summary>
+/// Represents the options for configuring a connection string vault.
+/// </summary>
+public static class DapperMaticOptionsExtensible
+{
+    /// <summary>
+    /// Gets the API prefix for DapperMatic endpoints.
+    /// </summary>
+    /// <param name="options">The <see cref="DapperMaticOptions"/>.</param>
+    /// <returns>The API prefix for DapperMatic endpoints.</returns>
+    public static string GetApiPrefix(this DapperMaticOptions? options)
+    {
+        return $"/{options?.ApiPrefix?.Trim('/') ?? DapperMaticOptions.DefaultApiPrefix.Trim('/')}";
+    }
+
+    /// <summary>
+    /// Gets the API prefix for DapperMatic endpoints.
+    /// </summary>
+    /// <param name="optionsMonitor">The <see cref="DapperMaticOptions"/>.</param>
+    /// <returns>The API prefix for DapperMatic endpoints.</returns>
+    public static string GetApiPrefix(this IOptionsMonitor<DapperMaticOptions> optionsMonitor)
+    {
+        return optionsMonitor.CurrentValue.GetApiPrefix();
+    }
 }

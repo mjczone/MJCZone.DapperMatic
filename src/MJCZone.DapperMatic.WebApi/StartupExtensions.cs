@@ -28,6 +28,9 @@ public static class StartupExtensions
 
         SqlMapper.AddTypeHandler(typeof(Guid), new GuidHandler());
 
+        services.AddSingleton<ITenantIdentifierResolver, TenantIdentifierInHeaderResolver>();
+        services.AddSingleton<ITenantIdentifierResolver, TenantIdentifierInQueryStringResolver>();
+
         services.AddSingleton<IConnectionStringsVaultFactory, ConnectionStringsFileVaultFactory>();
         services.AddSingleton<
             IConnectionStringsVaultFactory,
@@ -67,8 +70,11 @@ public static class StartupExtensions
             .GetAwaiter()
             .GetResult();
 
-        app.AddDatabaseHandlers();
+        app.UseMiddleware<TenantIdentifierResolverMiddleware>();
+
         app.AddConnectionStringsHandlers();
+        app.AddDatabaseHandlers();
+        app.AddOperationHandlers();
 
         return app;
     }
