@@ -1,4 +1,6 @@
 ﻿using System.Runtime.CompilerServices;
+using System.Text.Json;
+using System.Text.Json.Serialization;
 using Dapper;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.Extensions.DependencyInjection;
@@ -53,6 +55,14 @@ public static class StartupExtensions
         }
 
         services.PostConfigure<DapperMaticOptions>(options => { });
+
+        // we need to accommodate for some serialization issues
+        services.Configure<Microsoft.AspNetCore.Http.Json.JsonOptions>(options =>
+        {
+            options.SerializerOptions.PropertyNameCaseInsensitive = true;
+            options.SerializerOptions.IncludeFields = true;
+            options.SerializerOptions.Converters.Add(new JsonConverterForType());
+        });
     }
 
     /// <summary>
@@ -109,5 +119,52 @@ public class GuidHandler : SqlMapper.ITypeHandler
     public void SetValue(IDbDataParameter parameter, object value)
     {
         parameter.Value = value.ToString();
+    }
+}
+
+/// <summary>
+/// Represents the options for configuring a connection string vault.
+/// </summary>
+public class JsonConverterForType : JsonConverter<Type>
+{
+    /// <inheritdoc/>
+    public override Type Read(
+        ref Utf8JsonReader reader,
+        Type typeToConvert,
+        JsonSerializerOptions options
+    )
+    {
+#pragma warning disable CA1031 // Do not catch general exception types
+#pragma warning disable CS8603 // Possible null reference return.
+        try
+        {
+            var assemblyQualifiedName = reader.GetString();
+            if (assemblyQualifiedName is null)
+            {
+                return null!;
+            }
+
+            // Caution: Deserialization of type instances like this is not recommended and should be avoided
+            // since it can lead to potential security issues.
+            // let's make sure we're only deserializing specific types
+            // see for example all the types in: src/MJCZone.DapperMatic/Providers/PostgreSql/PostgreSqlProviderTypeMap.cs
+
+            var type = Type.GetType(assemblyQualifiedName);
+            return type;
+        }
+        catch
+        {
+            return null;
+        }
+#pragma warning restore CS8603 // Possible null reference return.
+#pragma warning restore CA1031 // Do not catch general exception types
+        // only support very specific types
+        // throw new NotSupportedException();
+    }
+
+    /// <inheritdoc/>
+    public override void Write(Utf8JsonWriter writer, Type value, JsonSerializerOptions options)
+    {
+        writer.WriteStringValue(value?.AssemblyQualifiedName);
     }
 }

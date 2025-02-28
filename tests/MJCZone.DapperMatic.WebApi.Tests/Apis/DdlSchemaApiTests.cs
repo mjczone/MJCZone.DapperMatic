@@ -10,13 +10,12 @@ public class DdlSchemaApiTests : DdlApiTestsBase
     public DdlSchemaApiTests(WebApiTestFactory factory, ITestOutputHelper output)
         : base(factory, output) { }
 
-    // Add a test for the DDL API
     [Fact]
-    public async Task DdlApi_CanGetSchemas()
+    public async Task DdlApi_CanCrudSchemas()
     {
         await EnsureDatabaseAsync();
 
-        // GET /api/db/databases/{databaseSlug}/schemas
+        // GET schemas
         var request = WebApiTestUtils.CreateAdminRequest(
             HttpMethod.Get,
             "/api/db/databases/test-ddl-database/schemas"

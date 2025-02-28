@@ -9,4 +9,10 @@ public class DdlViewApiTests : DdlApiTestsBase
 {
     public DdlViewApiTests(WebApiTestFactory factory, ITestOutputHelper output)
         : base(factory, output) { }
+
+    [Fact]
+    public async Task DdlApi_CanCrudViews()
+    {
+        await EnsureDatabaseAsync();
+    }
 }

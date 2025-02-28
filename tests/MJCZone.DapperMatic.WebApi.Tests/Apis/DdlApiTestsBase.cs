@@ -36,6 +36,11 @@ public class DdlApiTestsBase : IClassFixture<WebApiTestFactory>
             Vault = "LocalFile"
         };
 
+        if (File.Exists("TestDdd.db"))
+        {
+            File.Delete("TestDdd.db");
+        }
+
         // Only admins can set connection strings
         var request = WebApiTestUtils.CreateAdminRequest(
             HttpMethod.Put,

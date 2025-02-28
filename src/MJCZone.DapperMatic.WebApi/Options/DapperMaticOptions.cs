@@ -1,6 +1,6 @@
 using System.Data.SQLite;
 using System.Text.Json;
-
+using System.Text.Json.Serialization;
 using Microsoft.Extensions.Options;
 
 namespace MJCZone.DapperMatic.WebApi.Options;
@@ -31,11 +31,17 @@ public class DapperMaticOptions
     public const string DefaultDapperMaticConnectionStringsVaultFileName =
         "../data/dappermatic-connection-strings.json";
 
-    /// <summary>
-    /// Gets the JSON serializer options for DapperMatic.
-    /// </summary>
-    internal static readonly JsonSerializerOptions? JsonSerializerOptions =
-        new() { PropertyNameCaseInsensitive = true, IncludeFields = true };
+    private static readonly Lazy<JsonSerializerOptions> LazyJsonSerializerOptions =
+        new Lazy<JsonSerializerOptions>(() =>
+        {
+            var options = new JsonSerializerOptions
+            {
+                PropertyNameCaseInsensitive = true,
+                IncludeFields = true,
+            };
+            options.Converters.Add(new JsonConverterForType());
+            return options;
+        });
 
     /// <summary>
     /// Initializes a new instance of the <see cref="DapperMaticOptions"/> class.
@@ -123,6 +129,11 @@ public class DapperMaticOptions
             }.ToString(),
         };
     }
+
+    /// <summary>
+    /// Gets the JSON serializer options for DapperMatic.
+    /// </summary>
+    public static JsonSerializerOptions JsonSerializerOptions => LazyJsonSerializerOptions.Value;
 
     /// <summary>
     /// Gets or sets the API prefix for DapperMatic endpoints.

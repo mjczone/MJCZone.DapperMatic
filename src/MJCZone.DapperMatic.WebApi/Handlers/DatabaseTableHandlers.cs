@@ -207,8 +207,8 @@ public static class DatabaseTableHandlers
                             new DmColumn(
                                 newTable.SchemaName,
                                 newTable.TableName,
-                                "id",
-                                typeof(Guid),
+                                columnName: "id",
+                                dotnetType: typeof(Guid),
                                 isNullable: false,
                                 isPrimaryKey: true,
                                 isUnique: true
