@@ -30,10 +30,12 @@ public interface IConnectionStringsVault
     /// Retrieves the connection string associated with the specified name.
     /// </summary>
     /// <param name="connectionStringName">The name of the connection string to retrieve.</param>
+    /// <param name="tenantIdentifier">The tenant identifier.</param>
     /// <param name="cancellationToken">The cancellation token.</param>
     /// <returns>The connection string associated with the specified name, or null if not found.</returns>
     Task<string?> GetConnectionStringAsync(
         string connectionStringName,
+        string? tenantIdentifier = null,
         CancellationToken cancellationToken = default
     );
 
@@ -42,11 +44,13 @@ public interface IConnectionStringsVault
     /// </summary>
     /// <param name="connectionStringName">The name of the connection string to set.</param>
     /// <param name="connectionString">The connection string to associate with the specified name.</param>
+    /// <param name="tenantIdentifier">The tenant identifier.</param>
     /// <param name="cancellationToken">The cancellation token.</param>
     /// <returns><see cref="Task"/> representing the asynchronous operation.</returns>
     Task SetConnectionStringAsync(
         string connectionStringName,
         string connectionString,
+        string? tenantIdentifier = null,
         CancellationToken cancellationToken = default
     );
 
@@ -54,10 +58,12 @@ public interface IConnectionStringsVault
     /// Deletes the connection string for the specified name.
     /// </summary>
     /// <param name="connectionStringName">The name of the connection string to delete.</param>
+    /// <param name="tenantIdentifier">The tenant identifier.</param>
     /// <param name="cancellationToken">The cancellation token.</param>
     /// <returns><see cref="Task"/> representing the asynchronous operation.</returns>
     Task DeleteConnectionStringAsync(
         string connectionStringName,
+        string? tenantIdentifier = null,
         CancellationToken cancellationToken = default
     );
 

@@ -102,11 +102,12 @@ public class ConnectionStringsApiTests : IClassFixture<WebApiTestFactory>
         // get the response as ApiResponse<List<ConnectionStringEntry>>
         response = await _client.SendAsync(request);
 
-        // the response should be a 200 OK
-        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
-
         // extract the content as a string
         var content = await response.Content.ReadAsStringAsync();
+        _output.WriteLine("Setting connection string: " + content);
+
+        // the response should be a 200 OK
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
 
         // deserialize it to a StringListResponse
         var apiResponse = System.Text.Json.JsonSerializer.Deserialize<EmptyResponse>(
@@ -134,30 +135,35 @@ public class ConnectionStringsApiTests : IClassFixture<WebApiTestFactory>
         );
         Assert.Contains("TestConnectionString", fileContent);
 
-        var body = new ConnectionStringsEntryRequest
-        {
-            Name = "TestConnectionString",
-            Vault = "LocalFile",
-        };
-
         // get the response as ApiResponse<List<ConnectionStringEntry>>
-        var request = WebApiTestUtils.CreateUserRequest(HttpMethod.Delete, "/api/db/cs/entries");
+        var request = WebApiTestUtils.CreateUserRequest(
+            HttpMethod.Delete,
+            "/api/db/cs/entries?name=TestConnectionString&vault=LocalFile"
+        );
         var response = await _client.SendAsync(request);
+
+        // extract the content as a string
+        var content = await response.Content.ReadAsStringAsync();
+        _output.WriteLine("Delete connection string content (1): " + content);
 
         // the response should be a 403 Forbidden
         Assert.Equal(HttpStatusCode.Forbidden, response.StatusCode);
 
         // now change the token to an admin token
-        request = WebApiTestUtils.CreateAdminRequest(HttpMethod.Delete, "/api/db/cs/entries");
+        request = WebApiTestUtils.CreateAdminRequest(
+            HttpMethod.Delete,
+            "/api/db/cs/entries?name=TestConnectionString&vault=LocalFile"
+        );
 
         // get the response as ApiResponse<List<ConnectionStringEntry>>
         response = await _client.SendAsync(request);
 
+        // extract the content as a string
+        content = await response.Content.ReadAsStringAsync();
+        _output.WriteLine("Delete connection string content (2): " + content);
+
         // the response should be a 200 OK
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
-
-        // extract the content as a string
-        var content = await response.Content.ReadAsStringAsync();
 
         // deserialize it to a StringListResponse
         var apiResponse = System.Text.Json.JsonSerializer.Deserialize<EmptyResponse>(

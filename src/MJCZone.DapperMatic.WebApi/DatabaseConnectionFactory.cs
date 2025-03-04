@@ -110,7 +110,11 @@ public class DatabaseConnectionFactory : IDatabaseConnectionFactory
         );
 
         var connectionString = await connectionStringsVault
-            .GetConnectionStringAsync(database.ConnectionStringName, cancellationToken)
+            .GetConnectionStringAsync(
+                database.ConnectionStringName,
+                tenantIdentifier,
+                cancellationToken
+            )
             .ConfigureAwait(false);
 
         if (string.IsNullOrWhiteSpace(connectionString))

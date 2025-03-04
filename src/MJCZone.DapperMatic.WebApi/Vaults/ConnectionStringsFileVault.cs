@@ -1,5 +1,4 @@
 using JsonFlatFileDataStore;
-
 using MJCZone.DapperMatic.WebApi.Options;
 
 namespace MJCZone.DapperMatic.WebApi.Vaults;
@@ -42,11 +41,13 @@ public class ConnectionStringsFileVault : ConnectionStringsVaultBase
     /// Gets the connection string for the specified name.
     /// </summary>
     /// <param name="connectionStringName">The name of the connection string to retrieve.</param>
+    /// <param name="tenantIdentifier">The tenant identifier.</param>
     /// <param name="cancellationToken">The cancellation token.</param>
     /// <returns>The encrypted connection string if found; otherwise, null.</returns>
     protected override async Task<string?> GetEncryptedConnectionStringAsync(
         string connectionStringName,
-        CancellationToken cancellationToken
+        string? tenantIdentifier = null,
+        CancellationToken cancellationToken = default
     )
     {
         await Task.Yield();
@@ -61,9 +62,7 @@ public class ConnectionStringsFileVault : ConnectionStringsVaultBase
 
         return encryptedConnectionStrings
             .AsQueryable()
-            .FirstOrDefault(c =>
-                c.name.ToString().Equals(connectionStringName, StringComparison.OrdinalIgnoreCase)
-            )
+            .FirstOrDefault(RecordPredicate(connectionStringName, tenantIdentifier))
             ?.value?.ToString();
     }
 
@@ -72,12 +71,14 @@ public class ConnectionStringsFileVault : ConnectionStringsVaultBase
     /// </summary>
     /// <param name="connectionStringName">The name of the connection string to set.</param>
     /// <param name="encryptedConnectionString">The connection string value to set.</param>
+    /// <param name="tenantIdentifier">The tenant identifier.</param>
     /// <param name="cancellationToken">The cancellation token.</param>
     /// <returns><see cref="Task"/> representing the asynchronous operation.</returns>
     protected override async Task SetEncryptedConnectionStringAsync(
         string connectionStringName,
         string encryptedConnectionString,
-        CancellationToken cancellationToken
+        string? tenantIdentifier = null,
+        CancellationToken cancellationToken = default
     )
     {
         if (string.IsNullOrWhiteSpace(_fileName))
@@ -88,28 +89,31 @@ public class ConnectionStringsFileVault : ConnectionStringsVaultBase
         using var store = new DataStore(EnsureFileDirectoryAndReturnFullFilePath(_fileName));
         var collection = store.GetCollection("connection_strings");
 
-        var connectionString = collection
-            .AsQueryable()
-            .FirstOrDefault(c =>
-                c.name.ToString().Equals(connectionStringName, StringComparison.OrdinalIgnoreCase)
-            );
-
-        if (connectionString != null)
-        {
-            await collection
+        if (
+            !await collection
                 .UpdateOneAsync(
-                    c =>
-                        c.name.ToString()
-                            .Equals(connectionStringName, StringComparison.OrdinalIgnoreCase),
-                    new { value = encryptedConnectionString }
+                    RecordPredicate(connectionStringName, tenantIdentifier),
+                    new
+                    {
+                        value = encryptedConnectionString,
+                        tenant_identifier = string.IsNullOrWhiteSpace(tenantIdentifier)
+                            ? null
+                            : tenantIdentifier,
+                    }
                 )
-                .ConfigureAwait(false);
-        }
-        else
+                .ConfigureAwait(false)
+        )
         {
             await collection
                 .InsertOneAsync(
-                    new { name = connectionStringName, value = encryptedConnectionString }
+                    new
+                    {
+                        name = connectionStringName,
+                        value = encryptedConnectionString,
+                        tenant_identifier = string.IsNullOrWhiteSpace(tenantIdentifier)
+                            ? null
+                            : tenantIdentifier,
+                    }
                 )
                 .ConfigureAwait(false);
         }
@@ -119,11 +123,13 @@ public class ConnectionStringsFileVault : ConnectionStringsVaultBase
     /// Deletes the connection string for the specified name.
     /// </summary>
     /// <param name="connectionStringName">The name of the connection string to delete.</param>
+    /// <param name="tenantIdentifier">The tenant identifier.</param>
     /// <param name="cancellationToken">The cancellation token.</param>
     /// <returns><see cref="Task"/> representing the asynchronous operation.</returns>
     protected override async Task DeleteEncryptedConnectionStringAsync(
         string connectionStringName,
-        CancellationToken cancellationToken
+        string? tenantIdentifier = null,
+        CancellationToken cancellationToken = default
     )
     {
         if (string.IsNullOrWhiteSpace(_fileName))
@@ -135,9 +141,7 @@ public class ConnectionStringsFileVault : ConnectionStringsVaultBase
         var collection = store.GetCollection("connection_strings");
 
         await collection
-            .DeleteOneAsync(c =>
-                c.name.ToString().Equals(connectionStringName, StringComparison.OrdinalIgnoreCase)
-            )
+            .DeleteOneAsync(RecordPredicate(connectionStringName, tenantIdentifier))
             .ConfigureAwait(false);
     }
 
@@ -165,5 +169,27 @@ public class ConnectionStringsFileVault : ConnectionStringsVaultBase
         }
 
         return Path.GetFullPath(filePathAndName);
+    }
+
+    private static Predicate<dynamic> RecordPredicate(
+        string connectionStringName,
+        string? tenantIdentifier
+    )
+    {
+        return string.IsNullOrWhiteSpace(tenantIdentifier)
+            ? (
+                c =>
+                    c.name.ToString()
+                        .Equals(connectionStringName, StringComparison.OrdinalIgnoreCase)
+                    && c.tenant_identifier == null
+            )
+            : (
+                c =>
+                    c.name.ToString()
+                        .Equals(connectionStringName, StringComparison.OrdinalIgnoreCase)
+                    && c.tenant_identifier != null
+                    && c.tenant_identifier.ToString()
+                        .Equals(tenantIdentifier, StringComparison.OrdinalIgnoreCase)
+            );
     }
 }

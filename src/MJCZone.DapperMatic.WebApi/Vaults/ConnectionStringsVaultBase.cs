@@ -1,5 +1,4 @@
 ﻿using System.Collections.Concurrent;
-
 using MJCZone.DapperMatic.WebApi.Options;
 
 namespace MJCZone.DapperMatic.WebApi.Vaults;
@@ -53,12 +52,14 @@ public abstract class ConnectionStringsVaultBase : IConnectionStringsVault
     /// Gets the connection string for the specified name.
     /// </summary>
     /// <param name="connectionStringName">The name of the connection string to retrieve.</param>
+    /// <param name="tenantIdentifier">The tenant identifier for the connection string.</param>
     /// <param name="cancellationToken">The cancellation token.</param>
     /// <returns>The connection string if found; otherwise, null.</returns>
     /// <exception cref="ArgumentException">Thrown when the connection string name is null or empty.</exception>
     /// <exception cref="InvalidOperationException">Thrown when the connection string decryption fails.</exception>
     public virtual async Task<string?> GetConnectionStringAsync(
         string connectionStringName,
+        string? tenantIdentifier = null,
         CancellationToken cancellationToken = default
     )
     {
@@ -67,13 +68,16 @@ public abstract class ConnectionStringsVaultBase : IConnectionStringsVault
             throw new ArgumentException("Connection string name cannot be null or empty.");
         }
 
-        if (Cache.TryGetValue(connectionStringName, out var cachedConnectionString))
+        var cacheKey = GetConnectionStringCacheKey(connectionStringName, tenantIdentifier);
+
+        if (Cache.TryGetValue(cacheKey, out var cachedConnectionString))
         {
             return cachedConnectionString;
         }
 
         var encryptedConnectionString = await GetEncryptedConnectionStringAsync(
                 connectionStringName,
+                tenantIdentifier,
                 cancellationToken
             )
             .ConfigureAwait(false);
@@ -96,7 +100,7 @@ public abstract class ConnectionStringsVaultBase : IConnectionStringsVault
         if (!string.IsNullOrWhiteSpace(decryptedConnectionString))
         {
             Cache.AddOrUpdate(
-                connectionStringName,
+                cacheKey,
                 decryptedConnectionString!,
                 (_, _) => decryptedConnectionString!
             );
@@ -112,6 +116,7 @@ public abstract class ConnectionStringsVaultBase : IConnectionStringsVault
     /// </summary>
     /// <param name="connectionStringName">The name of the connection string to set.</param>
     /// <param name="connectionString">The connection string value to set.</param>
+    /// <param name="tenantIdentifier">The tenant identifier for the connection string.</param>
     /// <param name="cancellationToken">The cancellation token.</param>
     /// <returns><see cref="Task"/> representing the asynchronous operation.</returns>
     /// <exception cref="ArgumentException">Thrown when the connection string name or value is null or empty.</exception>
@@ -120,6 +125,7 @@ public abstract class ConnectionStringsVaultBase : IConnectionStringsVault
     public virtual async Task SetConnectionStringAsync(
         string connectionStringName,
         string connectionString,
+        string? tenantIdentifier = null,
         CancellationToken cancellationToken = default
     )
     {
@@ -148,21 +154,24 @@ public abstract class ConnectionStringsVaultBase : IConnectionStringsVault
         await SetEncryptedConnectionStringAsync(
                 connectionStringName,
                 encryptedConnectionString,
+                tenantIdentifier,
                 cancellationToken
             )
             .ConfigureAwait(false);
 
-        Cache.TryRemove(connectionStringName, out _);
+        Cache.TryRemove(GetConnectionStringCacheKey(connectionStringName, tenantIdentifier), out _);
     }
 
     /// <summary>
     /// Deletes the connection string for the specified name.
     /// </summary>
     /// <param name="connectionStringName">The name of the connection string to delete.</param>
+    /// <param name="tenantIdentifier">The tenant identifier for the connection string.</param>
     /// <param name="cancellationToken">The cancellation token.</param>
     /// <returns><see cref="Task"/> representing the asynchronous operation.</returns>
     public virtual async Task DeleteConnectionStringAsync(
         string connectionStringName,
+        string? tenantIdentifier = null,
         CancellationToken cancellationToken = default
     )
     {
@@ -176,10 +185,14 @@ public abstract class ConnectionStringsVaultBase : IConnectionStringsVault
             throw new ArgumentException("Connection string name cannot be null or empty.");
         }
 
-        await DeleteEncryptedConnectionStringAsync(connectionStringName, cancellationToken)
+        await DeleteEncryptedConnectionStringAsync(
+                connectionStringName,
+                tenantIdentifier,
+                cancellationToken
+            )
             .ConfigureAwait(false);
 
-        Cache.TryRemove(connectionStringName, out _);
+        Cache.TryRemove(GetConnectionStringCacheKey(connectionStringName, tenantIdentifier), out _);
     }
 
     /// <summary>
@@ -200,14 +213,11 @@ public abstract class ConnectionStringsVaultBase : IConnectionStringsVault
     /// <returns>The encrypted value.</returns>
     protected virtual string? Encrypt(string? value, string? encryptionKey)
     {
-        if (string.IsNullOrWhiteSpace(value))
-        {
-            return value;
-        }
-
-        return string.IsNullOrWhiteSpace(encryptionKey)
+        return string.IsNullOrWhiteSpace(value)
             ? value
-            : Crypto.Encrypt(value, encryptionKey);
+            : string.IsNullOrWhiteSpace(encryptionKey)
+                ? value
+                : Crypto.Encrypt(value, encryptionKey);
     }
 
     /// <summary>
@@ -218,25 +228,24 @@ public abstract class ConnectionStringsVaultBase : IConnectionStringsVault
     /// <returns>The decrypted value.</returns>
     protected virtual string? Decrypt(string? encryptedValue, string? encryptionKey)
     {
-        if (string.IsNullOrWhiteSpace(encryptedValue))
-        {
-            return encryptedValue;
-        }
-
-        return string.IsNullOrWhiteSpace(encryptionKey)
+        return string.IsNullOrWhiteSpace(encryptedValue)
             ? encryptedValue
-            : Crypto.Decrypt(encryptedValue, encryptionKey);
+            : string.IsNullOrWhiteSpace(encryptionKey)
+                ? encryptedValue
+                : Crypto.Decrypt(encryptedValue, encryptionKey);
     }
 
     /// <summary>
     /// Gets the encrypted connection string for the specified name.
     /// </summary>
     /// <param name="connectionStringName">The name of the connection string to retrieve.</param>
+    /// <param name="tenantIdentifier">The tenant identifier for the connection string.</param>
     /// <param name="cancellationToken">The cancellation token.</param>
     /// <returns>The encrypted connection string if found; otherwise, null.</returns>
     protected abstract Task<string?> GetEncryptedConnectionStringAsync(
         string connectionStringName,
-        CancellationToken cancellationToken
+        string? tenantIdentifier = null,
+        CancellationToken cancellationToken = default
     );
 
     /// <summary>
@@ -244,22 +253,42 @@ public abstract class ConnectionStringsVaultBase : IConnectionStringsVault
     /// </summary>
     /// <param name="connectionStringName">The name of the connection string to set.</param>
     /// <param name="encryptedConnectionString">The encrypted connection string value to set.</param>
+    /// <param name="tenantIdentifier">The tenant identifier for the connection string.</param>
     /// <param name="cancellationToken">The cancellation token.</param>
     /// <returns><see cref="Task"/> representing the asynchronous operation.</returns>
     protected abstract Task SetEncryptedConnectionStringAsync(
         string connectionStringName,
         string encryptedConnectionString,
-        CancellationToken cancellationToken
+        string? tenantIdentifier = null,
+        CancellationToken cancellationToken = default
     );
 
     /// <summary>
     /// Deletes the encrypted connection string for the specified name.
     /// </summary>
     /// <param name="connectionStringName">The name of the connection string to delete.</param>
+    /// <param name="tenantIdentifier">The tenant identifier for the connection string.</param>
     /// <param name="cancellationToken">The cancellation token.</param>
-    /// <returns><see cref="Task"/> representing the asynchronous operation.</returns>
+    /// /// <returns><see cref="Task"/> representing the asynchronous operation.</returns>
     protected abstract Task DeleteEncryptedConnectionStringAsync(
         string connectionStringName,
-        CancellationToken cancellationToken
+        string? tenantIdentifier = null,
+        CancellationToken cancellationToken = default
     );
+
+    /// <summary>
+    /// Gets the cache key for the connection string.
+    /// </summary>
+    /// <param name="connectionStringName">The name of the connection string.</param>
+    /// <param name="tenantIdentifier">The tenant identifier for the connection string.</param>
+    /// <returns>The cache key for the connection string.</returns>
+    protected string GetConnectionStringCacheKey(
+        string connectionStringName,
+        string? tenantIdentifier = null
+    )
+    {
+        return string.IsNullOrWhiteSpace(tenantIdentifier)
+            ? connectionStringName
+            : $"{tenantIdentifier}:{connectionStringName}";
+    }
 }

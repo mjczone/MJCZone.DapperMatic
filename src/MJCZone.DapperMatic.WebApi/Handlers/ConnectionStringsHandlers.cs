@@ -97,6 +97,7 @@ public static class ConnectionStringsHandlers
                 {
                     var name = request.Name;
                     var connectionString = request.ConnectionString;
+                    var tenantIdentifier = request.TenantIdentifier;
 
                     if (string.IsNullOrWhiteSpace(name))
                     {
@@ -132,7 +133,12 @@ public static class ConnectionStringsHandlers
                     }
 
                     await vaultInstance
-                        .SetConnectionStringAsync(name, connectionString, cancellationToken)
+                        .SetConnectionStringAsync(
+                            name,
+                            connectionString,
+                            tenantIdentifier,
+                            cancellationToken
+                        )
                         .ConfigureAwait(false);
 
                     return Results.Ok(new EmptyResponse());
@@ -151,10 +157,11 @@ public static class ConnectionStringsHandlers
                 prefix + "/cs/entries",
                 async (
                     HttpContext context,
-                    [FromQuery] string name,
-                    [FromQuery] string vault,
                     [FromServices] IOptionsMonitor<DapperMaticOptions> options,
                     [FromServices] IEnumerable<IConnectionStringsVaultFactory> vaultFactories,
+                    [FromQuery] string? name = null,
+                    [FromQuery] string? vault = null,
+                    [FromQuery] string? tenantIdentifier = null,
                     CancellationToken cancellationToken = default
                 ) =>
                 {
@@ -192,7 +199,7 @@ public static class ConnectionStringsHandlers
                     }
 
                     await vaultInstance
-                        .DeleteConnectionStringAsync(name, cancellationToken)
+                        .DeleteConnectionStringAsync(name, tenantIdentifier, cancellationToken)
                         .ConfigureAwait(false);
 
                     return Results.Ok(new EmptyResponse());
