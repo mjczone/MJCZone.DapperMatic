@@ -1,5 +1,4 @@
 using Microsoft.Extensions.Options;
-
 using MJCZone.DapperMatic.WebApi.Options;
 using MJCZone.DapperMatic.WebApi.Vaults;
 
@@ -159,6 +158,15 @@ public class DatabaseConnectionFactory : IDatabaseConnectionFactory
 
     private static System.Data.SQLite.SQLiteConnection GetSQLiteConnection(string connectionString)
     {
+        if (
+            !connectionString.Contains("Data Source=", StringComparison.OrdinalIgnoreCase)
+            && !connectionString.Contains('=', StringComparison.OrdinalIgnoreCase)
+        )
+        {
+            // assume it's a file path
+            connectionString = $"Data Source={connectionString}";
+        }
+
         var sqliteConnectionStringBuilder = new System.Data.SQLite.SQLiteConnectionStringBuilder(
             connectionString
         );

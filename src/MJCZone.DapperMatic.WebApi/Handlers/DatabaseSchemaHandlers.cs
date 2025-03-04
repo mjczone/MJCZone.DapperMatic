@@ -1,3 +1,7 @@
+using System.Numerics;
+using System.Text.Json;
+using System.Text.Json.Nodes;
+using System.Xml.Linq;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
@@ -24,6 +28,122 @@ public static class DatabaseSchemaHandlers
             ?.CurrentValue;
 
         var prefix = options.GetApiPrefix();
+
+        app.MapGet(
+                prefix + "/databases/{idOrSlug}/datatypes",
+                async (
+                    HttpContext httpContext,
+                    [FromRoute] string idOrSlug,
+                    [FromServices] IDatabaseRegistry databaseRegistry,
+                    [FromServices] IDatabaseConnectionFactory databaseConnectionFactory,
+                    CancellationToken cancellationToken = default
+                ) =>
+                {
+                    var database = await DatabaseHandlers
+                        .GetDatabaseAsync(
+                            httpContext,
+                            idOrSlug,
+                            databaseRegistry,
+                            false,
+                            cancellationToken
+                        )
+                        .ConfigureAwait(false);
+                    if (database is null)
+                    {
+                        return Results.NotFound();
+                    }
+
+                    using var connection = await databaseConnectionFactory
+                        .OpenConnectionAsync(
+                            httpContext.GetTenantIdentifier(),
+                            idOrSlug,
+                            cancellationToken
+                        )
+                        .ConfigureAwait(false);
+
+                    var sqlTypeDescriptors = new List<SqlTypeDescriptor>();
+
+                    var dotnetTypeDescriptors = new List<DotnetTypeDescriptor>
+                    {
+                        new(typeof(string), 128, isUnicode: false),
+                        new(typeof(string), int.MaxValue, isUnicode: false),
+                        new(typeof(string), 128, isUnicode: true),
+                        new(typeof(string), int.MaxValue, isUnicode: true),
+                        new(typeof(char)),
+                        new(typeof(char[])),
+                        new(typeof(byte)),
+                        new(typeof(byte[])),
+                        new(typeof(short)),
+                        new(typeof(int)),
+                        new(typeof(BigInteger)),
+                        new(typeof(long)),
+                        new(typeof(sbyte)),
+                        new(typeof(ushort)),
+                        new(typeof(uint)),
+                        new(typeof(ulong)),
+                        new(typeof(decimal)),
+                        new(typeof(float)),
+                        new(typeof(double)),
+                        new(typeof(Guid)),
+                        new(typeof(XDocument)),
+                        new(typeof(XElement)),
+                        new(typeof(JsonDocument)),
+                        new(typeof(JsonElement)),
+                        new(typeof(JsonArray)),
+                        new(typeof(JsonNode)),
+                        new(typeof(JsonObject)),
+                        new(typeof(JsonValue)),
+                        new(typeof(DateTime)),
+                        new(typeof(DateTimeOffset)),
+                        new(typeof(TimeSpan)),
+                        new(typeof(DateOnly)),
+                        new(typeof(TimeOnly)),
+                        new(typeof(Dictionary<string, string>)),
+                        new(typeof(HashSet<string>)),
+                        new(typeof(List<string>)),
+                    };
+
+                    var typeMap = connection.GetProviderTypeMap();
+                    foreach (var dotnetTypeDescriptor in dotnetTypeDescriptors)
+                    {
+                        if (
+                            typeMap.TryGetProviderSqlTypeMatchingDotnetType(
+                                dotnetTypeDescriptor,
+                                out var sqlTypeDescriptor
+                            ) && sqlTypeDescriptor is not null
+                        )
+                        {
+                            if (
+                                sqlTypeDescriptors.Any(d =>
+                                    d.BaseTypeName == sqlTypeDescriptor.BaseTypeName
+                                    && d.IsAutoIncrementing == sqlTypeDescriptor.IsAutoIncrementing
+                                    && d.IsFixedLength == sqlTypeDescriptor.IsFixedLength
+                                    && d.IsUnicode == sqlTypeDescriptor.IsUnicode
+                                )
+                            )
+                            {
+                                continue;
+                            }
+                            sqlTypeDescriptors.Add(sqlTypeDescriptor);
+                        }
+                    }
+
+                    return Results.Ok(
+                        new SqlTypeDescriptorListResponse
+                        {
+                            Results = [.. sqlTypeDescriptors.OrderBy(d => d.BaseTypeName)],
+                        }
+                    );
+                }
+            )
+            .WithName("GetDatabaseDataTypes")
+            .WithDisplayName("Get Database Data Types")
+            .WithSummary("Get the data types supported by the database.")
+            .WithTags("DapperMatic/DDL")
+            .WithGroupName("DDL")
+            .Produces(StatusCodes.Status200OK)
+            .Produces(StatusCodes.Status404NotFound)
+            .RequireAuthorization();
 
         // add handler to get database schema names
         app.MapGet(

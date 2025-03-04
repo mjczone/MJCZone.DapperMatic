@@ -12,6 +12,8 @@
 *.sln.docstates
 __delete/
 nuget.config
+*.db
+*.sqlite
 
 # DocFx generated files
 docs/**/toc.yml

@@ -11,6 +11,37 @@ public class DdlSchemaApiTests : DdlApiTestsBase
         : base(factory, output) { }
 
     [Fact]
+    public async Task DdlApi_CanGetDatabaseDatatypes()
+    {
+        await EnsureDatabaseAsync();
+
+        // GET datatypes
+        var request = WebApiTestUtils.CreateAdminRequest(
+            HttpMethod.Get,
+            "/api/db/databases/test-ddl-database/datatypes"
+        );
+        var response = await _client.SendAsync(request);
+        var content = await response.Content.ReadAsStringAsync();
+
+        if (!response.IsSuccessStatusCode)
+        {
+            _output.WriteLine(content);
+        }
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+
+        // extract the content as a string
+        var apiResponse =
+            System.Text.Json.JsonSerializer.Deserialize<SqlTypeDescriptorListResponse>(
+                content,
+                DapperMaticOptions.JsonSerializerOptions
+            );
+
+        Assert.NotNull(apiResponse);
+        Assert.NotNull(apiResponse.Results);
+    }
+
+    [Fact]
     public async Task DdlApi_CanCrudSchemas()
     {
         await EnsureDatabaseAsync();
