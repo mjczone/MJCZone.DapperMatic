@@ -158,6 +158,7 @@ public static class DmTableFactory
                     if (
                         paType.Name == "AliasAttribute"
                         && ca.TryGetPropertyValue<string>("Name", out var name)
+                        && !string.IsNullOrWhiteSpace(name)
                     )
                     {
                         return name;
@@ -165,9 +166,13 @@ public static class DmTableFactory
 
                     return null;
                 })
-                .FirstOrDefault(n => !string.IsNullOrWhiteSpace(n))
-            ?? tableAttribute?.TableName
-            ?? type.Name;
+                .FirstOrDefault(n => !string.IsNullOrWhiteSpace(n)) ?? tableAttribute?.TableName;
+
+        if (string.IsNullOrWhiteSpace(tableName))
+        {
+            // If no table name is specified, use the type name as the table name
+            tableName = type.Name;
+        }
 
         return (schemaName, tableName);
     }
@@ -222,19 +227,26 @@ public static class DmTableFactory
                     .Select(pa =>
                     {
                         var paType = pa.GetType();
-                        if (pa is DmColumnAttribute dca)
+                        if (
+                            pa is DmColumnAttribute dca
+                            && !string.IsNullOrWhiteSpace(dca.ColumnName)
+                        )
                         {
                             return dca.ColumnName;
                         }
                         // EF Core
-                        if (pa is System.ComponentModel.DataAnnotations.Schema.ColumnAttribute ca)
+                        else if (
+                            pa is System.ComponentModel.DataAnnotations.Schema.ColumnAttribute ca
+                            && !string.IsNullOrWhiteSpace(ca.Name)
+                        )
                         {
                             return ca.Name;
                         }
                         // ServiceStack.OrmLite
-                        if (
+                        else if (
                             paType.Name == "AliasAttribute"
                             && pa.TryGetPropertyValue<string>("Name", out var name)
+                            && !string.IsNullOrWhiteSpace(name)
                         )
                         {
                             return name;
@@ -243,8 +255,13 @@ public static class DmTableFactory
                         return null;
                     })
                     .FirstOrDefault(n => !string.IsNullOrWhiteSpace(n))
-                ?? columnAttribute?.ColumnName
-                ?? property.Name;
+                ?? columnAttribute?.ColumnName;
+
+            if (string.IsNullOrWhiteSpace(columnName))
+            {
+                // If no column name is specified, use the property name as the column name
+                columnName = property.Name;
+            }
 
             var isPrimaryKey =
                 columnAttribute?.IsPrimaryKey == true

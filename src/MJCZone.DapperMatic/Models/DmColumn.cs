@@ -68,9 +68,9 @@ public class DmColumn
         ColumnName = columnName;
         DotnetType = dotnetType;
         ProviderDataTypes = providerDataTypes ?? [];
-        Length = length;
-        Precision = precision;
-        Scale = scale;
+        Length = length == -1 ? null : length;
+        Precision = precision == -1 ? null : precision;
+        Scale = scale == -1 ? null : scale;
         CheckExpression = checkExpression;
         DefaultExpression = defaultExpression;
         IsNullable = isNullable;
