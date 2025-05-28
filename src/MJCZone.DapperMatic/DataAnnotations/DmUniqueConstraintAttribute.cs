@@ -20,17 +20,9 @@ public sealed class DmUniqueConstraintAttribute : Attribute
     /// </summary>
     /// <param name="columnNames">The column names that form the unique constraint.</param>
     /// <param name="constraintName">The name of the constraint.</param>
-    public DmUniqueConstraintAttribute(string[] columnNames, string? constraintName = null)
+    public DmUniqueConstraintAttribute(string[]? columnNames = null, string? constraintName = null)
     {
-        if (columnNames == null || columnNames.Length == 0)
-        {
-            throw new ArgumentException(
-                "At least one column name is required",
-                nameof(columnNames)
-            );
-        }
-
-        Columns = columnNames.Select(n => new DmOrderedColumn(n)).ToArray();
+        Columns = columnNames;
         ConstraintName = constraintName;
     }
 
@@ -42,5 +34,5 @@ public sealed class DmUniqueConstraintAttribute : Attribute
     /// <summary>
     /// Gets the columns that form the unique constraint.
     /// </summary>
-    public DmOrderedColumn[] Columns { get; }
+    public string[]? Columns { get; }
 }

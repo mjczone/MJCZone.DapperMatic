@@ -28,7 +28,7 @@ public sealed class DmPrimaryKeyConstraintAttribute : Attribute
         // The column names are only required if the attribute is applied to a class.
         // If applied to a property, the column name is derived from the property name.
 
-        Columns = [.. (columnNames ?? []).Select(n => new DmOrderedColumn(n))];
+        Columns = columnNames;
         ConstraintName = constraintName;
     }
 
@@ -40,5 +40,5 @@ public sealed class DmPrimaryKeyConstraintAttribute : Attribute
     /// <summary>
     /// Gets the columns that form the primary key constraint.
     /// </summary>
-    public DmOrderedColumn[]? Columns { get; }
+    public string[]? Columns { get; }
 }

@@ -36,9 +36,9 @@ public sealed class DmColumnAttribute : Attribute
     public DmColumnAttribute(
         string? columnName = null,
         string? providerDataType = null,
-        int? length = null,
-        int? precision = null,
-        int? scale = null,
+        int length = -1,
+        int precision = -1,
+        int scale = -1,
         string? checkExpression = null,
         string? defaultExpression = null,
         bool isNullable = false,
@@ -50,8 +50,8 @@ public sealed class DmColumnAttribute : Attribute
         bool isForeignKey = false,
         string? referencedTableName = null,
         string? referencedColumnName = null,
-        DmForeignKeyAction? onDelete = null,
-        DmForeignKeyAction? onUpdate = null
+        DmForeignKeyAction onDelete = DmForeignKeyAction.NoAction,
+        DmForeignKeyAction onUpdate = DmForeignKeyAction.NoAction
     )
     {
         ColumnName = columnName;
@@ -88,17 +88,17 @@ public sealed class DmColumnAttribute : Attribute
     /// <summary>
     /// Gets the length of the column.
     /// </summary>
-    public int? Length { get; }
+    public int Length { get; }
 
     /// <summary>
     /// Gets the precision of the column.
     /// </summary>
-    public int? Precision { get; }
+    public int Precision { get; }
 
     /// <summary>
     /// Gets the scale of the column.
     /// </summary>
-    public int? Scale { get; }
+    public int Scale { get; }
 
     /// <summary>
     /// Gets the check expression for the column.
@@ -158,10 +158,10 @@ public sealed class DmColumnAttribute : Attribute
     /// <summary>
     /// Gets the action to perform on delete.
     /// </summary>
-    public DmForeignKeyAction? OnDelete { get; }
+    public DmForeignKeyAction OnDelete { get; }
 
     /// <summary>
     /// Gets the action to perform on update.
     /// </summary>
-    public DmForeignKeyAction? OnUpdate { get; }
+    public DmForeignKeyAction OnUpdate { get; }
 }
