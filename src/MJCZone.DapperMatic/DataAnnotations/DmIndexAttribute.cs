@@ -5,55 +5,35 @@ namespace MJCZone.DapperMatic.DataAnnotations;
 /// <summary>
 /// Attribute to define a database index.
 /// </summary>
-[AttributeUsage(AttributeTargets.Property | AttributeTargets.Class, AllowMultiple = true)]
+/// <example>
+/// [DmIndex(true, "Col1", "Col2")]
+/// </example>
+[AttributeUsage(
+    AttributeTargets.Property | AttributeTargets.Class,
+    AllowMultiple = true,
+    Inherited = false
+)]
 public sealed class DmIndexAttribute : Attribute
 {
     /// <summary>
-    /// Initializes a new instance of the <see cref="DmIndexAttribute"/> class with the specified constraint name, uniqueness, and column names.
-    /// </summary>
-    /// <param name="constraintName">The name of the index constraint.</param>
-    /// <param name="isUnique">A value indicating whether the index is unique.</param>
-    /// <param name="columnNames">The names of the columns included in the index.</param>
-    public DmIndexAttribute(string constraintName, bool isUnique, params string[] columnNames)
-    {
-        IndexName = constraintName;
-        IsUnique = isUnique;
-        Columns = columnNames.Select(columnName => new DmOrderedColumn(columnName)).ToArray();
-    }
-
-    /// <summary>
-    /// Initializes a new instance of the <see cref="DmIndexAttribute"/> class with the specified uniqueness and column names.
+    /// Initializes a new instance of the <see cref="DmIndexAttribute"/> class.
     /// </summary>
     /// <param name="isUnique">A value indicating whether the index is unique.</param>
     /// <param name="columnNames">The names of the columns included in the index.</param>
-    public DmIndexAttribute(bool isUnique, params string[] columnNames)
+    /// <param name="indexName">The name of the index constraint.</param>
+    public DmIndexAttribute(bool isUnique, string[] columnNames, string? indexName = null)
     {
-        IsUnique = isUnique;
-        Columns = columnNames.Select(columnName => new DmOrderedColumn(columnName)).ToArray();
-    }
+        if (columnNames == null || columnNames.Length == 0)
+        {
+            throw new ArgumentException(
+                "At least one column name is required",
+                nameof(columnNames)
+            );
+        }
 
-    /// <summary>
-    /// Initializes a new instance of the <see cref="DmIndexAttribute"/> class with the specified constraint name, uniqueness, and columns.
-    /// </summary>
-    /// <param name="constraintName">The name of the index constraint.</param>
-    /// <param name="isUnique">A value indicating whether the index is unique.</param>
-    /// <param name="columns">The columns included in the index.</param>
-    public DmIndexAttribute(string constraintName, bool isUnique, params DmOrderedColumn[] columns)
-    {
-        IndexName = constraintName;
         IsUnique = isUnique;
-        Columns = columns;
-    }
-
-    /// <summary>
-    /// Initializes a new instance of the <see cref="DmIndexAttribute"/> class with the specified uniqueness and columns.
-    /// </summary>
-    /// <param name="isUnique">A value indicating whether the index is unique.</param>
-    /// <param name="columns">The columns included in the index.</param>
-    public DmIndexAttribute(bool isUnique, params DmOrderedColumn[] columns)
-    {
-        IsUnique = isUnique;
-        Columns = columns;
+        Columns = columnNames.Select(n => new DmOrderedColumn(n)).ToArray();
+        IndexName = indexName;
     }
 
     /// <summary>
@@ -69,5 +49,5 @@ public sealed class DmIndexAttribute : Attribute
     /// <summary>
     /// Gets the columns included in the index.
     /// </summary>
-    public DmOrderedColumn[]? Columns { get; }
+    public DmOrderedColumn[] Columns { get; }
 }

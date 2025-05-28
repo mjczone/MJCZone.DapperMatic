@@ -5,41 +5,31 @@ namespace MJCZone.DapperMatic.DataAnnotations;
 /// <summary>
 /// Attribute to define a primary key constraint on a table.
 /// </summary>
-[AttributeUsage(AttributeTargets.Property | AttributeTargets.Class, AllowMultiple = true)]
+/// <example>
+/// [DmPrimaryKeyConstraint(new[] { "Id" }, "PK_MyTable")]
+/// </example>
+[AttributeUsage(
+    AttributeTargets.Property | AttributeTargets.Class,
+    AllowMultiple = false,
+    Inherited = false
+)]
 public sealed class DmPrimaryKeyConstraintAttribute : Attribute
 {
     /// <summary>
     /// Initializes a new instance of the <see cref="DmPrimaryKeyConstraintAttribute"/> class.
     /// </summary>
-    public DmPrimaryKeyConstraintAttribute() { }
-
-    /// <summary>
-    /// Initializes a new instance of the <see cref="DmPrimaryKeyConstraintAttribute"/> class with a constraint name.
-    /// </summary>
-    /// <param name="constraintName">The name of the constraint.</param>
-    public DmPrimaryKeyConstraintAttribute(string constraintName)
-    {
-        ConstraintName = constraintName;
-    }
-
-    /// <summary>
-    /// Initializes a new instance of the <see cref="DmPrimaryKeyConstraintAttribute"/> class with a constraint name and column names.
-    /// </summary>
-    /// <param name="constraintName">The name of the constraint.</param>
     /// <param name="columnNames">The column names that form the primary key constraint.</param>
-    public DmPrimaryKeyConstraintAttribute(string constraintName, params string[] columnNames)
+    /// <param name="constraintName">The name of the constraint.</param>
+    public DmPrimaryKeyConstraintAttribute(
+        string[]? columnNames = null,
+        string? constraintName = null
+    )
     {
-        ConstraintName = constraintName;
-        Columns = columnNames.Select(columnName => new DmOrderedColumn(columnName)).ToArray();
-    }
+        // The column names are only required if the attribute is applied to a class.
+        // If applied to a property, the column name is derived from the property name.
 
-    /// <summary>
-    /// Initializes a new instance of the <see cref="DmPrimaryKeyConstraintAttribute"/> class with column names.
-    /// </summary>
-    /// <param name="columnNames">The column names that form the primary key constraint.</param>
-    public DmPrimaryKeyConstraintAttribute(string[] columnNames)
-    {
-        Columns = columnNames.Select(columnName => new DmOrderedColumn(columnName)).ToArray();
+        Columns = [.. (columnNames ?? []).Select(n => new DmOrderedColumn(n))];
+        ConstraintName = constraintName;
     }
 
     /// <summary>

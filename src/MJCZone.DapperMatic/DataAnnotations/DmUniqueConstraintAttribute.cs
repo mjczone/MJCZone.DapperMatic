@@ -5,47 +5,33 @@ namespace MJCZone.DapperMatic.DataAnnotations;
 /// <summary>
 /// Attribute to define a unique constraint on a table.
 /// </summary>
-[AttributeUsage(AttributeTargets.Property | AttributeTargets.Class, AllowMultiple = true)]
+/// <example>
+/// [DmUniqueConstraint("UQ_MyTable_Col1_Col2", "Col1", "Col2")]
+/// </example>
+[AttributeUsage(
+    AttributeTargets.Property | AttributeTargets.Class,
+    AllowMultiple = true,
+    Inherited = false
+)]
 public sealed class DmUniqueConstraintAttribute : Attribute
 {
     /// <summary>
-    /// Initializes a new instance of the <see cref="DmUniqueConstraintAttribute"/> class with a constraint name and column names.
-    /// </summary>
-    /// <param name="constraintName">The name of the constraint.</param>
-    /// <param name="columnNames">The column names that form the unique constraint.</param>
-    public DmUniqueConstraintAttribute(string constraintName, params string[] columnNames)
-    {
-        ConstraintName = constraintName;
-        Columns = columnNames.Select(columnName => new DmOrderedColumn(columnName)).ToArray();
-    }
-
-    /// <summary>
-    /// Initializes a new instance of the <see cref="DmUniqueConstraintAttribute"/> class with column names.
+    /// Initializes a new instance of the <see cref="DmUniqueConstraintAttribute"/> class.
     /// </summary>
     /// <param name="columnNames">The column names that form the unique constraint.</param>
-    public DmUniqueConstraintAttribute(params string[] columnNames)
-    {
-        Columns = columnNames.Select(columnName => new DmOrderedColumn(columnName)).ToArray();
-    }
-
-    /// <summary>
-    /// Initializes a new instance of the <see cref="DmUniqueConstraintAttribute"/> class with a constraint name and ordered columns.
-    /// </summary>
     /// <param name="constraintName">The name of the constraint.</param>
-    /// <param name="columns">The ordered columns that form the unique constraint.</param>
-    public DmUniqueConstraintAttribute(string constraintName, params DmOrderedColumn[] columns)
+    public DmUniqueConstraintAttribute(string[] columnNames, string? constraintName = null)
     {
-        ConstraintName = constraintName;
-        Columns = columns;
-    }
+        if (columnNames == null || columnNames.Length == 0)
+        {
+            throw new ArgumentException(
+                "At least one column name is required",
+                nameof(columnNames)
+            );
+        }
 
-    /// <summary>
-    /// Initializes a new instance of the <see cref="DmUniqueConstraintAttribute"/> class with ordered columns.
-    /// </summary>
-    /// <param name="columns">The ordered columns that form the unique constraint.</param>
-    public DmUniqueConstraintAttribute(params DmOrderedColumn[] columns)
-    {
-        Columns = columns;
+        Columns = columnNames.Select(n => new DmOrderedColumn(n)).ToArray();
+        ConstraintName = constraintName;
     }
 
     /// <summary>
@@ -56,5 +42,5 @@ public sealed class DmUniqueConstraintAttribute : Attribute
     /// <summary>
     /// Gets the columns that form the unique constraint.
     /// </summary>
-    public DmOrderedColumn[]? Columns { get; }
+    public DmOrderedColumn[] Columns { get; }
 }

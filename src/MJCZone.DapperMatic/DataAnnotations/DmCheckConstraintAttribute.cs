@@ -1,51 +1,33 @@
 namespace MJCZone.DapperMatic.DataAnnotations;
 
 /// <summary>
-/// Check Constraint Attribute.
+/// Attribute to define a check constraint.
 /// </summary>
 /// <example>
 /// [DmCheckConstraint("Age > 18")]
 /// public int Age { get; set; }
-/// ...
 /// </example>
-[AttributeUsage(AttributeTargets.Property | AttributeTargets.Class)]
+[AttributeUsage(
+    AttributeTargets.Property | AttributeTargets.Class,
+    AllowMultiple = true,
+    Inherited = false
+)]
 public sealed class DmCheckConstraintAttribute : Attribute
 {
     /// <summary>
-    /// Initializes a new instance of the <see cref="DmCheckConstraintAttribute"/> class with the specified expression.
+    /// Initializes a new instance of the <see cref="DmCheckConstraintAttribute"/> class.
     /// </summary>
     /// <param name="expression">The check constraint expression.</param>
-    /// <exception cref="ArgumentException">Thrown when the expression is null or whitespace.</exception>
-    public DmCheckConstraintAttribute(string expression)
-    {
-        if (string.IsNullOrWhiteSpace(expression))
-        {
-            throw new ArgumentException("Expression is required", nameof(expression));
-        }
-
-        Expression = expression;
-    }
-
-    /// <summary>
-    /// Initializes a new instance of the <see cref="DmCheckConstraintAttribute"/> class with the specified constraint name and expression.
-    /// </summary>
     /// <param name="constraintName">The name of the check constraint.</param>
-    /// <param name="expression">The check constraint expression.</param>
-    /// <exception cref="ArgumentException">Thrown when the constraint name or expression is null or whitespace.</exception>
-    public DmCheckConstraintAttribute(string constraintName, string expression)
+    public DmCheckConstraintAttribute(string expression, string? constraintName = null)
     {
-        if (string.IsNullOrWhiteSpace(constraintName))
-        {
-            throw new ArgumentException("Constraint name is required", nameof(constraintName));
-        }
-
         if (string.IsNullOrWhiteSpace(expression))
         {
             throw new ArgumentException("Expression is required", nameof(expression));
         }
 
-        ConstraintName = constraintName;
         Expression = expression;
+        ConstraintName = constraintName;
     }
 
     /// <summary>

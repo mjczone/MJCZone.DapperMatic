@@ -78,16 +78,28 @@ public static class DmTableFactory
     }
 
     /// <summary>
-    /// Generates a DmTable instance for the given type, including all column mappings and constraints.
+    /// There are times we just need the schema name and table name for a type, without the full DmTable instance.
+    /// We also may need this information without causing a recursive call to GetTable, which may have foreign keys
+    /// that reference a table with a foreign key back to it, leading to a stack overflow.
     /// </summary>
-    /// <param name="type">The type to map to a DmTable instance.</param>
-    /// <param name="propertyMappings">A dictionary to store property to column mappings.</param>
-    /// <returns>A DmTable instance representing the type.</returns>
-    private static DmTable GetTableInternal(
+    /// <param name="type">The type to extract a schema and table name for.</param>
+    /// <param name="ignoreCache">
+    /// If true, the cache will be ignored and the schema and table name will be extracted from the type's attributes.
+    /// If false, the cache will be checked first, and if the type is found in the cache, the cached values will be returned.
+    /// </param>
+    /// <returns>A tuple containing the schema name and table name for the type.</returns>
+    public static (string? schemaName, string tableName) GetTableName(
         Type type,
-        Dictionary<string, DmColumn> propertyMappings
+        bool ignoreCache = false
     )
     {
+        ArgumentNullException.ThrowIfNull(type, nameof(type));
+
+        if (!ignoreCache && _cache.TryGetValue(type, out var table))
+        {
+            return (table.SchemaName ?? string.Empty, table.TableName ?? type.Name);
+        }
+
         var classAttributes = type.GetCustomAttributes().ToArray();
 
         var tableAttribute =
@@ -156,6 +168,22 @@ public static class DmTableFactory
                 .FirstOrDefault(n => !string.IsNullOrWhiteSpace(n))
             ?? tableAttribute?.TableName
             ?? type.Name;
+
+        return (schemaName, tableName);
+    }
+
+    /// <summary>
+    /// Generates a DmTable instance for the given type, including all column mappings and constraints.
+    /// </summary>
+    /// <param name="type">The type to map to a DmTable instance.</param>
+    /// <param name="propertyMappings">A dictionary to store property to column mappings.</param>
+    /// <returns>A DmTable instance representing the type.</returns>
+    private static DmTable GetTableInternal(
+        Type type,
+        Dictionary<string, DmColumn> propertyMappings
+    )
+    {
+        var (schemaName, tableName) = GetTableName(type, ignoreCache: true);
 
         // columns must bind to public properties that can be both read and written
         var properties = type.GetProperties(BindingFlags.Public | BindingFlags.Instance)
@@ -504,6 +532,18 @@ public static class DmTableFactory
             if (columnForeignKeyConstraintAttribute != null)
             {
                 var referencedTableName = columnForeignKeyConstraintAttribute.ReferencedTableName;
+                if (
+                    string.IsNullOrWhiteSpace(referencedTableName)
+                    && columnForeignKeyConstraintAttribute.ReferencedType != null
+                )
+                {
+                    // Populate the referenced table name from the referenced type
+                    var referencedTypeInfo = GetTableName(
+                        columnForeignKeyConstraintAttribute.ReferencedType,
+                        ignoreCache: true
+                    );
+                    referencedTableName = referencedTypeInfo.tableName;
+                }
                 var referencedColumnNames =
                     columnForeignKeyConstraintAttribute.ReferencedColumnNames;
                 var onDelete = columnForeignKeyConstraintAttribute.OnDelete;
@@ -532,8 +572,8 @@ public static class DmTableFactory
                         [new(columnName)],
                         referencedTableName,
                         [new(referencedColumnNames[0])],
-                        onDelete ?? DmForeignKeyAction.NoAction,
-                        onUpdate ?? DmForeignKeyAction.NoAction
+                        onDelete,
+                        onUpdate
                     );
                     foreignKeyConstraints.Add(foreignKeyConstraint);
 
@@ -725,10 +765,18 @@ public static class DmTableFactory
         var cfkas = type.GetCustomAttributes<DmForeignKeyConstraintAttribute>();
         foreach (var cfk in cfkas)
         {
+            var referencedTableName = cfk.ReferencedTableName;
+            if (string.IsNullOrWhiteSpace(referencedTableName) && cfk.ReferencedType != null)
+            {
+                // Populate the referenced table name from the referenced type
+                var referencedTypeInfo = GetTableName(cfk.ReferencedType, ignoreCache: true);
+                referencedTableName = referencedTypeInfo.tableName;
+            }
+
             if (
                 cfk.SourceColumnNames == null
                 || cfk.SourceColumnNames.Length == 0
-                || string.IsNullOrWhiteSpace(cfk.ReferencedTableName)
+                || string.IsNullOrWhiteSpace(referencedTableName)
                 || cfk.ReferencedColumnNames == null
                 || cfk.ReferencedColumnNames.Length == 0
                 || cfk.SourceColumnNames.Length != cfk.ReferencedColumnNames.Length
@@ -742,7 +790,7 @@ public static class DmTableFactory
                 : DbProviderUtils.GenerateForeignKeyConstraintName(
                     tableName,
                     cfk.SourceColumnNames,
-                    cfk.ReferencedTableName,
+                    referencedTableName,
                     cfk.ReferencedColumnNames
                 );
 
@@ -751,10 +799,10 @@ public static class DmTableFactory
                 tableName,
                 constraintName,
                 [.. cfk.SourceColumnNames.Select(c => new DmOrderedColumn(c))],
-                cfk.ReferencedTableName,
+                referencedTableName,
                 [.. cfk.ReferencedColumnNames.Select(c => new DmOrderedColumn(c))],
-                cfk.OnDelete ?? DmForeignKeyAction.NoAction,
-                cfk.OnUpdate ?? DmForeignKeyAction.NoAction
+                cfk.OnDelete,
+                cfk.OnUpdate
             );
 
             foreignKeyConstraints.Add(foreignKeyConstraint);
@@ -768,7 +816,7 @@ public static class DmTableFactory
                 if (column != null)
                 {
                     column.IsForeignKey = true;
-                    column.ReferencedTableName = cfk.ReferencedTableName;
+                    column.ReferencedTableName = referencedTableName;
                     column.ReferencedColumnName = cfk.ReferencedColumnNames[i];
                     column.OnDelete = cfk.OnDelete;
                     column.OnUpdate = cfk.OnUpdate;

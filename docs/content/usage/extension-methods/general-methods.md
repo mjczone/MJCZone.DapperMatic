@@ -23,11 +23,4 @@ string sqlType = db.GetSqlTypeFromDotnetType(new DbProviderDotnetTypeDescriptor(
 
 // Get the mapped .NET type matching a specific provider sql data type (e.g., varchar(255), decimal(15,4))
 var (/* Type */ dotnetType, /* int? */ length, /* int? */ precision, /* int? */ scale) = db.GetDotnetTypeFromSqlType(string sqlType);
-
-// Normalize a database name identifier to some idiomatic standard, namely alpha numeric with underscores and without spaces
-var normalizedName = db.NormalizeName(name);
-
-// Get the last sql executed inside MJCZone.DapperMatic
-var lastSql = db.GetLastSql();
-(string sql, object? parameters) lastSqlWithParams = db.GetLastSqlWithParms();
 ```
