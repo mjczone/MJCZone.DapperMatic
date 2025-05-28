@@ -638,7 +638,7 @@ public static class DmTableFactory
         // necessary. Class level attributes get used without questioning.
 
         var cpa = type.GetCustomAttribute<DmPrimaryKeyConstraintAttribute>();
-        if (cpa != null && cpa.Columns != null)
+        if (cpa != null && cpa.Columns != null && cpa.Columns.Length > 0)
         {
             var constraintName = !string.IsNullOrWhiteSpace(cpa.ConstraintName)
                 ? cpa.ConstraintName
@@ -648,14 +648,14 @@ public static class DmTableFactory
                 schemaName,
                 tableName,
                 constraintName,
-                cpa.Columns
+                [.. cpa.Columns.Select(c => new DmOrderedColumn(c))]
             );
 
             // flag the column as part of the primary key
-            foreach (var c in cpa.Columns)
+            foreach (var c in cpa.Columns!)
             {
                 var column = columns.FirstOrDefault(col =>
-                    col.ColumnName.Equals(c.ColumnName, StringComparison.OrdinalIgnoreCase)
+                    col.ColumnName.Equals(c, StringComparison.OrdinalIgnoreCase)
                 );
                 if (column != null)
                 {
@@ -693,29 +693,28 @@ public static class DmTableFactory
         var ucas = type.GetCustomAttributes<DmUniqueConstraintAttribute>();
         foreach (var uca in ucas)
         {
-            if (uca.Columns == null)
+            if (uca.Columns == null || uca.Columns.Length == 0)
             {
                 continue;
             }
 
             var constraintName = !string.IsNullOrWhiteSpace(uca.ConstraintName)
                 ? uca.ConstraintName
-                : DbProviderUtils.GenerateUniqueConstraintName(
-                    tableName,
-                    uca.Columns.Select(c => c.ColumnName).ToArray()
-                );
+                : DbProviderUtils.GenerateUniqueConstraintName(tableName, uca.Columns);
 
             uniqueConstraints.Add(
-                new DmUniqueConstraint(schemaName, tableName, constraintName, uca.Columns)
+                new DmUniqueConstraint(
+                    schemaName,
+                    tableName,
+                    constraintName,
+                    [.. uca.Columns.Select(c => new DmOrderedColumn(c))]
+                )
             );
 
             if (uca.Columns.Length == 1)
             {
                 var column = columns.FirstOrDefault(c =>
-                    c.ColumnName.Equals(
-                        uca.Columns[0].ColumnName,
-                        StringComparison.OrdinalIgnoreCase
-                    )
+                    c.ColumnName.Equals(uca.Columns[0], StringComparison.OrdinalIgnoreCase)
                 );
                 if (column != null)
                 {
@@ -727,29 +726,31 @@ public static class DmTableFactory
         var cias = type.GetCustomAttributes<DmIndexAttribute>();
         foreach (var cia in cias)
         {
-            if (cia.Columns == null)
+            if (cia.Columns == null || cia.Columns.Length == 0)
             {
+                // If no columns are specified, skip this index
+                // This is to prevent creating an index with no columns, which is not valid
                 continue;
             }
 
             var indexName = !string.IsNullOrWhiteSpace(cia.IndexName)
                 ? cia.IndexName
-                : DbProviderUtils.GenerateIndexName(
-                    tableName,
-                    cia.Columns.Select(c => c.ColumnName).ToArray()
-                );
+                : DbProviderUtils.GenerateIndexName(tableName, cia.Columns);
 
             indexes.Add(
-                new DmIndex(schemaName, tableName, indexName, cia.Columns, isUnique: cia.IsUnique)
+                new DmIndex(
+                    schemaName,
+                    tableName,
+                    indexName,
+                    [.. cia.Columns.Select(c => new DmOrderedColumn(c))],
+                    isUnique: cia.IsUnique
+                )
             );
 
             if (cia.Columns.Length == 1)
             {
                 var column = columns.FirstOrDefault(c =>
-                    c.ColumnName.Equals(
-                        cia.Columns[0].ColumnName,
-                        StringComparison.OrdinalIgnoreCase
-                    )
+                    c.ColumnName.Equals(cia.Columns[0], StringComparison.OrdinalIgnoreCase)
                 );
                 if (column != null)
                 {

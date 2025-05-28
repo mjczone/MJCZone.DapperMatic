@@ -21,7 +21,11 @@ public sealed class DmIndexAttribute : Attribute
     /// <param name="isUnique">A value indicating whether the index is unique.</param>
     /// <param name="columnNames">The names of the columns included in the index.</param>
     /// <param name="indexName">The name of the index constraint.</param>
-    public DmIndexAttribute(bool isUnique, string[] columnNames, string? indexName = null)
+    public DmIndexAttribute(
+        bool isUnique = false,
+        string[]? columnNames = null,
+        string? indexName = null
+    )
     {
         if (columnNames == null || columnNames.Length == 0)
         {
@@ -32,7 +36,7 @@ public sealed class DmIndexAttribute : Attribute
         }
 
         IsUnique = isUnique;
-        Columns = columnNames.Select(n => new DmOrderedColumn(n)).ToArray();
+        Columns = columnNames;
         IndexName = indexName;
     }
 
@@ -49,5 +53,5 @@ public sealed class DmIndexAttribute : Attribute
     /// <summary>
     /// Gets the columns included in the index.
     /// </summary>
-    public DmOrderedColumn[] Columns { get; }
+    public string[]? Columns { get; }
 }

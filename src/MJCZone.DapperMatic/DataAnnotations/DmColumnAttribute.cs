@@ -36,9 +36,9 @@ public sealed class DmColumnAttribute : Attribute
     public DmColumnAttribute(
         string? columnName = null,
         string? providerDataType = null,
-        int? length = null,
-        int? precision = null,
-        int? scale = null,
+        int length = -1,
+        int precision = -1,
+        int scale = -1,
         string? checkExpression = null,
         string? defaultExpression = null,
         bool isNullable = false,
@@ -50,15 +50,15 @@ public sealed class DmColumnAttribute : Attribute
         bool isForeignKey = false,
         string? referencedTableName = null,
         string? referencedColumnName = null,
-        DmForeignKeyAction? onDelete = null,
-        DmForeignKeyAction? onUpdate = null
+        DmForeignKeyAction onDelete = DmForeignKeyAction.NoAction,
+        DmForeignKeyAction onUpdate = DmForeignKeyAction.NoAction
     )
     {
         ColumnName = columnName;
         ProviderDataType = providerDataType;
-        Length = length;
-        Precision = precision;
-        Scale = scale;
+        Length = length == -1 ? null : length; // -1 indicates no length specified
+        Precision = precision == -1 ? null : precision; // -1 indicates no precision specified
+        Scale = scale == -1 ? null : scale; // -1 indicates no scale specified
         CheckExpression = checkExpression;
         DefaultExpression = defaultExpression;
         IsNullable = isNullable;
@@ -158,10 +158,10 @@ public sealed class DmColumnAttribute : Attribute
     /// <summary>
     /// Gets the action to perform on delete.
     /// </summary>
-    public DmForeignKeyAction? OnDelete { get; }
+    public DmForeignKeyAction OnDelete { get; }
 
     /// <summary>
     /// Gets the action to perform on update.
     /// </summary>
-    public DmForeignKeyAction? OnUpdate { get; }
+    public DmForeignKeyAction OnUpdate { get; }
 }
