@@ -6,44 +6,24 @@ namespace MJCZone.DapperMatic.DataAnnotations;
 /// <example>
 /// [DmDefaultConstraint("0")]
 /// public int Age { get; set; }
-/// ...
 /// </example>
-[AttributeUsage(AttributeTargets.Property, AllowMultiple = true)]
+[AttributeUsage(AttributeTargets.Property, AllowMultiple = true, Inherited = false)]
 public sealed class DmDefaultConstraintAttribute : Attribute
 {
     /// <summary>
-    /// Initializes a new instance of the <see cref="DmDefaultConstraintAttribute"/> class with an expression.
+    /// Initializes a new instance of the <see cref="DmDefaultConstraintAttribute"/> class.
     /// </summary>
     /// <param name="expression">The default value expression.</param>
-    public DmDefaultConstraintAttribute(string expression)
-    {
-        if (string.IsNullOrWhiteSpace(expression))
-        {
-            throw new ArgumentException("Expression is required", nameof(expression));
-        }
-
-        Expression = expression;
-    }
-
-    /// <summary>
-    /// Initializes a new instance of the <see cref="DmDefaultConstraintAttribute"/> class with a constraint name and expression.
-    /// </summary>
     /// <param name="constraintName">The name of the constraint.</param>
-    /// <param name="expression">The default value expression.</param>
-    public DmDefaultConstraintAttribute(string constraintName, string expression)
+    public DmDefaultConstraintAttribute(string expression, string? constraintName = null)
     {
-        if (string.IsNullOrWhiteSpace(constraintName))
-        {
-            throw new ArgumentException("Constraint name is required", nameof(constraintName));
-        }
-
         if (string.IsNullOrWhiteSpace(expression))
         {
             throw new ArgumentException("Expression is required", nameof(expression));
         }
 
-        ConstraintName = constraintName;
         Expression = expression;
+        ConstraintName = constraintName;
     }
 
     /// <summary>

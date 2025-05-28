@@ -272,6 +272,9 @@ dotnet_diagnostic.CA2214.severity = none
 # CA2227: Collection properties should be read only
 dotnet_diagnostic.CA2227.severity = none
 
+# SA1629: Documentation text should end with a period
+dotnet_diagnostic.SA1629.severity = suggestion
+
 [*.{cs,vb}]
 
 # Naming rules

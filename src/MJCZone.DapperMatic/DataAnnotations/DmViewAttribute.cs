@@ -3,34 +3,30 @@ namespace MJCZone.DapperMatic.DataAnnotations;
 /// <summary>
 /// Attribute to define a database view.
 /// </summary>
-[AttributeUsage(AttributeTargets.Class)]
+/// <example>
+/// [DmView("CREATE VIEW {0}.MyView AS SELECT ...", schemaName: "dbo", viewName: "MyView")]
+/// public class MyView { }
+/// </example>
+[AttributeUsage(AttributeTargets.Class, AllowMultiple = false, Inherited = false)]
 public sealed class DmViewAttribute : Attribute
 {
     /// <summary>
     /// Initializes a new instance of the <see cref="DmViewAttribute"/> class.
     /// </summary>
-    public DmViewAttribute() { }
-
-    /// <summary>
-    /// Initializes a new instance of the <see cref="DmViewAttribute"/> class.
-    /// </summary>
     /// <param name="definition">The SQL definition for the view. Use '{0}' to represent the schema name.</param>
-    public DmViewAttribute(string definition)
-    {
-        Definition = definition;
-    }
-
-    /// <summary>
-    /// Initializes a new instance of the <see cref="DmViewAttribute"/> class.
-    /// </summary>
     /// <param name="schemaName">The schema name.</param>
     /// <param name="viewName">The view name.</param>
-    /// <param name="definition">The SQL definition for the view. Use '{0}' to represent the schema name.</param>
-    public DmViewAttribute(string? schemaName, string? viewName, string definition)
+    /// <exception cref="ArgumentException">Thrown when <paramref name="definition"/> is null or whitespace.</exception>
+    public DmViewAttribute(string definition, string? schemaName = null, string? viewName = null)
     {
+        if (string.IsNullOrWhiteSpace(definition))
+        {
+            throw new ArgumentException("Definition is required", nameof(definition));
+        }
+
+        Definition = definition;
         SchemaName = schemaName;
         ViewName = viewName;
-        Definition = definition;
     }
 
     /// <summary>
@@ -46,5 +42,5 @@ public sealed class DmViewAttribute : Attribute
     /// <summary>
     /// Gets the SQL definition for the view.
     /// </summary>
-    public string? Definition { get; }
+    public string Definition { get; }
 }
