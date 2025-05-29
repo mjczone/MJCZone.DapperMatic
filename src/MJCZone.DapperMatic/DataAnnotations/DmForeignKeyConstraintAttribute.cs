@@ -18,7 +18,7 @@ public sealed class DmForeignKeyConstraintAttribute : Attribute
     /// <summary>
     /// Initializes a new instance of the <see cref="DmForeignKeyConstraintAttribute"/> class.
     /// </summary>
-    /// <param name="sourceColumnNames">The names of the source columns in the foreign key constraint.</param>
+    /// <param name="sourceColumnNames">The names of the source columns in the foreign key constraint. Only necessary when defined on a type.</param>
     /// <param name="referencedType">The type of the referenced entity in the foreign key constraint.</param>
     /// <param name="referencedTableName">The name of the referenced table. Use this or the referenced type, one or the other is required.</param>
     /// <param name="referencedColumnNames">The names of the referenced columns in the foreign key constraint.</param>
@@ -26,7 +26,7 @@ public sealed class DmForeignKeyConstraintAttribute : Attribute
     /// <param name="onDelete">The action to take when a referenced row is deleted.</param>
     /// <param name="onUpdate">The action to take when a referenced row is updated.</param>
     public DmForeignKeyConstraintAttribute(
-        string[] sourceColumnNames,
+        string[]? sourceColumnNames = null,
         Type? referencedType = null,
         string? referencedTableName = null,
         string[]? referencedColumnNames = null,
@@ -35,14 +35,6 @@ public sealed class DmForeignKeyConstraintAttribute : Attribute
         DmForeignKeyAction onUpdate = DmForeignKeyAction.NoAction
     )
     {
-        if (sourceColumnNames == null || sourceColumnNames.Length == 0)
-        {
-            throw new ArgumentException(
-                "At least one source column name is required",
-                nameof(sourceColumnNames)
-            );
-        }
-
         // Either the referenced type or the referenced table name must be provided.
         if (referencedType == null && string.IsNullOrWhiteSpace(referencedTableName))
         {
@@ -69,7 +61,12 @@ public sealed class DmForeignKeyConstraintAttribute : Attribute
     /// <summary>
     /// Gets the names of the source columns in the foreign key constraint.
     /// </summary>
-    public string[] SourceColumnNames { get; }
+    /// <remarks>
+    /// These are the columns in the current entity that reference the foreign key.
+    /// These are only necessary when the foreign key is defined on a type. When the
+    /// foreign key is defined on a property, the source column names are derived from the property name.
+    /// </remarks>
+    public string[]? SourceColumnNames { get; }
 
     /// <summary>
     /// Gets the type of the referenced entity in the foreign key constraint.

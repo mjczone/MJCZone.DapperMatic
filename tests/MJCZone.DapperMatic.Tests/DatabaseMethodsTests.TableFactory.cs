@@ -64,8 +64,13 @@ public class TestTable4
     public Guid Id { get; set; }
 
     // create column of all supported types
+    [DmColumn("StringColumn", providerDataType: "nvarchar", length: 100, isNullable: false)]
     public string StringColumn { get; set; } = null!;
+
+    [DmColumn("int_column", providerDataType: "int", isNullable: false)]
     public int IntColumn { get; set; }
+
+    [DmColumn(isUnique: false, isNullable: false)]
     public long LongColumn { get; set; }
     public short ShortColumn { get; set; }
     public byte ByteColumn { get; set; }
