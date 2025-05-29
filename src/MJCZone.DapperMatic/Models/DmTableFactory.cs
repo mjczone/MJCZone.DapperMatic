@@ -642,13 +642,6 @@ public static class DmTableFactory
                     column.OnUpdate = onUpdate;
                 }
             }
-
-            if (columnAttribute == null)
-            {
-                continue;
-            }
-
-            columns.Add(column);
         }
 
         // TRUST that the developer knows what they are doing and not creating double the amount of attributes then
