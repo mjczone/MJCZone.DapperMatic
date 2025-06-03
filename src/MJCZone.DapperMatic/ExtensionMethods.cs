@@ -20,6 +20,27 @@ internal static partial class ExtensionMethods
     }
 
     /// <summary>
+    /// Checks if the type is a reference type or a Nullable&lt;T&gt; value type.
+    /// </summary>
+    /// <param name="type">The type to check.</param>
+    /// <returns>True if the type is can be set to null or not.</returns>
+    public static bool IsNullable(this Type type)
+    {
+        return !type.IsValueType || Nullable.GetUnderlyingType(type) != null;
+    }
+
+    /// <summary>
+    /// Checks if the type is a nullable type (i.e., Nullable&lt;T&gt;).
+    /// </summary>
+    /// <param name="type">The type to check.</param>
+    /// <returns>True if the type is a nullable type; otherwise, false.</returns>
+    public static bool IsNullableType(this Type type)
+    {
+        // Check if the type is a generic type and if its generic type definition is Nullable<>
+        return type.IsGenericType && type.GetGenericTypeDefinition() == typeof(Nullable<>);
+    }
+
+    /// <summary>
     /// Returns the underlying type if the specified type is nullable.
     /// </summary>
     /// <param name="type">The type to check.</param>

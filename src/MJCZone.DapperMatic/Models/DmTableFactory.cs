@@ -330,6 +330,18 @@ public static class DmTableFactory
                 }
             }
 
+            // If there is no DmColumnAttribute, the property is nullable by default, IF it's a reference type or a nullable type.
+            var isNullable =
+                columnAttribute == null
+                    ? property.PropertyType.IsNullable()
+                    : columnAttribute.IsNullable;
+
+            // If the property is required, it cannot be nullable.
+            if (isRequired && isNullable)
+            {
+                isNullable = false;
+            }
+
             var column = new DmColumn(
                 schemaName,
                 tableName,
@@ -345,7 +357,7 @@ public static class DmTableFactory
                 string.IsNullOrWhiteSpace(columnAttribute?.DefaultExpression)
                     ? null
                     : columnAttribute.DefaultExpression,
-                !isRequired && (columnAttribute?.IsNullable ?? true),
+                isNullable,
                 columnAttribute?.IsPrimaryKey ?? false,
                 columnAttribute?.IsAutoIncrement ?? false,
                 columnAttribute?.IsUnique ?? false,

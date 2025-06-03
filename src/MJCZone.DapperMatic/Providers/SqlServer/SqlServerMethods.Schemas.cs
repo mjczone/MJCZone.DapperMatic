@@ -27,7 +27,7 @@ public partial class SqlServerMethods
             return false;
         }
 
-        schemaName = NormalizeSchemaName(schemaName);
+        schemaName = NormalizeSchemaName(schemaName)!;
 
         var innerTx =
             tx

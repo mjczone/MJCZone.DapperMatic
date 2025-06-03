@@ -151,7 +151,7 @@ public partial class PostgreSqlMethods
             sql,
             new
             {
-                schemaName = NormalizeSchemaName(schemaName).ToLowerInvariant(),
+                schemaName = NormalizeSchemaName(schemaName)?.ToLowerInvariant(),
                 where = where.ToLowerInvariant(),
             }
         );
@@ -285,7 +285,7 @@ public partial class PostgreSqlMethods
             sql,
             new
             {
-                schemaName = NormalizeSchemaName(schemaName).ToLowerInvariant(),
+                schemaName = NormalizeSchemaName(schemaName)?.ToLowerInvariant(),
                 where = where.ToLowerInvariant(),
             }
         );
@@ -329,7 +329,7 @@ public partial class PostgreSqlMethods
             sql,
             new
             {
-                schemaName = NormalizeSchemaName(schemaName).ToLowerInvariant(),
+                schemaName = NormalizeSchemaName(schemaName)?.ToLowerInvariant(),
                 where = where.ToLowerInvariant(),
             }
         );
