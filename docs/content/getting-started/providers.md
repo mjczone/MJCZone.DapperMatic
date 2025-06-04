@@ -70,23 +70,23 @@ DatabaseMethodsProvider.RegisterFactory(
 The test suite uses this method to profile the database and output sql exception details
 to the unit testing logs.
 
-See it in action with the [ProfiledPostgreSqlMethodsFactory](https://github.com/mjczone/MJCZone.DapperMatic/tests/MJCZone.DapperMatic.Tests/ProviderTests/PostgreSqlDatabaseMethodsTests.cs#L84) class. Similar factory classes exist for the other providers.
+See it in action with the [ProfiledPostgreSqlMethodsFactory](https://github.com/mjczone/MJCZone.DapperMatic/blob/main/tests/MJCZone.DapperMatic.Tests/ProviderTests/PostgreSqlDatabaseMethodsTests.cs#L82) class. Similar factory classes exist for the other providers.
 
 ## Provider documentation links
 
 The extension methods and operation implementations are derived from the SQL documentation residing at the following links:
 
 - MySQL
-    - MySQL 8.4: <https://dev.mysql.com/doc/refman/8.4/en/sql-data-definition-statements.html>
-    - MySQL 5.7: <https://dev.mysql.com/doc/refman/5.7/en/sql-data-definition-statements.html>
+  - MySQL 8.4: <https://dev.mysql.com/doc/refman/8.4/en/sql-data-definition-statements.html>
+  - MySQL 5.7: <https://dev.mysql.com/doc/refman/5.7/en/sql-data-definition-statements.html>
 - MariaDB
-    - MariaDB 10.11: <https://mariadb.com/kb/en/data-definition/>
+  - MariaDB 10.11: <https://mariadb.com/kb/en/data-definition/>
 - PostgreSQL
-    - PostgreSQL 16: <https://www.postgresql.org/docs/16/ddl.html>
-    - PostgreSQL 15: <https://www.postgresql.org/docs/15/ddl.html>
+  - PostgreSQL 16: <https://www.postgresql.org/docs/16/ddl.html>
+  - PostgreSQL 15: <https://www.postgresql.org/docs/15/ddl.html>
 - SQLite
-    - SQLite (v3): <https://www.sqlite.org/lang.html>
+  - SQLite (v3): <https://www.sqlite.org/lang.html>
 - SQL Server
-    - SQL Server 2022: <https://learn.microsoft.com/en-us/sql/t-sql/statements/statements?view=sql-server-ver16#data-definition-language>
-    - SQL Server 2019: <https://learn.microsoft.com/en-us/sql/t-sql/statements/statements?view=sql-server-ver15#data-definition-language>
-    - SQL Server 2017: <https://learn.microsoft.com/en-us/sql/t-sql/statements/statements?view=sql-server-2017#data-definition-language>
+  - SQL Server 2022: <https://learn.microsoft.com/en-us/sql/t-sql/statements/statements?view=sql-server-ver16#data-definition-language>
+  - SQL Server 2019: <https://learn.microsoft.com/en-us/sql/t-sql/statements/statements?view=sql-server-ver15#data-definition-language>
+  - SQL Server 2017: <https://learn.microsoft.com/en-us/sql/t-sql/statements/statements?view=sql-server-2017#data-definition-language>
