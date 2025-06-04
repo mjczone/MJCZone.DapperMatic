@@ -196,6 +196,10 @@ internal static partial class SqliteSqlParser
                                 column.IsNullable = false;
                                 break;
 
+                            case "NULL":
+                                column.IsNullable = true;
+                                break;
+
                             case "AUTOINCREMENT":
                                 column.IsAutoIncrement = true;
                                 break;

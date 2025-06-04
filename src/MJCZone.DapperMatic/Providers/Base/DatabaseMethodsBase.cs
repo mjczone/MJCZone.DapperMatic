@@ -237,11 +237,11 @@ public abstract partial class DatabaseMethodsBase : IDatabaseMethods
     /// </summary>
     /// <param name="schemaName">The schema name.</param>
     /// <returns>The normalized schema name.</returns>
-    protected virtual string NormalizeSchemaName(string? schemaName)
+    protected virtual string? NormalizeSchemaName(string? schemaName)
     {
         if (!SupportsSchemas)
         {
-            return string.Empty;
+            return null;
         }
 
         return string.IsNullOrWhiteSpace(schemaName) ? DefaultSchema : NormalizeName(schemaName);
@@ -254,7 +254,7 @@ public abstract partial class DatabaseMethodsBase : IDatabaseMethods
     /// <param name="tableName">The table name.</param>
     /// <param name="identifierName">The identifier name.</param>
     /// <returns>The normalized names.</returns>
-    protected virtual (string schemaName, string tableName, string identifierName) NormalizeNames(
+    protected virtual (string? schemaName, string tableName, string identifierName) NormalizeNames(
         string? schemaName = null,
         string? tableName = null,
         string? identifierName = null

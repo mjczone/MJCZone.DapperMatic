@@ -1,8 +1,12 @@
 using System.Collections.ObjectModel;
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
+using System.Data.SQLite;
+using System.Text.Json;
 using Dapper;
+using DbQueryLogging;
 using Microsoft.Data.SqlClient.DataClassification;
+using Microsoft.Data.Sqlite;
 using MJCZone.DapperMatic.DataAnnotations;
 using MJCZone.DapperMatic.Models;
 using MJCZone.DapperMatic.Providers;
@@ -32,6 +36,66 @@ public abstract partial class DatabaseMethodsTests
         var tableExists = await db.DoesTableExistAsync(tableDef.SchemaName, tableDef.TableName);
         Assert.True(tableExists);
 
+        // Retrieve the table definition from the database to verify it matches the model
+        var dbTableDef = await db.GetTableAsync(tableDef.SchemaName, tableDef.TableName);
+        Assert.NotNull(dbTableDef);
+
+        if (
+            db is SqliteConnection
+            || db is SQLiteConnection
+            || (
+                db is LoggedDbConnection ldb
+                && (ldb.Inner is SqliteConnection || ldb.Inner is SQLiteConnection)
+            )
+        )
+        {
+            // For SQLite, we can retrieve the table definition using PRAGMA
+            // Note: This will not return column data types, only names and nullability
+            var tableDefAsSql = await db.QueryAsync(
+                $"PRAGMA table_info('{dbTableDef.TableName}');"
+            );
+            Assert.NotNull(tableDefAsSql);
+            Output.WriteLine(
+                $"Table definition for {tableDef.TableName}:\n{JsonSerializer.Serialize(tableDefAsSql)}"
+            );
+        }
+
+        // Verify the table definition matches the model
+        Assert.Equal(tableDef.TableName, dbTableDef.TableName, ignoreCase: true);
+        if (db.SupportsSchemas())
+        {
+            Assert.NotNull(dbTableDef.SchemaName);
+            if (!string.IsNullOrWhiteSpace(tableDef.SchemaName))
+            {
+                Assert.Equal(tableDef.SchemaName, dbTableDef.SchemaName);
+            }
+        }
+        else
+        {
+            Assert.Null(dbTableDef.SchemaName);
+        }
+        Assert.Equal(tableDef.Columns.Count, dbTableDef.Columns.Count);
+
+        // All columns that start with "Nullable" should be nullable in the database
+        foreach (var column in tableDef.Columns)
+        {
+            var dbColumn = dbTableDef.Columns.FirstOrDefault(c =>
+                c.ColumnName.Equals(column.ColumnName, StringComparison.OrdinalIgnoreCase)
+            );
+            Assert.NotNull(dbColumn);
+            if (column.ColumnName.StartsWith("Nullable", StringComparison.OrdinalIgnoreCase))
+            {
+                Assert.True(dbColumn.IsNullable, $"Column {column.ColumnName} should be nullable.");
+            }
+            else
+            {
+                Assert.False(
+                    dbColumn.IsNullable,
+                    $"Column {column.ColumnName} should not be nullable."
+                );
+            }
+        }
+
         var dropped = await db.DropTableIfExistsAsync(tableDef.SchemaName, tableDef.TableName);
         Assert.True(dropped);
     }
@@ -51,7 +115,7 @@ public class TestDao2
     public Guid Id { get; set; }
 }
 
-[DmTable("TestTable3")]
+[DmTable(tableName: "TestTable3")]
 public class TestDao3
 {
     [DmPrimaryKeyConstraint]
@@ -81,13 +145,21 @@ public class TestTable4
     public DateTime DateTimeColumn { get; set; }
     public DateTimeOffset DateTimeOffsetColumn { get; set; }
     public TimeSpan TimeSpanColumn { get; set; }
+
+    [DmColumn(isNullable: false)]
     public byte[] ByteArrayColumn { get; set; } = null!;
     public Guid GuidColumn { get; set; }
     public char CharColumn { get; set; }
+
+    [DmColumn(isNullable: false)]
     public char[] CharArrayColumn { get; set; } = null!;
+
+    [DmColumn(isNullable: false)]
     public object ObjectColumn { get; set; } = null!;
 
     // create column of all supported nullable types
+
+    [DmColumn(isNullable: true)]
     public string? NullableStringColumn { get; set; }
     public int? NullableIntColumn { get; set; }
     public long? NullableLongColumn { get; set; }
@@ -107,32 +179,56 @@ public class TestTable4
     public object? NullableObjectColumn { get; set; }
 
     // create columns of all enumerable types
+    [DmColumn(isNullable: false)]
     public IDictionary<string, string> IDictionaryColumn { get; set; } = null!;
     public IDictionary<string, string>? NullableIDictionaryColumn { get; set; }
+
+    [DmColumn(isNullable: false)]
     public Dictionary<string, string> DictionaryColumn { get; set; } = null!;
     public Dictionary<string, string>? NullableDictionaryColumn { get; set; }
+
+    [DmColumn(isNullable: false)]
     public IDictionary<string, object> IObjectDictionaryColumn { get; set; } = null!;
     public IDictionary<string, object>? NullableIObjectDictionaryColumn { get; set; }
+
+    [DmColumn(isNullable: false)]
     public Dictionary<string, object> ObjectDictionaryColumn { get; set; } = null!;
     public Dictionary<string, object>? NullableObjectDictionaryColumn { get; set; }
+
+    [DmColumn(isNullable: false)]
     public IList<string> IListColumn { get; set; } = null!;
     public IList<string>? NullableIListColumn { get; set; }
+
+    [DmColumn(isNullable: false)]
     public List<string> ListColumn { get; set; } = null!;
     public List<string>? NullableListColumn { get; set; }
+
+    [DmColumn(isNullable: false)]
     public ICollection<string> ICollectionColumn { get; set; } = null!;
     public ICollection<string>? NullableICollectionColumn { get; set; }
+
+    [DmColumn(isNullable: false)]
     public Collection<string> CollectionColumn { get; set; } = null!;
     public Collection<string>? NullableCollectionColumn { get; set; }
+
+    [DmColumn(isNullable: false)]
     public IEnumerable<string> IEnumerableColumn { get; set; } = null!;
     public IEnumerable<string>? NullableIEnumerableColumn { get; set; }
 
     // create columns of arrays
+    [DmColumn(isNullable: false)]
     public string[] StringArrayColumn { get; set; } = null!;
     public string[]? NullableStringArrayColumn { get; set; }
+
+    [DmColumn(isNullable: false)]
     public int[] IntArrayColumn { get; set; } = null!;
     public int[]? NullableIntArrayColumn { get; set; }
+
+    [DmColumn(isNullable: false)]
     public long[] LongArrayColumn { get; set; } = null!;
     public long[]? NullableLongArrayColumn { get; set; }
+
+    [DmColumn(isNullable: false)]
     public Guid[] GuidArrayColumn { get; set; } = null!;
     public Guid[]? NullableGuidArrayColumn { get; set; }
 
@@ -141,12 +237,20 @@ public class TestTable4
     public TestEnum? NullableEnumColumn { get; set; }
     public TestStruct StructColumn { get; set; }
     public TestStruct? NullableStructColumn { get; set; }
+
+    [DmColumn(isNullable: false)]
     public TestClass ClassColumn { get; set; } = null!;
     public TestClass? NullableClassColumn { get; set; }
+
+    [DmColumn(isNullable: false)]
     public TestInterface InterfaceColumn { get; set; } = null!;
     public TestInterface? NullableInterfaceColumn { get; set; }
+
+    [DmColumn(isNullable: false)]
     public TestAbstractClass AbstractClassColumn { get; set; } = null!;
     public TestAbstractClass? NullableAbstractClassColumn { get; set; }
+
+    [DmColumn(isNullable: false)]
     public TestConcreteClass ConcreteClass { get; set; } = null!;
     public TestConcreteClass? NullableConcreteClass { get; set; }
 }
