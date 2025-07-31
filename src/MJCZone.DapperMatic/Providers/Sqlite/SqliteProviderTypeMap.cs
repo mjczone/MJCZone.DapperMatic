@@ -7,6 +7,7 @@ using System.Text.Json;
 using System.Text.Json.Nodes;
 using System.Xml.Linq;
 using MJCZone.DapperMatic.Converters;
+using MJCZone.DapperMatic.Providers.Base;
 
 namespace MJCZone.DapperMatic.Providers.Sqlite;
 
@@ -17,133 +18,43 @@ namespace MJCZone.DapperMatic.Providers.Sqlite;
 /// See:
 /// https://www.sqlite.org/datatype3.html.
 /// </remarks>
-public sealed class SqliteProviderTypeMap : DbProviderTypeMapBase<SqliteProviderTypeMap>
+public sealed class SqliteProviderTypeMap : StandardTypeMapBase<SqliteProviderTypeMap>
 {
+    /// <inheritdoc/>
+    protected override IProviderTypeMapping GetProviderTypeMapping()
+    {
+        return new SqliteTypeMapping();
+    }
+
+    /// <inheritdoc/>
+    protected override string GetProviderName()
+    {
+        return "sqlite";
+    }
+
     /// <inheritdoc/>
     protected override void RegisterDotnetTypeToSqlTypeConverters()
     {
-        var booleanConverter = GetBooleanToSqlTypeConverter();
-        var numericConverter = GetNumbericToSqlTypeConverter();
-        var guidConverter = GetGuidToSqlTypeConverter();
-        var textConverter = GetTextToSqlTypeConverter();
-        var xmlConverter = GetXmlToSqlTypeConverter();
-        var jsonConverter = GetJsonToSqlTypeConverter();
-        var dateTimeConverter = GetDateTimeToSqlTypeConverter();
-        var byteArrayConverter = GetByteArrayToSqlTypeConverter();
-        var objectConverter = GetObjectToSqlTypeConverter();
-        var enumerableConverter = GetEnumerableToSqlTypeConverter();
-        var enumConverter = GetEnumToSqlTypeConverter();
-        var arrayConverter = GetArrayToSqlTypeConverter();
-        var pocoConverter = GetPocoToSqlTypeConverter();
-        var geometricConverter = GetGeometricToSqlTypeConverter();
+        // Use the standardized registration from base class
+        RegisterStandardDotnetTypeToSqlTypeConverters();
+    }
 
-        // Boolean affinity
-        RegisterConverter<bool>(booleanConverter);
-
-        // Numeric affinity
-        RegisterConverterForTypes(
-            numericConverter,
-            typeof(byte),
-            typeof(short),
-            typeof(int),
-            typeof(BigInteger),
-            typeof(long),
-            typeof(sbyte),
-            typeof(ushort),
-            typeof(uint),
-            typeof(ulong),
-            typeof(decimal),
-            typeof(float),
-            typeof(double)
-        );
-
-        // Guid affinity
-        RegisterConverter<Guid>(guidConverter);
-
-        // Text affinity
-        RegisterConverterForTypes(
-            textConverter,
-            typeof(string),
-            typeof(char),
-            typeof(char[]),
-            typeof(MemoryStream),
-            typeof(ReadOnlyMemory<byte>[]),
-            typeof(Stream),
-            typeof(TextReader)
-        );
-
-        // Xml affinity
-        RegisterConverterForTypes(xmlConverter, typeof(XDocument), typeof(XElement));
-
-        // Json affinity
-        RegisterConverterForTypes(
-            jsonConverter,
-            TypeMappingHelpers.GetStandardJsonTypes()
-        );
-
-        // DateTime affinity
-        RegisterConverterForTypes(
-            dateTimeConverter,
-            typeof(DateTime),
-            typeof(DateTimeOffset),
-            typeof(TimeSpan),
-            typeof(DateOnly),
-            typeof(TimeOnly)
-        );
-
-        // Binary affinity
-        RegisterConverterForTypes(
-            byteArrayConverter,
-            typeof(byte[]),
-            typeof(ReadOnlyMemory<byte>),
-            typeof(Memory<byte>),
-            typeof(Stream),
-            typeof(BinaryReader),
-            typeof(BitArray),
-            typeof(BitVector32)
-        );
-
-        // Object affinity
-        RegisterConverter<object>(objectConverter);
-
-        // Enumerable affinity
-        RegisterConverterForTypes(
-            enumerableConverter,
-            typeof(ImmutableDictionary<string, string>),
-            typeof(Dictionary<string, string>),
-            typeof(IDictionary<string, string>),
-            typeof(Dictionary<string, object>),
-            typeof(IDictionary<string, object>),
-            typeof(HashSet<string>),
-            typeof(List<string>),
-            typeof(IList<string>),
-            typeof(HashSet<>),
-            typeof(ISet<>),
-            typeof(Dictionary<,>),
-            typeof(IDictionary<,>),
-            typeof(List<>),
-            typeof(IList<>),
-            typeof(Collection<>),
-            typeof(IReadOnlyCollection<>),
-            typeof(IReadOnlySet<>),
-            typeof(ICollection<>),
-            typeof(IEnumerable<>)
-        );
-
-        // Enums (uses a placeholder to easily locate it)
-        RegisterConverter<InternalEnumTypePlaceholder>(enumConverter);
-
-        // Arrays (uses a placeholder to easily locate it)
-        RegisterConverter<InternalArrayTypePlaceholder>(arrayConverter);
-
-        // Poco (uses a placeholder to easily locate it)
-        RegisterConverter<InternalPocoTypePlaceholder>(pocoConverter);
-
-        // Geometry types (support NetTopologySuite types)
-        RegisterConverterForTypes(
-            geometricConverter,
-            TypeMappingHelpers.GetGeometryTypesForProvider("sqlite")
-        );
+    /// <inheritdoc/>
+    protected override SqlTypeDescriptor? CreateGeometryTypeForShortName(string shortName)
+    {
+        return shortName switch
+        {
+            // NetTopologySuite types - SQLite stores geometry as text (WKT format)
+            "NetTopologySuite.Geometries.Geometry, NetTopologySuite" or
+            "NetTopologySuite.Geometries.Point, NetTopologySuite" or
+            "NetTopologySuite.Geometries.LineString, NetTopologySuite" or
+            "NetTopologySuite.Geometries.Polygon, NetTopologySuite" or
+            "NetTopologySuite.Geometries.MultiPoint, NetTopologySuite" or
+            "NetTopologySuite.Geometries.MultiLineString, NetTopologySuite" or
+            "NetTopologySuite.Geometries.MultiPolygon, NetTopologySuite" or
+            "NetTopologySuite.Geometries.GeometryCollection, NetTopologySuite" => TypeMappingHelpers.CreateLobType(SqliteTypes.sql_text, isUnicode: false),
+            _ => null
+        };
     }
 
     /// <inheritdoc/>
@@ -213,181 +124,6 @@ public sealed class SqliteProviderTypeMap : DbProviderTypeMapBase<SqliteProvider
         // Object affinity
         RegisterConverterForTypes(objectConverter, SqliteTypes.sql_clob);
     }
-
-    #region DotnetTypeToSqlTypeConverters
-
-    private static DotnetTypeToSqlTypeConverter GetBooleanToSqlTypeConverter()
-    {
-        return new(d =>
-        {
-            return TypeMappingHelpers.CreateSimpleType(SqliteTypes.sql_boolean);
-        });
-    }
-
-    private static DotnetTypeToSqlTypeConverter GetGuidToSqlTypeConverter()
-    {
-        return new(d =>
-        {
-            return TypeMappingHelpers.CreateGuidStringType(SqliteTypes.sql_varchar, isUnicode: false, isFixedLength: false);
-        });
-    }
-
-    private static DotnetTypeToSqlTypeConverter GetNumbericToSqlTypeConverter()
-    {
-        return new(d =>
-        {
-            switch (d.DotnetType)
-            {
-                case Type t when t == typeof(byte):
-                    return TypeMappingHelpers.CreateSimpleType(SqliteTypes.sql_tinyint);
-                case Type t when t == typeof(sbyte):
-                    return TypeMappingHelpers.CreateSimpleType(SqliteTypes.sql_tinyint);
-                case Type t when t == typeof(short):
-                    return TypeMappingHelpers.CreateSimpleType(SqliteTypes.sql_smallint);
-                case Type t when t == typeof(ushort):
-                    return TypeMappingHelpers.CreateSimpleType(SqliteTypes.sql_smallint);
-                case Type t when t == typeof(int):
-                    return TypeMappingHelpers.CreateSimpleType(SqliteTypes.sql_int);
-                case Type t when t == typeof(uint):
-                    return TypeMappingHelpers.CreateSimpleType(SqliteTypes.sql_int);
-                case Type t when t == typeof(BigInteger) || t == typeof(long):
-                    return TypeMappingHelpers.CreateSimpleType(SqliteTypes.sql_bigint);
-                case Type t when t == typeof(ulong):
-                    return TypeMappingHelpers.CreateSimpleType(SqliteTypes.sql_bigint);
-                case Type t when t == typeof(float):
-                    return TypeMappingHelpers.CreateSimpleType(SqliteTypes.sql_real);
-                case Type t when t == typeof(double):
-                    return TypeMappingHelpers.CreateSimpleType(SqliteTypes.sql_float);
-                case Type t when t == typeof(decimal):
-                    return TypeMappingHelpers.CreateDecimalType(SqliteTypes.sql_decimal, d.Precision, d.Scale);
-                default:
-                    return TypeMappingHelpers.CreateSimpleType(SqliteTypes.sql_int);
-            }
-        });
-    }
-
-    private static DotnetTypeToSqlTypeConverter GetTextToSqlTypeConverter()
-    {
-        return new(d =>
-        {
-            if (d.Length == TypeMappingDefaults.MaxLength)
-            {
-                // max is NOT supported by SQLite, instead, we'll use the text type; however,
-                // using nvarchar and varchar gives DapperMatic a better chance of mapping the
-                // correct type when reading the schema
-                return TypeMappingHelpers.CreateLobType(
-                    d.IsUnicode == true ? SqliteTypes.sql_nvarchar : SqliteTypes.sql_varchar,
-                    d.IsUnicode.GetValueOrDefault(false));
-            }
-
-            var sqlType = d.IsFixedLength == true
-                ? (d.IsUnicode == true ? SqliteTypes.sql_nchar : SqliteTypes.sql_char)
-                : (d.IsUnicode == true ? SqliteTypes.sql_nvarchar : SqliteTypes.sql_varchar);
-
-            return TypeMappingHelpers.CreateStringType(
-                sqlType,
-                d.Length,
-                d.IsUnicode.GetValueOrDefault(false),
-                d.IsFixedLength.GetValueOrDefault(false));
-        });
-    }
-
-    private static DotnetTypeToSqlTypeConverter GetXmlToSqlTypeConverter()
-    {
-        return new(d =>
-        {
-            return TypeMappingHelpers.CreateLobType(SqliteTypes.sql_text, isUnicode: false);
-        });
-    }
-
-    private static DotnetTypeToSqlTypeConverter GetJsonToSqlTypeConverter()
-    {
-        return TypeMappingHelpers.CreateJsonConverter("sqlite");
-    }
-
-    private DotnetTypeToSqlTypeConverter GetDateTimeToSqlTypeConverter()
-    {
-        return new(d =>
-        {
-            switch (d.DotnetType)
-            {
-                case Type t when t == typeof(DateTime):
-                    return TypeMappingHelpers.CreateSimpleType(SqliteTypes.sql_datetime);
-                case Type t when t == typeof(DateTimeOffset):
-                    return TypeMappingHelpers.CreateSimpleType(SqliteTypes.sql_datetime);
-                case Type t when t == typeof(TimeSpan):
-                    return TypeMappingHelpers.CreateSimpleType(SqliteTypes.sql_time);
-                case Type t when t == typeof(DateOnly):
-                    return TypeMappingHelpers.CreateSimpleType(SqliteTypes.sql_date);
-                case Type t when t == typeof(TimeOnly):
-                    return TypeMappingHelpers.CreateSimpleType(SqliteTypes.sql_time);
-                default:
-                    return TypeMappingHelpers.CreateSimpleType(SqliteTypes.sql_datetime);
-            }
-        });
-    }
-
-    private DotnetTypeToSqlTypeConverter GetByteArrayToSqlTypeConverter()
-    {
-        return new(d =>
-        {
-            return TypeMappingHelpers.CreateLobType(SqliteTypes.sql_blob, isUnicode: false);
-        });
-    }
-
-    private DotnetTypeToSqlTypeConverter GetObjectToSqlTypeConverter()
-    {
-        return new(d =>
-        {
-            return TypeMappingHelpers.CreateLobType(SqliteTypes.sql_clob, isUnicode: false);
-        });
-    }
-
-    private DotnetTypeToSqlTypeConverter GetEnumerableToSqlTypeConverter() =>
-        GetJsonToSqlTypeConverter();
-
-    private DotnetTypeToSqlTypeConverter GetEnumToSqlTypeConverter()
-    {
-        return new(d =>
-        {
-            return TypeMappingHelpers.CreateEnumStringType(SqliteTypes.sql_varchar, isUnicode: false);
-        });
-    }
-
-    private DotnetTypeToSqlTypeConverter GetArrayToSqlTypeConverter() =>
-        GetJsonToSqlTypeConverter();
-
-    private DotnetTypeToSqlTypeConverter GetPocoToSqlTypeConverter() => GetJsonToSqlTypeConverter();
-
-    private DotnetTypeToSqlTypeConverter GetGeometricToSqlTypeConverter()
-    {
-        return new(d =>
-        {
-            var shortName = TypeMappingHelpers.GetAssemblyQualifiedShortName(d.DotnetType);
-            if (string.IsNullOrWhiteSpace(shortName))
-            {
-                return null;
-            }
-
-            switch (shortName)
-            {
-                // NetTopologySuite types - SQLite stores geometry as text (WKT format)
-                case "NetTopologySuite.Geometries.Geometry, NetTopologySuite":
-                case "NetTopologySuite.Geometries.Point, NetTopologySuite":
-                case "NetTopologySuite.Geometries.LineString, NetTopologySuite":
-                case "NetTopologySuite.Geometries.Polygon, NetTopologySuite":
-                case "NetTopologySuite.Geometries.MultiPoint, NetTopologySuite":
-                case "NetTopologySuite.Geometries.MultiLineString, NetTopologySuite":
-                case "NetTopologySuite.Geometries.MultiPolygon, NetTopologySuite":
-                case "NetTopologySuite.Geometries.GeometryCollection, NetTopologySuite":
-                    return TypeMappingHelpers.CreateLobType(SqliteTypes.sql_text, isUnicode: false);
-            }
-
-            return null;
-        });
-    }
-
-    #endregion // DotnetTypeToSqlTypeConverters
 
     #region SqlTypeToDotnetTypeConverters
 

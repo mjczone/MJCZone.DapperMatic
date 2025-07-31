@@ -7,6 +7,7 @@ using System.Text.Json;
 using System.Text.Json.Nodes;
 using System.Xml.Linq;
 using MJCZone.DapperMatic.Converters;
+using MJCZone.DapperMatic.Providers.Base;
 
 namespace MJCZone.DapperMatic.Providers.MySql
 {
@@ -19,135 +20,48 @@ namespace MJCZone.DapperMatic.Providers.MySql
     /// https://stackoverflow.com/questions/67101765/c-sharp-mysql-dapper-mysqlgeometry
     /// ...
     /// </remarks>
-    public sealed class MySqlProviderTypeMap : DbProviderTypeMapBase<MySqlProviderTypeMap>
+    public sealed class MySqlProviderTypeMap : StandardTypeMapBase<MySqlProviderTypeMap>
     {
+        /// <inheritdoc/>
+        protected override IProviderTypeMapping GetProviderTypeMapping()
+        {
+            return new MySqlTypeMapping();
+        }
+
+        /// <inheritdoc/>
+        protected override string GetProviderName()
+        {
+            return "mysql";
+        }
+
         /// <summary>
         /// Registers .NET types to SQL types converters.
         /// </summary>
         protected override void RegisterDotnetTypeToSqlTypeConverters()
         {
-            var booleanConverter = GetBooleanToSqlTypeConverter();
-            var numericConverter = GetNumbericToSqlTypeConverter();
-            var guidConverter = GetGuidToSqlTypeConverter();
-            var textConverter = GetTextToSqlTypeConverter();
-            var xmlConverter = GetXmlToSqlTypeConverter();
-            var jsonConverter = GetJsonToSqlTypeConverter();
-            var dateTimeConverter = GetDateTimeToSqlTypeConverter();
-            var byteArrayConverter = GetByteArrayToSqlTypeConverter();
-            var objectConverter = GetObjectToSqlTypeConverter();
-            var enumerableConverter = GetEnumerableToSqlTypeConverter();
-            var enumConverter = GetEnumToSqlTypeConverter();
-            var arrayConverter = GetArrayToSqlTypeConverter();
-            var pocoConverter = GetPocoToSqlTypeConverter();
-            var geometricConverter = GetGeometricToSqlTypeConverter();
+            // Use the standardized registration from base class
+            RegisterStandardDotnetTypeToSqlTypeConverters();
+        }
 
-            // Boolean affinity
-            RegisterConverter<bool>(booleanConverter);
-
-            // Numeric affinity
-            RegisterConverterForTypes(
-                numericConverter,
-                typeof(byte),
-                typeof(short),
-                typeof(int),
-                typeof(BigInteger),
-                typeof(long),
-                typeof(sbyte),
-                typeof(ushort),
-                typeof(uint),
-                typeof(ulong),
-                typeof(decimal),
-                typeof(float),
-                typeof(double)
-            );
-
-            // Guid affinity
-            RegisterConverter<Guid>(guidConverter);
-
-            // Text affinity
-            RegisterConverterForTypes(
-                textConverter,
-                typeof(string),
-                typeof(char),
-                typeof(char[]),
-                typeof(MemoryStream),
-                typeof(ReadOnlyMemory<byte>[]),
-                typeof(Stream),
-                typeof(TextReader)
-            );
-
-            // Xml affinity
-            RegisterConverterForTypes(xmlConverter, typeof(XDocument), typeof(XElement));
-
-            // Json affinity
-            RegisterConverterForTypes(
-                jsonConverter,
-                TypeMappingHelpers.GetStandardJsonTypes()
-            );
-
-            // DateTime affinity
-            RegisterConverterForTypes(
-                dateTimeConverter,
-                typeof(DateTime),
-                typeof(DateTimeOffset),
-                typeof(TimeSpan),
-                typeof(DateOnly),
-                typeof(TimeOnly)
-            );
-
-            // Binary affinity
-            RegisterConverterForTypes(
-                byteArrayConverter,
-                typeof(byte[]),
-                typeof(ReadOnlyMemory<byte>),
-                typeof(Memory<byte>),
-                typeof(Stream),
-                typeof(BinaryReader),
-                typeof(BitArray),
-                typeof(BitVector32)
-            );
-
-            // Object affinity
-            RegisterConverter<object>(objectConverter);
-
-            // Enumerable affinity
-            RegisterConverterForTypes(
-                enumerableConverter,
-                typeof(ImmutableDictionary<string, string>),
-                typeof(Dictionary<string, string>),
-                typeof(IDictionary<string, string>),
-                typeof(Dictionary<string, object>),
-                typeof(IDictionary<string, object>),
-                typeof(HashSet<string>),
-                typeof(List<string>),
-                typeof(IList<string>),
-                typeof(HashSet<>),
-                typeof(ISet<>),
-                typeof(Dictionary<,>),
-                typeof(IDictionary<,>),
-                typeof(List<>),
-                typeof(IList<>),
-                typeof(Collection<>),
-                typeof(IReadOnlyCollection<>),
-                typeof(IReadOnlySet<>),
-                typeof(ICollection<>),
-                typeof(IEnumerable<>)
-            );
-
-            // Enums (uses a placeholder to easily locate it)
-            RegisterConverter<InternalEnumTypePlaceholder>(enumConverter);
-
-            // Arrays (uses a placeholder to easily locate it)
-            RegisterConverter<InternalArrayTypePlaceholder>(arrayConverter);
-
-            // Poco (uses a placeholder to easily locate it)
-            RegisterConverter<InternalPocoTypePlaceholder>(pocoConverter);
-
-            // Geometry types (support NetTopologySuite and MySQL specific types)
-            RegisterConverterForTypes(
-                geometricConverter,
-                TypeMappingHelpers.GetGeometryTypesForProvider("mysql")
-            );
+        /// <inheritdoc/>
+        protected override SqlTypeDescriptor? CreateGeometryTypeForShortName(string shortName)
+        {
+            return shortName switch
+            {
+                // NetTopologySuite types - MySQL supports specific geometry types
+                "NetTopologySuite.Geometries.Geometry, NetTopologySuite" => TypeMappingHelpers.CreateGeometryType(MySqlTypes.sql_geometry),
+                "NetTopologySuite.Geometries.Point, NetTopologySuite" => TypeMappingHelpers.CreateGeometryType(MySqlTypes.sql_point),
+                "NetTopologySuite.Geometries.LineString, NetTopologySuite" => TypeMappingHelpers.CreateGeometryType(MySqlTypes.sql_linestring),
+                "NetTopologySuite.Geometries.Polygon, NetTopologySuite" => TypeMappingHelpers.CreateGeometryType(MySqlTypes.sql_polygon),
+                "NetTopologySuite.Geometries.MultiPoint, NetTopologySuite" => TypeMappingHelpers.CreateGeometryType(MySqlTypes.sql_multipoint),
+                "NetTopologySuite.Geometries.MultiLineString, NetTopologySuite" => TypeMappingHelpers.CreateGeometryType(MySqlTypes.sql_multilinestring),
+                "NetTopologySuite.Geometries.MultiPolygon, NetTopologySuite" => TypeMappingHelpers.CreateGeometryType(MySqlTypes.sql_multipolygon),
+                "NetTopologySuite.Geometries.GeometryCollection, NetTopologySuite" => TypeMappingHelpers.CreateGeometryType(MySqlTypes.sql_geometrycollection),
+                // MySQL types
+                "MySql.Data.Types.MySqlGeometry, MySql.Data" => TypeMappingHelpers.CreateGeometryType(MySqlTypes.sql_geometry),
+                "MySqlConnector.MySqlGeometry, MySqlConnector" => TypeMappingHelpers.CreateGeometryType(MySqlTypes.sql_geometry),
+                _ => null
+            };
         }
 
         /// <summary>
@@ -256,238 +170,6 @@ namespace MJCZone.DapperMatic.Providers.MySql
                 MySqlTypes.sql_geometrycollection
             );
         }
-
-        #region DotnetTypeToSqlTypeConverters
-
-        /// <summary>
-        /// Gets the boolean to SQL type converter.
-        /// </summary>
-        /// <returns>The boolean to SQL type converter.</returns>
-        private static DotnetTypeToSqlTypeConverter GetBooleanToSqlTypeConverter()
-        {
-            return new(d =>
-            {
-                return TypeMappingHelpers.CreateSimpleType(MySqlTypes.sql_bit);
-            });
-        }
-
-        /// <summary>
-        /// Gets the numeric to SQL type converter.
-        /// </summary>
-        /// <returns>The numeric to SQL type converter.</returns>
-        private static DotnetTypeToSqlTypeConverter GetNumbericToSqlTypeConverter()
-        {
-            return new(d =>
-            {
-                switch (d.DotnetType)
-                {
-                    case Type t when t == typeof(byte):
-                        return TypeMappingHelpers.CreateSimpleType(MySqlTypes.sql_tinyint);
-                    case Type t when t == typeof(sbyte):
-                        return TypeMappingHelpers.CreateSimpleType(MySqlTypes.sql_tinyint);
-                    case Type t when t == typeof(short):
-                        return TypeMappingHelpers.CreateSimpleType(MySqlTypes.sql_smallint);
-                    case Type t when t == typeof(ushort):
-                        return TypeMappingHelpers.CreateSimpleType(MySqlTypes.sql_smallint);
-                    case Type t when t == typeof(int):
-                        return TypeMappingHelpers.CreateSimpleType(MySqlTypes.sql_int);
-                    case Type t when t == typeof(uint):
-                        return TypeMappingHelpers.CreateSimpleType(MySqlTypes.sql_int);
-                    case Type t when t == typeof(BigInteger) || t == typeof(long):
-                        return TypeMappingHelpers.CreateSimpleType(MySqlTypes.sql_bigint);
-                    case Type t when t == typeof(ulong):
-                        return TypeMappingHelpers.CreateSimpleType(MySqlTypes.sql_bigint);
-                    case Type t when t == typeof(float):
-                        return TypeMappingHelpers.CreateSimpleType(MySqlTypes.sql_real);
-                    case Type t when t == typeof(double):
-                        return TypeMappingHelpers.CreateSimpleType(MySqlTypes.sql_float);
-                    case Type t when t == typeof(decimal):
-                        return TypeMappingHelpers.CreateDecimalType(MySqlTypes.sql_decimal, d.Precision, d.Scale);
-                    default:
-                        return TypeMappingHelpers.CreateSimpleType(MySqlTypes.sql_int);
-                }
-            });
-        }
-
-        /// <summary>
-        /// Gets the GUID to SQL type converter.
-        /// </summary>
-        /// <returns>The GUID to SQL type converter.</returns>
-        private static DotnetTypeToSqlTypeConverter GetGuidToSqlTypeConverter()
-        {
-            return new(d =>
-            {
-                return TypeMappingHelpers.CreateGuidStringType(MySqlTypes.sql_char, isUnicode: false, isFixedLength: true);
-            });
-        }
-
-        /// <summary>
-        /// Gets the text to SQL type converter.
-        /// </summary>
-        /// <returns>The text to SQL type converter.</returns>
-        private static DotnetTypeToSqlTypeConverter GetTextToSqlTypeConverter()
-        {
-            return new(d =>
-            {
-                if (d.Length == TypeMappingDefaults.MaxLength)
-                {
-                    return TypeMappingHelpers.CreateLobType(MySqlTypes.sql_text, isUnicode: false);
-                }
-
-                var sqlType = d.IsFixedLength == true ? MySqlTypes.sql_char : MySqlTypes.sql_varchar;
-                return TypeMappingHelpers.CreateStringType(
-                    sqlType,
-                    d.Length,
-                    isUnicode: false,
-                    d.IsFixedLength.GetValueOrDefault(false));
-            });
-        }
-
-        /// <summary>
-        /// Gets the XML to SQL type converter.
-        /// </summary>
-        /// <returns>The XML to SQL type converter.</returns>
-        private static DotnetTypeToSqlTypeConverter GetXmlToSqlTypeConverter()
-        {
-            return new(d => TypeMappingHelpers.CreateLobType(MySqlTypes.sql_text, isUnicode: false));
-        }
-
-        /// <summary>
-        /// Gets the JSON to SQL type converter.
-        /// </summary>
-        /// <returns>The JSON to SQL type converter.</returns>
-        private static DotnetTypeToSqlTypeConverter GetJsonToSqlTypeConverter()
-        {
-            return TypeMappingHelpers.CreateJsonConverter("mysql");
-        }
-
-        /// <summary>
-        /// Gets the DateTime to SQL type converter.
-        /// </summary>
-        /// <returns>The DateTime to SQL type converter.</returns>
-        private DotnetTypeToSqlTypeConverter GetDateTimeToSqlTypeConverter()
-        {
-            return new(d =>
-            {
-                switch (d.DotnetType)
-                {
-                    case Type t when t == typeof(TimeSpan):
-                        return TypeMappingHelpers.CreateSimpleType(MySqlTypes.sql_time);
-                    case Type t when t == typeof(DateOnly):
-                        return TypeMappingHelpers.CreateSimpleType(MySqlTypes.sql_date);
-                    case Type t when t == typeof(TimeOnly):
-                        return TypeMappingHelpers.CreateSimpleType(MySqlTypes.sql_time);
-                    case Type t when t == typeof(DateTime) || t == typeof(DateTimeOffset):
-                    default:
-                        var precision = d.Length ?? d.Precision ?? 6;
-                        return TypeMappingHelpers.CreateDateTimeType(MySqlTypes.sql_datetime, precision);
-                }
-            });
-        }
-
-        /// <summary>
-        /// Gets the byte array to SQL type converter.
-        /// </summary>
-        /// <returns>The byte array to SQL type converter.</returns>
-        private DotnetTypeToSqlTypeConverter GetByteArrayToSqlTypeConverter()
-        {
-            return new(d =>
-            {
-                if (d.IsFixedLength == true && d.Length.HasValue)
-                {
-                    return TypeMappingHelpers.CreateBinaryType(MySqlTypes.sql_binary, d.Length, isFixedLength: true);
-                }
-                return TypeMappingHelpers.CreateLobType(MySqlTypes.sql_blob, isUnicode: false);
-            });
-        }
-
-        /// <summary>
-        /// Gets the object to SQL type converter.
-        /// </summary>
-        /// <returns>The object to SQL type converter.</returns>
-        private DotnetTypeToSqlTypeConverter GetObjectToSqlTypeConverter()
-        {
-            return new(d => TypeMappingHelpers.CreateJsonType(MySqlTypes.sql_json, isText: false));
-        }
-
-        /// <summary>
-        /// Gets the enumerable to SQL type converter.
-        /// </summary>
-        /// <returns>The enumerable to SQL type converter.</returns>
-        private DotnetTypeToSqlTypeConverter GetEnumerableToSqlTypeConverter() =>
-            GetJsonToSqlTypeConverter();
-
-        /// <summary>
-        /// Gets the enum to SQL type converter.
-        /// </summary>
-        /// <returns>The enum to SQL type converter.</returns>
-        private DotnetTypeToSqlTypeConverter GetEnumToSqlTypeConverter()
-        {
-            return new(d =>
-            {
-                return TypeMappingHelpers.CreateEnumStringType(MySqlTypes.sql_varchar, isUnicode: false);
-            });
-        }
-
-        /// <summary>
-        /// Gets the array to SQL type converter.
-        /// </summary>
-        /// <returns>The array to SQL type converter.</returns>
-        private DotnetTypeToSqlTypeConverter GetArrayToSqlTypeConverter() =>
-            GetJsonToSqlTypeConverter();
-
-        /// <summary>
-        /// Gets the POCO to SQL type converter.
-        /// </summary>
-        /// <returns>The POCO to SQL type converter.</returns>
-        private DotnetTypeToSqlTypeConverter GetPocoToSqlTypeConverter() =>
-            GetJsonToSqlTypeConverter();
-
-        /// <summary>
-        /// Gets the geometric to SQL type converter.
-        /// </summary>
-        /// <returns>The geometric to SQL type converter.</returns>
-        private DotnetTypeToSqlTypeConverter GetGeometricToSqlTypeConverter()
-        {
-            return new(d =>
-            {
-                var shortName = TypeMappingHelpers.GetAssemblyQualifiedShortName(d.DotnetType);
-                if (string.IsNullOrWhiteSpace(shortName))
-                {
-                    return null;
-                }
-
-                switch (shortName)
-                {
-                    // NetTopologySuite types - MySQL supports specific geometry types
-                    case "NetTopologySuite.Geometries.Geometry, NetTopologySuite":
-                        return TypeMappingHelpers.CreateGeometryType(MySqlTypes.sql_geometry);
-                    case "NetTopologySuite.Geometries.Point, NetTopologySuite":
-                        return TypeMappingHelpers.CreateGeometryType(MySqlTypes.sql_point);
-                    case "NetTopologySuite.Geometries.LineString, NetTopologySuite":
-                        return TypeMappingHelpers.CreateGeometryType(MySqlTypes.sql_linestring);
-                    case "NetTopologySuite.Geometries.Polygon, NetTopologySuite":
-                        return TypeMappingHelpers.CreateGeometryType(MySqlTypes.sql_polygon);
-                    case "NetTopologySuite.Geometries.MultiPoint, NetTopologySuite":
-                        return TypeMappingHelpers.CreateGeometryType(MySqlTypes.sql_multipoint);
-                    case "NetTopologySuite.Geometries.MultiLineString, NetTopologySuite":
-                        return TypeMappingHelpers.CreateGeometryType(MySqlTypes.sql_multilinestring);
-                    case "NetTopologySuite.Geometries.MultiPolygon, NetTopologySuite":
-                        return TypeMappingHelpers.CreateGeometryType(MySqlTypes.sql_multipolygon);
-                    case "NetTopologySuite.Geometries.GeometryCollection, NetTopologySuite":
-                        return TypeMappingHelpers.CreateGeometryType(MySqlTypes.sql_geometrycollection);
-                    // MySQL types
-                    case "MySql.Data.Types.MySqlGeometry, MySql.Data":
-                        return TypeMappingHelpers.CreateGeometryType(MySqlTypes.sql_geometry);
-                    case "MySqlConnector.MySqlGeometry, MySqlConnector":
-                        return TypeMappingHelpers.CreateGeometryType(MySqlTypes.sql_geometry);
-                }
-
-                return null;
-            });
-        }
-
-        #endregion // DotnetTypeToSqlTypeConverters
 
         #region SqlTypeToDotnetTypeConverters
 

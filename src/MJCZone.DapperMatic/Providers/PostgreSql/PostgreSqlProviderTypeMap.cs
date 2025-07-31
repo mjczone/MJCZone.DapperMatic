@@ -9,6 +9,7 @@ using System.Text.Json;
 using System.Text.Json.Nodes;
 using System.Xml.Linq;
 using MJCZone.DapperMatic.Converters;
+using MJCZone.DapperMatic.Providers.Base;
 
 namespace MJCZone.DapperMatic.Providers.PostgreSql;
 
@@ -20,134 +21,24 @@ namespace MJCZone.DapperMatic.Providers.PostgreSql;
 /// https://www.npgsql.org/doc/types/basic.html#read-mappings
 /// https://www.npgsql.org/doc/types/basic.html#write-mappings.
 /// </remarks>
-public sealed class PostgreSqlProviderTypeMap : DbProviderTypeMapBase<PostgreSqlProviderTypeMap>
+public sealed class PostgreSqlProviderTypeMap : StandardTypeMapBase<PostgreSqlProviderTypeMap>
 {
+    /// <inheritdoc />
+    protected override IProviderTypeMapping GetProviderTypeMapping() => new PostgreSqlTypeMapping();
+
+    /// <inheritdoc />
+    protected override string GetProviderName() => "postgresql";
+
     /// <inheritdoc />
     protected override void RegisterDotnetTypeToSqlTypeConverters()
     {
-        var booleanConverter = GetBooleanToSqlTypeConverter();
-        var numericConverter = GetNumbericToSqlTypeConverter();
-        var guidConverter = GetGuidToSqlTypeConverter();
-        var textConverter = GetTextToSqlTypeConverter();
-        var xmlConverter = GetXmlToSqlTypeConverter();
-        var jsonConverter = GetJsonToSqlTypeConverter();
-        var dateTimeConverter = GetDateTimeToSqlTypeConverter();
-        var byteArrayConverter = GetByteArrayToSqlTypeConverter();
-        var objectConverter = GetObjectToSqlTypeConverter();
-        var enumerableConverter = GetEnumerableToSqlTypeConverter();
-        var enumConverter = GetEnumToSqlTypeConverter();
-        var arrayConverter = GetArrayToSqlTypeConverter();
-        var pocoConverter = GetPocoToSqlTypeConverter();
-        var geometricConverter = GetGeometricToSqlTypeConverter();
+        RegisterStandardDotnetTypeToSqlTypeConverters();
+    }
+
+    /// <inheritdoc />
+    protected override void RegisterProviderSpecificConverters()
+    {
         var rangeConverter = GetRangeToSqlTypeConverter();
-
-        // Boolean affinity
-        RegisterConverter<bool>(booleanConverter);
-
-        // Numeric affinity
-        RegisterConverterForTypes(
-            numericConverter,
-            typeof(byte),
-            typeof(short),
-            typeof(int),
-            typeof(BigInteger),
-            typeof(long),
-            typeof(sbyte),
-            typeof(ushort),
-            typeof(uint),
-            typeof(ulong),
-            typeof(decimal),
-            typeof(float),
-            typeof(double)
-        );
-
-        // Guid affinity
-        RegisterConverter<Guid>(guidConverter);
-
-        // Text affinity
-        RegisterConverterForTypes(
-            textConverter,
-            typeof(string),
-            typeof(char),
-            typeof(char[]),
-            typeof(MemoryStream),
-            typeof(ReadOnlyMemory<byte>[]),
-            typeof(Stream),
-            typeof(TextReader)
-        );
-
-        // Xml affinity
-        RegisterConverterForTypes(xmlConverter, typeof(XDocument), typeof(XElement));
-
-        // Json affinity
-        RegisterConverterForTypes(
-            jsonConverter,
-            TypeMappingHelpers.GetStandardJsonTypes()
-        );
-
-        // DateTime affinity
-        RegisterConverterForTypes(
-            dateTimeConverter,
-            typeof(DateTime),
-            typeof(DateTimeOffset),
-            typeof(TimeSpan),
-            typeof(DateOnly),
-            typeof(TimeOnly)
-        );
-
-        // Binary affinity
-        RegisterConverterForTypes(
-            byteArrayConverter,
-            typeof(byte[]),
-            typeof(ReadOnlyMemory<byte>),
-            typeof(Memory<byte>),
-            typeof(Stream),
-            typeof(BinaryReader),
-            typeof(BitArray),
-            typeof(BitVector32)
-        );
-
-        // Object affinity
-        RegisterConverter<object>(objectConverter);
-
-        // Enumerable affinity
-        RegisterConverterForTypes(
-            enumerableConverter,
-            typeof(ImmutableDictionary<string, string>),
-            typeof(Dictionary<string, string>),
-            typeof(IDictionary<string, string>),
-            typeof(Dictionary<string, object>),
-            typeof(IDictionary<string, object>),
-            typeof(HashSet<string>),
-            typeof(List<string>),
-            typeof(IList<string>),
-            typeof(HashSet<>),
-            typeof(ISet<>),
-            typeof(Dictionary<,>),
-            typeof(IDictionary<,>),
-            typeof(List<>),
-            typeof(IList<>),
-            typeof(Collection<>),
-            typeof(IReadOnlyCollection<>),
-            typeof(IReadOnlySet<>),
-            typeof(ICollection<>),
-            typeof(IEnumerable<>)
-        );
-
-        // Enums (uses a placeholder to easily locate it)
-        RegisterConverter<InternalEnumTypePlaceholder>(enumConverter);
-
-        // Arrays (uses a placeholder to easily locate it)
-        RegisterConverter<InternalArrayTypePlaceholder>(arrayConverter);
-
-        // Poco (uses a placeholder to easily locate it)
-        RegisterConverter<InternalPocoTypePlaceholder>(pocoConverter);
-
-        // Geometry types (support NetTopologySuite and PostgreSQL specific types)
-        RegisterConverterForTypes(
-            geometricConverter,
-            TypeMappingHelpers.GetGeometryTypesForProvider("postgresql")
-        );
 
         // Range types (PostgreSQL is jacked up with range types)
         var rangeType = Type.GetType("NpgsqlTypes.NpgsqlRange`1, Npgsql");
@@ -174,6 +65,58 @@ public sealed class PostgreSqlProviderTypeMap : DbProviderTypeMapBase<PostgreSql
                     .ToArray()
             );
         }
+    }
+
+    /// <inheritdoc />
+    protected override DotnetTypeToSqlTypeConverter GetEnumerableToSqlTypeConverter()
+    {
+        return new(d =>
+        {
+            if (
+                d.DotnetType == typeof(Dictionary<string, string>)
+                || d.DotnetType == typeof(IDictionary<string, string>)
+                || d.DotnetType == typeof(ImmutableDictionary<string, string>)
+            )
+            {
+                return TypeMappingHelpers.CreateSimpleType(PostgreSqlTypes.sql_hstore);
+            }
+
+            return TypeMappingHelpers.CreateJsonType(PostgreSqlTypes.sql_jsonb, isText: false);
+        });
+    }
+
+    /// <inheritdoc />
+    protected override SqlTypeDescriptor? CreateGeometryTypeForShortName(string shortName)
+    {
+        return shortName switch
+        {
+            // NetTopologySuite types - PostgreSQL has specific geometry types
+            "NetTopologySuite.Geometries.Geometry, NetTopologySuite" => TypeMappingHelpers.CreateGeometryType(PostgreSqlTypes.sql_geometry),
+            "NetTopologySuite.Geometries.Point, NetTopologySuite" => TypeMappingHelpers.CreateGeometryType(PostgreSqlTypes.sql_point),
+            "NetTopologySuite.Geometries.LineString, NetTopologySuite" => TypeMappingHelpers.CreateGeometryType(PostgreSqlTypes.sql_geometry),
+            "NetTopologySuite.Geometries.Polygon, NetTopologySuite" => TypeMappingHelpers.CreateGeometryType(PostgreSqlTypes.sql_polygon),
+            "NetTopologySuite.Geometries.MultiPoint, NetTopologySuite" or
+            "NetTopologySuite.Geometries.MultiLineString, NetTopologySuite" or
+            "NetTopologySuite.Geometries.MultiPolygon, NetTopologySuite" or
+            "NetTopologySuite.Geometries.GeometryCollection, NetTopologySuite" => TypeMappingHelpers.CreateGeometryType(PostgreSqlTypes.sql_geometry),
+            // PostgreSQL specific types
+            "System.Net.NetworkInformation.PhysicalAddress, System.Net.NetworkInformation" => TypeMappingHelpers.CreateSimpleType(PostgreSqlTypes.sql_macaddr8),
+            "System.Net.IPAddress, System.Net.Primitives" => TypeMappingHelpers.CreateSimpleType(PostgreSqlTypes.sql_inet),
+            "NpgsqlTypes.NpgsqlInet, Npgsql" => TypeMappingHelpers.CreateSimpleType(PostgreSqlTypes.sql_inet),
+            "NpgsqlTypes.NpgsqlCidr, Npgsql" => TypeMappingHelpers.CreateSimpleType(PostgreSqlTypes.sql_cidr),
+            "NpgsqlTypes.NpgsqlPoint, Npgsql" => TypeMappingHelpers.CreateGeometryType(PostgreSqlTypes.sql_point),
+            "NpgsqlTypes.NpgsqlLSeg, Npgsql" => TypeMappingHelpers.CreateSimpleType(PostgreSqlTypes.sql_lseg),
+            "NpgsqlTypes.NpgsqlPath, Npgsql" => TypeMappingHelpers.CreateSimpleType(PostgreSqlTypes.sql_path),
+            "NpgsqlTypes.NpgsqlPolygon, Npgsql" => TypeMappingHelpers.CreateGeometryType(PostgreSqlTypes.sql_polygon),
+            "NpgsqlTypes.NpgsqlLine, Npgsql" => TypeMappingHelpers.CreateSimpleType(PostgreSqlTypes.sql_line),
+            "NpgsqlTypes.NpgsqlCircle, Npgsql" => TypeMappingHelpers.CreateSimpleType(PostgreSqlTypes.sql_circle),
+            "NpgsqlTypes.NpgsqlBox, Npgsql" => TypeMappingHelpers.CreateSimpleType(PostgreSqlTypes.sql_box),
+            "NpgsqlTypes.NpgsqlInterval, Npgsql" => TypeMappingHelpers.CreateSimpleType(PostgreSqlTypes.sql_interval),
+            "NpgsqlTypes.NpgsqlTid, Npgsql" => TypeMappingHelpers.CreateSimpleType(PostgreSqlTypes.sql_tid),
+            "NpgsqlTypes.NpgsqlTsQuery, Npgsql" => TypeMappingHelpers.CreateSimpleType(PostgreSqlTypes.sql_tsquery),
+            "NpgsqlTypes.NpgsqlTsVector, Npgsql" => TypeMappingHelpers.CreateSimpleType(PostgreSqlTypes.sql_tsvector),
+            _ => null
+        };
     }
 
     /// <inheritdoc />
@@ -344,215 +287,6 @@ public sealed class PostgreSqlProviderTypeMap : DbProviderTypeMapBase<PostgreSql
     }
 
     #region DotnetTypeToSqlTypeConverters
-
-    private static DotnetTypeToSqlTypeConverter GetBooleanToSqlTypeConverter()
-    {
-        return new(d =>
-        {
-            return TypeMappingHelpers.CreateSimpleType(PostgreSqlTypes.sql_boolean);
-        });
-    }
-
-    private static DotnetTypeToSqlTypeConverter GetNumbericToSqlTypeConverter()
-    {
-        return new(d =>
-        {
-            switch (d.DotnetType)
-            {
-                case Type t when t == typeof(byte):
-                    return TypeMappingHelpers.CreateSimpleType(PostgreSqlTypes.sql_smallint);
-                case Type t when t == typeof(short):
-                    return TypeMappingHelpers.CreateSimpleType(PostgreSqlTypes.sql_smallint);
-                case Type t when t == typeof(int):
-                    return TypeMappingHelpers.CreateSimpleType(PostgreSqlTypes.sql_int);
-                case Type t when t == typeof(BigInteger) || t == typeof(long):
-                    return TypeMappingHelpers.CreateSimpleType(PostgreSqlTypes.sql_bigint);
-                case Type t when t == typeof(sbyte):
-                    return TypeMappingHelpers.CreateSimpleType(PostgreSqlTypes.sql_smallint);
-                case Type t when t == typeof(ushort):
-                    return TypeMappingHelpers.CreateSimpleType(PostgreSqlTypes.sql_int);
-                case Type t when t == typeof(uint):
-                    return TypeMappingHelpers.CreateSimpleType(PostgreSqlTypes.sql_bigint);
-                case Type t when t == typeof(ulong):
-                    return TypeMappingHelpers.CreateSimpleType(PostgreSqlTypes.sql_bigint);
-                case Type t when t == typeof(float):
-                    return TypeMappingHelpers.CreateSimpleType(PostgreSqlTypes.sql_real);
-                case Type t when t == typeof(double):
-                    return TypeMappingHelpers.CreateSimpleType(PostgreSqlTypes.sql_double_precision);
-                case Type t when t == typeof(decimal):
-                    return TypeMappingHelpers.CreateDecimalType(PostgreSqlTypes.sql_decimal, d.Precision, d.Scale);
-                default:
-                    return TypeMappingHelpers.CreateSimpleType(PostgreSqlTypes.sql_int);
-            }
-        });
-    }
-
-    private static DotnetTypeToSqlTypeConverter GetGuidToSqlTypeConverter()
-    {
-        return new(d =>
-        {
-            return TypeMappingHelpers.CreateSimpleType(PostgreSqlTypes.sql_uuid);
-        });
-    }
-
-    private static DotnetTypeToSqlTypeConverter GetTextToSqlTypeConverter()
-    {
-        return new(d =>
-        {
-            if (d.Length == TypeMappingDefaults.MaxLength)
-            {
-                return TypeMappingHelpers.CreateLobType(PostgreSqlTypes.sql_text, isUnicode: false);
-            }
-
-            var sqlType = d.IsFixedLength == true ? PostgreSqlTypes.sql_char : PostgreSqlTypes.sql_varchar;
-            return TypeMappingHelpers.CreateStringType(
-                sqlType,
-                d.Length,
-                isUnicode: false,
-                d.IsFixedLength.GetValueOrDefault(false));
-        });
-    }
-
-    private static DotnetTypeToSqlTypeConverter GetXmlToSqlTypeConverter()
-    {
-        return new(d => TypeMappingHelpers.CreateSimpleType(PostgreSqlTypes.sql_xml));
-    }
-
-    private static DotnetTypeToSqlTypeConverter GetJsonToSqlTypeConverter()
-    {
-        return TypeMappingHelpers.CreateJsonConverter("postgresql");
-    }
-
-    private DotnetTypeToSqlTypeConverter GetDateTimeToSqlTypeConverter()
-    {
-        return new(d =>
-        {
-            switch (d.DotnetType)
-            {
-                case Type t when t == typeof(DateTime):
-                    return TypeMappingHelpers.CreateSimpleType(PostgreSqlTypes.sql_timestamp);
-                case Type t when t == typeof(DateTimeOffset):
-                    return TypeMappingHelpers.CreateSimpleType(PostgreSqlTypes.sql_timestamptz);
-                case Type t when t == typeof(TimeSpan):
-                    return TypeMappingHelpers.CreateSimpleType(PostgreSqlTypes.sql_time);
-                case Type t when t == typeof(DateOnly):
-                    return TypeMappingHelpers.CreateSimpleType(PostgreSqlTypes.sql_date);
-                case Type t when t == typeof(TimeOnly):
-                    return TypeMappingHelpers.CreateSimpleType(PostgreSqlTypes.sql_timetz);
-                default:
-                    return TypeMappingHelpers.CreateSimpleType(PostgreSqlTypes.sql_timestamp);
-            }
-        });
-    }
-
-    private DotnetTypeToSqlTypeConverter GetByteArrayToSqlTypeConverter()
-    {
-        return new(d =>
-        {
-            return TypeMappingHelpers.CreateLobType(PostgreSqlTypes.sql_bytea, isUnicode: false);
-        });
-    }
-
-    private DotnetTypeToSqlTypeConverter GetObjectToSqlTypeConverter()
-    {
-        return new(d =>
-        {
-            return TypeMappingHelpers.CreateJsonType(PostgreSqlTypes.sql_jsonb, isText: false);
-        });
-    }
-
-    private DotnetTypeToSqlTypeConverter GetEnumerableToSqlTypeConverter()
-    {
-        return new(d =>
-        {
-            if (
-                d.DotnetType == typeof(Dictionary<string, string>)
-                || d.DotnetType == typeof(IDictionary<string, string>)
-                || d.DotnetType == typeof(ImmutableDictionary<string, string>)
-            )
-            {
-                return TypeMappingHelpers.CreateSimpleType(PostgreSqlTypes.sql_hstore);
-            }
-
-            return TypeMappingHelpers.CreateJsonType(PostgreSqlTypes.sql_jsonb, isText: false);
-        });
-    }
-
-    private DotnetTypeToSqlTypeConverter GetEnumToSqlTypeConverter()
-    {
-        return new(d =>
-        {
-            return TypeMappingHelpers.CreateEnumStringType(PostgreSqlTypes.sql_varchar, isUnicode: false);
-        });
-    }
-
-    private DotnetTypeToSqlTypeConverter GetArrayToSqlTypeConverter() =>
-        TypeMappingHelpers.CreateArrayConverter("postgresql");
-
-    private DotnetTypeToSqlTypeConverter GetPocoToSqlTypeConverter() => GetJsonToSqlTypeConverter();
-
-    private DotnetTypeToSqlTypeConverter GetGeometricToSqlTypeConverter()
-    {
-        return new(d =>
-        {
-            var shortName = TypeMappingHelpers.GetAssemblyQualifiedShortName(d.DotnetType);
-            if (string.IsNullOrWhiteSpace(shortName))
-            {
-                return null;
-            }
-
-            switch (shortName)
-            {
-                // NetTopologySuite types - PostgreSQL has specific geometry types
-                case "NetTopologySuite.Geometries.Geometry, NetTopologySuite":
-                    return TypeMappingHelpers.CreateGeometryType(PostgreSqlTypes.sql_geometry);
-                case "NetTopologySuite.Geometries.Point, NetTopologySuite":
-                    return TypeMappingHelpers.CreateGeometryType(PostgreSqlTypes.sql_point);
-                case "NetTopologySuite.Geometries.LineString, NetTopologySuite":
-                    return TypeMappingHelpers.CreateGeometryType(PostgreSqlTypes.sql_geometry);
-                case "NetTopologySuite.Geometries.Polygon, NetTopologySuite":
-                    return TypeMappingHelpers.CreateGeometryType(PostgreSqlTypes.sql_polygon);
-                case "NetTopologySuite.Geometries.MultiPoint, NetTopologySuite":
-                case "NetTopologySuite.Geometries.MultiLineString, NetTopologySuite":
-                case "NetTopologySuite.Geometries.MultiPolygon, NetTopologySuite":
-                case "NetTopologySuite.Geometries.GeometryCollection, NetTopologySuite":
-                    return TypeMappingHelpers.CreateGeometryType(PostgreSqlTypes.sql_geometry);
-                // PostgreSQL specific types
-                case "System.Net.NetworkInformation.PhysicalAddress, System.Net.NetworkInformation":
-                    return TypeMappingHelpers.CreateSimpleType(PostgreSqlTypes.sql_macaddr8);
-                case "System.Net.IPAddress, System.Net.Primitives":
-                    return TypeMappingHelpers.CreateSimpleType(PostgreSqlTypes.sql_inet);
-                case "NpgsqlTypes.NpgsqlInet, Npgsql":
-                    return TypeMappingHelpers.CreateSimpleType(PostgreSqlTypes.sql_inet);
-                case "NpgsqlTypes.NpgsqlCidr, Npgsql":
-                    return TypeMappingHelpers.CreateSimpleType(PostgreSqlTypes.sql_cidr);
-                case "NpgsqlTypes.NpgsqlPoint, Npgsql":
-                    return TypeMappingHelpers.CreateGeometryType(PostgreSqlTypes.sql_point);
-                case "NpgsqlTypes.NpgsqlLSeg, Npgsql":
-                    return TypeMappingHelpers.CreateSimpleType(PostgreSqlTypes.sql_lseg);
-                case "NpgsqlTypes.NpgsqlPath, Npgsql":
-                    return TypeMappingHelpers.CreateSimpleType(PostgreSqlTypes.sql_path);
-                case "NpgsqlTypes.NpgsqlPolygon, Npgsql":
-                    return TypeMappingHelpers.CreateGeometryType(PostgreSqlTypes.sql_polygon);
-                case "NpgsqlTypes.NpgsqlLine, Npgsql":
-                    return TypeMappingHelpers.CreateSimpleType(PostgreSqlTypes.sql_line);
-                case "NpgsqlTypes.NpgsqlCircle, Npgsql":
-                    return TypeMappingHelpers.CreateSimpleType(PostgreSqlTypes.sql_circle);
-                case "NpgsqlTypes.NpgsqlBox, Npgsql":
-                    return TypeMappingHelpers.CreateSimpleType(PostgreSqlTypes.sql_box);
-                case "NpgsqlTypes.NpgsqlInterval, Npgsql":
-                    return TypeMappingHelpers.CreateSimpleType(PostgreSqlTypes.sql_interval);
-                case "NpgsqlTypes.NpgsqlTid, Npgsql":
-                    return TypeMappingHelpers.CreateSimpleType(PostgreSqlTypes.sql_tid);
-                case "NpgsqlTypes.NpgsqlTsQuery, Npgsql":
-                    return TypeMappingHelpers.CreateSimpleType(PostgreSqlTypes.sql_tsquery);
-                case "NpgsqlTypes.NpgsqlTsVector, Npgsql":
-                    return TypeMappingHelpers.CreateSimpleType(PostgreSqlTypes.sql_tsvector);
-            }
-
-            return null;
-        });
-    }
 
     private DotnetTypeToSqlTypeConverter GetRangeToSqlTypeConverter()
     {

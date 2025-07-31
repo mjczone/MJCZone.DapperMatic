@@ -11,6 +11,11 @@ public static class TypeMappingDefaults
     public const int DefaultStringLength = 255;
 
     /// <summary>
+    /// Default length for binary/varbinary columns when no length is specified.
+    /// </summary>
+    public const int DefaultBinaryLength = 255;
+
+    /// <summary>
     /// Default precision for decimal/numeric columns.
     /// </summary>
     public const int DefaultDecimalPrecision = 16;
