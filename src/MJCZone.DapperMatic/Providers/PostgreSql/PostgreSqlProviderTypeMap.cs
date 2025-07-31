@@ -190,6 +190,7 @@ public sealed class PostgreSqlProviderTypeMap : DbProviderTypeMapBase<PostgreSql
         var geometricConverter = GetGeometricToDotnetTypeConverter();
         var rangeConverter = GetRangeToDotnetTypeConverter();
         var miscConverter = GetMiscellaneousToDotnetTypeConverter();
+        var arrayConverter = TypeMappingHelpers.CreatePostgreSqlArrayTypeConverter();
 
         // Boolean affinity
         RegisterConverterForTypes(
@@ -333,6 +334,12 @@ public sealed class PostgreSqlProviderTypeMap : DbProviderTypeMapBase<PostgreSql
             PostgreSqlTypes.sql_tsmultirange,
             PostgreSqlTypes.sql_tstzrange,
             PostgreSqlTypes.sql_tstzmultirange
+        );
+
+        // Native Array types (PostgreSQL specific)
+        RegisterConverterForTypes(
+            arrayConverter,
+            TypeMappingHelpers.GetPostgreSqlStandardArrayTypes()
         );
     }
 

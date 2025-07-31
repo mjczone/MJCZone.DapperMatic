@@ -560,7 +560,12 @@ public static class TypeMappingHelpers
                 {
                     var elementType = d.DotnetType.GetElementType();
                     var arrayTypeName = GetPostgreSqlArrayTypeName(elementType);
-                    return arrayTypeName != null ? CreateNativeArrayType(arrayTypeName) : null;
+                    if (arrayTypeName != null)
+                    {
+                        return CreateNativeArrayType(arrayTypeName);
+                    }
+                    // Fall back to JSON for unsupported array types
+                    return CreateJsonType("jsonb", isText: false);
                 }
                 return null;
             }),
@@ -611,5 +616,129 @@ public static class TypeMappingHelpers
     public static bool SupportsNativeArrays(string provider)
     {
         return string.Equals(provider, "postgresql", StringComparison.OrdinalIgnoreCase);
+    }
+
+    /// <summary>
+    /// Gets the standard PostgreSQL array type names that should be registered for SQL-to-.NET type mapping.
+    /// This provides array versions of common PostgreSQL types.
+    /// </summary>
+    /// <returns>An array of PostgreSQL array type names.</returns>
+    public static string[] GetPostgreSqlStandardArrayTypes()
+    {
+        return new[]
+        {
+            // Standard array notation
+            "boolean[]",
+            "smallint[]",
+            "integer[]",
+            "bigint[]",
+            "real[]",
+            "double precision[]",
+            "numeric[]",
+            "text[]",
+            "char[]",
+            "varchar[]",
+            "character varying[]",
+            "character[]",
+            "bytea[]",
+            "timestamp[]",
+            "timestamp without time zone[]",
+            "timestamp with time zone[]",
+            "timestamptz[]",
+            "date[]",
+            "time[]",
+            "time without time zone[]",
+            "time with time zone[]",
+            "timetz[]",
+            "interval[]",
+            "uuid[]",
+            "json[]",
+            "jsonb[]",
+            // PostgreSQL internal array notation (with underscore prefix)
+            "_bool",
+            "_int2",
+            "_int4",
+            "_int8",
+            "_float4",
+            "_float8",
+            "_numeric",
+            "_text",
+            "_char",
+            "_varchar",
+            "_bpchar",
+            "_bytea",
+            "_timestamp",
+            "_timestamptz",
+            "_date",
+            "_time",
+            "_timetz",
+            "_interval",
+            "_uuid",
+            "_json",
+            "_jsonb",
+        };
+    }
+
+    /// <summary>
+    /// Creates a SQL-to-.NET array type converter for PostgreSQL that converts array types to their .NET array equivalents.
+    /// </summary>
+    /// <returns>A SqlTypeToDotnetTypeConverter configured for PostgreSQL array types.</returns>
+    public static SqlTypeToDotnetTypeConverter CreatePostgreSqlArrayTypeConverter()
+    {
+        return new SqlTypeToDotnetTypeConverter(d =>
+        {
+            if (string.IsNullOrWhiteSpace(d.SqlTypeName))
+            {
+                return null;
+            }
+
+            string elementTypeName;
+
+            // Check if this is an array type (ends with [] or starts with _)
+            if (d.SqlTypeName.EndsWith("[]", StringComparison.Ordinal))
+            {
+                // Standard array notation: "text[]"
+                elementTypeName = d.SqlTypeName[..^2]; // Remove the "[]" suffix
+            }
+            else if (d.SqlTypeName.StartsWith('_'))
+            {
+                // PostgreSQL internal array notation: "_text"
+                elementTypeName = d.SqlTypeName[1..]; // Remove the "_" prefix
+            }
+            else
+            {
+                return null; // Not an array type
+            }
+
+            // Map element type to .NET array type
+            return elementTypeName switch
+            {
+                "boolean" or "bool" => new DotnetTypeDescriptor(typeof(bool[])),
+                "smallint" or "int2" => new DotnetTypeDescriptor(typeof(short[])),
+                "integer" or "int4" => new DotnetTypeDescriptor(typeof(int[])),
+                "bigint" or "int8" => new DotnetTypeDescriptor(typeof(long[])),
+                "real" or "float4" => new DotnetTypeDescriptor(typeof(float[])),
+                "double precision" or "float8" => new DotnetTypeDescriptor(typeof(double[])),
+                "numeric" => new DotnetTypeDescriptor(typeof(decimal[])),
+                "text" => new DotnetTypeDescriptor(typeof(string[])),
+                "char" or "bpchar" => new DotnetTypeDescriptor(typeof(char[])),
+                "varchar" => new DotnetTypeDescriptor(typeof(string[])),
+                "character varying" => new DotnetTypeDescriptor(typeof(string[])),
+                "character" => new DotnetTypeDescriptor(typeof(char[])),
+                "bytea" => new DotnetTypeDescriptor(typeof(byte[][])),
+                "timestamp" => new DotnetTypeDescriptor(typeof(DateTime[])),
+                "timestamp without time zone" => new DotnetTypeDescriptor(typeof(DateTime[])),
+                "timestamp with time zone" or "timestamptz" => new DotnetTypeDescriptor(typeof(DateTimeOffset[])),
+                "date" => new DotnetTypeDescriptor(typeof(DateOnly[])),
+                "time" => new DotnetTypeDescriptor(typeof(TimeOnly[])),
+                "time without time zone" => new DotnetTypeDescriptor(typeof(TimeOnly[])),
+                "time with time zone" or "timetz" => new DotnetTypeDescriptor(typeof(TimeOnly[])),
+                "interval" => new DotnetTypeDescriptor(typeof(TimeSpan[])),
+                "uuid" => new DotnetTypeDescriptor(typeof(Guid[])),
+                "json" => new DotnetTypeDescriptor(typeof(System.Text.Json.JsonDocument[])),
+                "jsonb" => new DotnetTypeDescriptor(typeof(System.Text.Json.JsonDocument[])),
+                _ => null // Unsupported array element type
+            };
+        });
     }
 }

@@ -731,4 +731,137 @@ public class TypeMappingHelpersTests : TestBase
         // Assert
         Assert.Equal(expected, result);
     }
+
+    [Fact]
+    public void GetPostgreSqlStandardArrayTypes_ReturnsExpectedTypes()
+    {
+        // Act
+        var arrayTypes = TypeMappingHelpers.GetPostgreSqlStandardArrayTypes();
+        
+        // Assert
+        Assert.NotNull(arrayTypes);
+        Assert.True(arrayTypes.Length > 0);
+        
+        // Verify some key array types are included
+        Assert.Contains("boolean[]", arrayTypes);
+        Assert.Contains("integer[]", arrayTypes);
+        Assert.Contains("text[]", arrayTypes);
+        Assert.Contains("timestamp[]", arrayTypes);
+        Assert.Contains("uuid[]", arrayTypes);
+        Assert.Contains("jsonb[]", arrayTypes);
+    }
+
+    [Fact]
+    public void CreatePostgreSqlArrayTypeConverter_ReturnsValidConverter()
+    {
+        // Act
+        var converter = TypeMappingHelpers.CreatePostgreSqlArrayTypeConverter();
+        
+        // Assert
+        Assert.NotNull(converter);
+        Assert.IsType<SqlTypeToDotnetTypeConverter>(converter);
+    }
+
+    [Theory]
+    [InlineData("text[]", typeof(string[]))]
+    [InlineData("integer[]", typeof(int[]))]
+    [InlineData("boolean[]", typeof(bool[]))]
+    [InlineData("bigint[]", typeof(long[]))]
+    [InlineData("uuid[]", typeof(Guid[]))]
+    [InlineData("timestamp[]", typeof(DateTime[]))]
+    [InlineData("timestamptz[]", typeof(DateTimeOffset[]))]
+    [InlineData("date[]", typeof(DateOnly[]))]
+    [InlineData("time[]", typeof(TimeOnly[]))]
+    [InlineData("interval[]", typeof(TimeSpan[]))]
+    // PostgreSQL internal array notation (underscore prefix)
+    [InlineData("_text", typeof(string[]))]
+    [InlineData("_int4", typeof(int[]))]
+    [InlineData("_bool", typeof(bool[]))]
+    [InlineData("_int8", typeof(long[]))]
+    [InlineData("_uuid", typeof(Guid[]))]
+    [InlineData("_timestamp", typeof(DateTime[]))]
+    [InlineData("_timestamptz", typeof(DateTimeOffset[]))]
+    [InlineData("_date", typeof(DateOnly[]))]
+    [InlineData("_time", typeof(TimeOnly[]))]
+    [InlineData("_interval", typeof(TimeSpan[]))]
+    public void CreatePostgreSqlArrayTypeConverter_MapsArrayTypesCorrectly(string sqlType, Type expectedDotnetType)
+    {
+        // Arrange
+        var converter = TypeMappingHelpers.CreatePostgreSqlArrayTypeConverter();
+        var sqlDescriptor = new SqlTypeDescriptor(sqlType);
+        
+        // Act
+        var result = converter.ConvertFunc(sqlDescriptor);
+        
+        // Assert
+        Assert.NotNull(result);
+        Assert.Equal(expectedDotnetType, result.DotnetType);
+    }
+
+    [Theory]
+    [InlineData("text")]
+    [InlineData("integer")]
+    [InlineData("notanarray")]
+    public void CreatePostgreSqlArrayTypeConverter_WithNonArrayTypes_ReturnsNull(string sqlType)
+    {
+        // Arrange
+        var converter = TypeMappingHelpers.CreatePostgreSqlArrayTypeConverter();
+        var sqlDescriptor = new SqlTypeDescriptor(sqlType);
+        
+        // Act
+        var result = converter.ConvertFunc(sqlDescriptor);
+        
+        // Assert
+        Assert.Null(result);
+    }
+
+    [Fact]
+    public void CreatePostgreSqlArrayTypeConverter_WithNullTypeName_ReturnsNull()
+    {
+        // Arrange
+        var converter = TypeMappingHelpers.CreatePostgreSqlArrayTypeConverter();
+        var sqlDescriptor = new SqlTypeDescriptor("text");
+        
+        // Use reflection to set SqlTypeName to null for testing
+        var sqlTypeNameProperty = typeof(SqlTypeDescriptor).GetProperty("SqlTypeName");
+        sqlTypeNameProperty?.SetValue(sqlDescriptor, null);
+        
+        // Act
+        var result = converter.ConvertFunc(sqlDescriptor);
+        
+        // Assert
+        Assert.Null(result);
+    }
+
+    [Fact]
+    public void CreatePostgreSqlArrayTypeConverter_WithEmptyTypeName_ReturnsNull()
+    {
+        // Arrange
+        var converter = TypeMappingHelpers.CreatePostgreSqlArrayTypeConverter();
+        var sqlDescriptor = new SqlTypeDescriptor("text");
+        
+        // Use reflection to set SqlTypeName to empty string for testing
+        var sqlTypeNameProperty = typeof(SqlTypeDescriptor).GetProperty("SqlTypeName");
+        sqlTypeNameProperty?.SetValue(sqlDescriptor, "");
+        
+        // Act
+        var result = converter.ConvertFunc(sqlDescriptor);
+        
+        // Assert
+        Assert.Null(result);
+    }
+
+    [Fact]
+    public void CreatePostgreSqlArrayTypeConverter_WithUnsupportedArrayType_ReturnsNull()
+    {
+        // Arrange
+        var converter = TypeMappingHelpers.CreatePostgreSqlArrayTypeConverter();
+        var sqlDescriptor = new SqlTypeDescriptor("unsupported_type[]");
+        
+        // Act
+        var result = converter.ConvertFunc(sqlDescriptor);
+        
+        // Assert
+        Assert.Null(result);
+    }
 }
