@@ -85,7 +85,8 @@ public class TestOutputDocs
             },
             data = akovData,
         };
-        File.WriteAllText(akovJsonFile, JsonSerializer.Serialize(output, serializationSettings));
+        var serializedContent = JsonSerializer.Serialize(output, serializationSettings);
+        File.WriteAllText(akovJsonFile, serializedContent);
         //Logger.WriteLine(JsonSerializer.Serialize(akovData, serializationSettings));
 
         // var docsJsonFileName = $"{assembly.GetName().Name}.json";
@@ -112,7 +113,9 @@ public class TestOutputDocs
             $"{assembly.GetName().Name}.json"
         );
         Directory.CreateDirectory(packagesDirectory);
-        File.Copy(akovJsonFile, docsAssemblyJsonFile, true);
+        
+        // Write directly to the destination instead of copying to avoid file locking issues
+        File.WriteAllText(docsAssemblyJsonFile, serializedContent);
         Logger.WriteLine($"Created {docsAssemblyJsonFile}");
         return;
 

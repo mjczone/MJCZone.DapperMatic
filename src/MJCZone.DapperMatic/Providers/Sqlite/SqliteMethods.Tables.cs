@@ -101,6 +101,14 @@ public partial class SqliteMethods
                         || providerDataType.StartsWith("ntext", StringComparison.OrdinalIgnoreCase)
                     );
 
+                // Apply standardized auto-increment detection
+                // Note: SQLite parser already sets IsAutoIncrement, but we run this for consistency
+                // and to catch any edge cases (e.g., INTEGER PRIMARY KEY implicit ROWID)
+                column.IsAutoIncrement = DetermineIsAutoIncrement(
+                    column,
+                    column.IsAutoIncrement,
+                    providerDataType);
+
                 column.IsIndexed = table.Indexes.Any(i =>
                     i.Columns.Any(c =>
                         c.ColumnName.Equals(column.ColumnName, StringComparison.OrdinalIgnoreCase)

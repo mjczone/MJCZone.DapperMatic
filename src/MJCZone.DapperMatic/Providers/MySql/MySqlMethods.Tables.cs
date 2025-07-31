@@ -457,7 +457,7 @@ public partial class MySqlMethods
                     )
                     ?.i;
 
-                var dotnetTypeDescriptor = GetDotnetTypeFromSqlType(tableColumn.data_type_complete);
+                var dotnetTypeDescriptor = GetDotnetTypeFromSqlType(tableColumn.data_type_complete ?? tableColumn.data_type);
 
                 var isUnicode =
                     dotnetTypeDescriptor.IsUnicode == true
@@ -475,7 +475,7 @@ public partial class MySqlMethods
                     dotnetTypeDescriptor.DotnetType,
                     new Dictionary<DbProviderType, string>
                     {
-                        { ProviderType, tableColumn.data_type_complete },
+                        { ProviderType, tableColumn.data_type_complete ?? tableColumn.data_type },
                     },
                     tableColumn.max_length.HasValue
                         ? (
@@ -511,10 +511,7 @@ public partial class MySqlMethods
                             StringComparison.OrdinalIgnoreCase
                         )
                     ) == true,
-                    tableColumn.extra?.Contains(
-                        "auto_increment",
-                        StringComparison.OrdinalIgnoreCase
-                    ) == true,
+                    false, // Set to false initially, will be determined by DetermineIsAutoIncrement
                     columnIsUniqueViaUniqueConstraintOrIndex,
                     isUnicode,
                     columnIsPartOfIndex,
@@ -526,6 +523,12 @@ public partial class MySqlMethods
                     foreignKeyConstraint?.OnDelete,
                     foreignKeyConstraint?.OnUpdate
                 );
+
+                // Apply standardized auto-increment detection
+                column.IsAutoIncrement = DetermineIsAutoIncrement(
+                    column,
+                    tableColumn.extra,
+                    tableColumn.data_type_complete ?? tableColumn.data_type);
 
                 columns.Add(column);
             }

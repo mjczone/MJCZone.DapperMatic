@@ -68,6 +68,18 @@ public abstract partial class DatabaseMethodsTests
         Assert.Equal(tableName, existingTable.TableName, true);
         Assert.Equal(2, existingTable.Columns.Count);
 
+        // Validate auto-increment detection
+        var idColumn = existingTable.Columns.FirstOrDefault(c => 
+            c.ColumnName.Equals("id", StringComparison.OrdinalIgnoreCase));
+        Assert.NotNull(idColumn);
+        Assert.True(idColumn.IsAutoIncrement, "ID column should be detected as auto-increment");
+        Assert.True(idColumn.IsPrimaryKey, "ID column should be primary key");
+        
+        var nameColumn = existingTable.Columns.FirstOrDefault(c => 
+            c.ColumnName.Equals("name", StringComparison.OrdinalIgnoreCase));
+        Assert.NotNull(nameColumn);
+        Assert.False(nameColumn.IsAutoIncrement, "Name column should not be auto-increment");
+
         // rename the table
         var newName = "newTestTable";
         var renamed = await db.RenameTableIfExistsAsync(schemaName, tableName, newName);

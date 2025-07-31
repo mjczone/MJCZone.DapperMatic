@@ -479,6 +479,12 @@ public partial class SqlServerMethods
                     foreignKeyConstraint?.OnUpdate
                 );
 
+                // Apply standardized auto-increment detection
+                column.IsAutoIncrement = DetermineIsAutoIncrement(
+                    column,
+                    tableColumn.is_identity,
+                    tableColumn.data_type);
+
                 columns.Add(column);
             }
 
