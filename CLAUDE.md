@@ -38,6 +38,10 @@ This is MJCZone.DapperMatic - a C# library providing IDbConnection extension met
   - Comprehensive test coverage with 33 test methods
   - Foundation supports: decimal types, string types, GUID/enum storage, geometry types, LOB types, arrays, datetime precision, and type inspection utilities
 
+## Code Style Guidelines
+
+- Use trailing comma in multi-line initializers
+
 ## Type Mapping Consolidation Plan
 
 **Goal**: Eliminate ~3000+ lines of duplicated type mapping code across providers while maintaining consistency.

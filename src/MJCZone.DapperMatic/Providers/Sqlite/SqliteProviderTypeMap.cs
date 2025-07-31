@@ -144,19 +144,10 @@ public sealed class SqliteProviderTypeMap : DbProviderTypeMapBase<SqliteProvider
         // Poco (uses a placeholder to easily locate it)
         RegisterConverter<InternalPocoTypePlaceholder>(pocoConverter);
 
-        // Geometry types (support the NetTopologySuite types)
+        // Geometry types (support NetTopologySuite types)
         RegisterConverterForTypes(
             geometricConverter,
-            // always register the NetTopologySuite types, as they provide
-            // a good way to handle geometry types across database providers
-            Type.GetType("NetTopologySuite.Geometries.Geometry, NetTopologySuite"),
-            Type.GetType("NetTopologySuite.Geometries.Point, NetTopologySuite"),
-            Type.GetType("NetTopologySuite.Geometries.LineString, NetTopologySuite"),
-            Type.GetType("NetTopologySuite.Geometries.Polygon, NetTopologySuite"),
-            Type.GetType("NetTopologySuite.Geometries.MultiPoint, NetTopologySuite"),
-            Type.GetType("NetTopologySuite.Geometries.MultiLineString, NetTopologySuite"),
-            Type.GetType("NetTopologySuite.Geometries.MultiPolygon, NetTopologySuite"),
-            Type.GetType("NetTopologySuite.Geometries.GeometryCollection, NetTopologySuite")
+            TypeMappingHelpers.GetGeometryTypesForProvider("sqlite")
         );
     }
 

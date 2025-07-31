@@ -414,4 +414,120 @@ public class TypeMappingHelpersTests : TestBase
         // Assert
         Assert.Null(result);
     }
+
+    [Fact]
+    public void GetStandardGeometryTypes_ReturnsFilteredArray()
+    {
+        // Act
+        var types = TypeMappingHelpers.GetStandardGeometryTypes();
+        
+        // Assert
+        Assert.NotNull(types);
+        Assert.IsType<Type[]>(types);
+        
+        // All returned types should be non-null
+        Assert.True(types.All(t => t != null));
+        
+        // If NetTopologySuite is available, should have 8 types
+        if (types.Length > 0)
+        {
+            Assert.Equal(8, types.Length);
+        }
+    }
+
+    [Fact]
+    public void GetSqlServerGeometryTypes_ReturnsFilteredArray()
+    {
+        // Act
+        var types = TypeMappingHelpers.GetSqlServerGeometryTypes();
+        
+        // Assert
+        Assert.NotNull(types);
+        Assert.IsType<Type[]>(types);
+        
+        // All returned types should be non-null
+        Assert.True(types.All(t => t != null));
+    }
+
+    [Fact]
+    public void GetMySqlGeometryTypes_ReturnsFilteredArray()
+    {
+        // Act
+        var types = TypeMappingHelpers.GetMySqlGeometryTypes();
+        
+        // Assert
+        Assert.NotNull(types);
+        Assert.IsType<Type[]>(types);
+        
+        // All returned types should be non-null
+        Assert.True(types.All(t => t != null));
+    }
+
+    [Fact]
+    public void GetPostgreSqlSpecialTypes_ReturnsFilteredArray()
+    {
+        // Act
+        var types = TypeMappingHelpers.GetPostgreSqlSpecialTypes();
+        
+        // Assert
+        Assert.NotNull(types);
+        Assert.IsType<Type[]>(types);
+        
+        // All returned types should be non-null
+        Assert.True(types.All(t => t != null));
+        
+        // Should at least have some system types
+        if (types.Length > 0)
+        {
+            // Should have at least System.Net types
+            var hasNetworkTypes = types.Any(t => t.Namespace?.StartsWith("System.Net") == true);
+            Assert.True(hasNetworkTypes);
+        }
+    }
+
+    [Fact]
+    public void GetGeometryTypesForProvider_ReturnsCorrectTypesForEachProvider()
+    {
+        // Test SQL Server
+        var sqlServerTypes = TypeMappingHelpers.GetGeometryTypesForProvider("sqlserver");
+        Assert.NotNull(sqlServerTypes);
+        Assert.True(sqlServerTypes.All(t => t != null));
+        
+        // Test MySQL
+        var mysqlTypes = TypeMappingHelpers.GetGeometryTypesForProvider("mysql");
+        Assert.NotNull(mysqlTypes);
+        Assert.True(mysqlTypes.All(t => t != null));
+        
+        // Test PostgreSQL
+        var postgresTypes = TypeMappingHelpers.GetGeometryTypesForProvider("postgresql");
+        Assert.NotNull(postgresTypes);
+        Assert.True(postgresTypes.All(t => t != null));
+        
+        // Test SQLite
+        var sqliteTypes = TypeMappingHelpers.GetGeometryTypesForProvider("sqlite");
+        Assert.NotNull(sqliteTypes);
+        Assert.True(sqliteTypes.All(t => t != null));
+        
+        // Test unknown provider (should return standard types)
+        var unknownTypes = TypeMappingHelpers.GetGeometryTypesForProvider("unknown");
+        Assert.NotNull(unknownTypes);
+        Assert.True(unknownTypes.All(t => t != null));
+        
+        // SQLite should only have standard types (no additional provider-specific types)
+        var standardTypes = TypeMappingHelpers.GetStandardGeometryTypes();
+        Assert.Equal(standardTypes.Length, sqliteTypes.Length);
+    }
+
+    [Fact]
+    public void GetGeometryTypesForProvider_CaseInsensitive()
+    {
+        // Act
+        var sqlServerLower = TypeMappingHelpers.GetGeometryTypesForProvider("sqlserver");
+        var sqlServerUpper = TypeMappingHelpers.GetGeometryTypesForProvider("SQLSERVER");
+        var sqlServerMixed = TypeMappingHelpers.GetGeometryTypesForProvider("SqlServer");
+        
+        // Assert
+        Assert.Equal(sqlServerLower.Length, sqlServerUpper.Length);
+        Assert.Equal(sqlServerLower.Length, sqlServerMixed.Length);
+    }
 }

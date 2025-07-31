@@ -144,23 +144,10 @@ public sealed class SqlServerProviderTypeMap : DbProviderTypeMapBase<SqlServerPr
         // Poco (uses a placeholder to easily locate it)
         RegisterConverter<InternalPocoTypePlaceholder>(pocoConverter);
 
-        // Geometry types (support the NetTopologySuite types)
+        // Geometry types (support NetTopologySuite and SQL Server specific types)
         RegisterConverterForTypes(
             geometricConverter,
-            // always register the NetTopologySuite types, as they provide
-            // a good way to handle geometry types across database providers
-            Type.GetType("NetTopologySuite.Geometries.Geometry, NetTopologySuite"),
-            Type.GetType("NetTopologySuite.Geometries.Point, NetTopologySuite"),
-            Type.GetType("NetTopologySuite.Geometries.LineString, NetTopologySuite"),
-            Type.GetType("NetTopologySuite.Geometries.Polygon, NetTopologySuite"),
-            Type.GetType("NetTopologySuite.Geometries.MultiPoint, NetTopologySuite"),
-            Type.GetType("NetTopologySuite.Geometries.MultiLineString, NetTopologySuite"),
-            Type.GetType("NetTopologySuite.Geometries.MultiPolygon, NetTopologySuite"),
-            Type.GetType("NetTopologySuite.Geometries.GeometryCollection, NetTopologySuite"),
-            // also register the SQL Server types
-            Type.GetType("Microsoft.SqlServer.Types.SqlGeometry, Microsoft.SqlServer.Types"),
-            Type.GetType("Microsoft.SqlServer.Types.SqlGeography, Microsoft.SqlServer.Types"),
-            Type.GetType("Microsoft.SqlServer.Types.SqlHierarchyId, Microsoft.SqlServer.Types")
+            TypeMappingHelpers.GetGeometryTypesForProvider("sqlserver")
         );
     }
 
