@@ -234,7 +234,7 @@ public sealed class SqliteProviderTypeMap : DbProviderTypeMapBase<SqliteProvider
     {
         return new(d =>
         {
-            return new(SqliteTypes.sql_boolean);
+            return TypeMappingHelpers.CreateSimpleType(SqliteTypes.sql_boolean);
         });
     }
 
@@ -242,7 +242,7 @@ public sealed class SqliteProviderTypeMap : DbProviderTypeMapBase<SqliteProvider
     {
         return new(d =>
         {
-            return new(SqliteTypes.sql_varchar) { Length = 36 };
+            return TypeMappingHelpers.CreateGuidStringType(SqliteTypes.sql_varchar, isUnicode: false, isFixedLength: false);
         });
     }
 
@@ -253,36 +253,29 @@ public sealed class SqliteProviderTypeMap : DbProviderTypeMapBase<SqliteProvider
             switch (d.DotnetType)
             {
                 case Type t when t == typeof(byte):
-                    return new(SqliteTypes.sql_tinyint);
+                    return TypeMappingHelpers.CreateSimpleType(SqliteTypes.sql_tinyint);
                 case Type t when t == typeof(sbyte):
-                    return new(SqliteTypes.sql_tinyint);
+                    return TypeMappingHelpers.CreateSimpleType(SqliteTypes.sql_tinyint);
                 case Type t when t == typeof(short):
-                    return new(SqliteTypes.sql_smallint);
+                    return TypeMappingHelpers.CreateSimpleType(SqliteTypes.sql_smallint);
                 case Type t when t == typeof(ushort):
-                    return new(SqliteTypes.sql_smallint);
+                    return TypeMappingHelpers.CreateSimpleType(SqliteTypes.sql_smallint);
                 case Type t when t == typeof(int):
-                    return new(SqliteTypes.sql_int);
+                    return TypeMappingHelpers.CreateSimpleType(SqliteTypes.sql_int);
                 case Type t when t == typeof(uint):
-                    return new(SqliteTypes.sql_int);
+                    return TypeMappingHelpers.CreateSimpleType(SqliteTypes.sql_int);
                 case Type t when t == typeof(BigInteger) || t == typeof(long):
-                    return new(SqliteTypes.sql_bigint);
+                    return TypeMappingHelpers.CreateSimpleType(SqliteTypes.sql_bigint);
                 case Type t when t == typeof(ulong):
-                    return new(SqliteTypes.sql_bigint);
+                    return TypeMappingHelpers.CreateSimpleType(SqliteTypes.sql_bigint);
                 case Type t when t == typeof(float):
-                    return new(SqliteTypes.sql_real);
+                    return TypeMappingHelpers.CreateSimpleType(SqliteTypes.sql_real);
                 case Type t when t == typeof(double):
-                    return new(SqliteTypes.sql_float);
+                    return TypeMappingHelpers.CreateSimpleType(SqliteTypes.sql_float);
                 case Type t when t == typeof(decimal):
-                    var precision = d.Precision ?? 16;
-                    var scale = d.Scale ?? 4;
-                    return new(SqliteTypes.sql_decimal)
-                    {
-                        SqlTypeName = $"decimal({precision},{scale})",
-                        Precision = precision,
-                        Scale = scale,
-                    };
+                    return TypeMappingHelpers.CreateDecimalType(SqliteTypes.sql_decimal, d.Precision, d.Scale);
                 default:
-                    return new(SqliteTypes.sql_int);
+                    return TypeMappingHelpers.CreateSimpleType(SqliteTypes.sql_int);
             }
         });
     }
@@ -291,53 +284,25 @@ public sealed class SqliteProviderTypeMap : DbProviderTypeMapBase<SqliteProvider
     {
         return new(d =>
         {
-            var length = d.Length.GetValueOrDefault(255);
-            if (length == int.MaxValue)
+            if (d.Length == TypeMappingDefaults.MaxLength)
             {
-                // max is NOT supported by SQLite, instead, we'll can use the text type; however,
+                // max is NOT supported by SQLite, instead, we'll use the text type; however,
                 // using nvarchar and varchar gives DapperMatic a better chance of mapping the
                 // correct type when reading the schema
-                // we'll come up with an artificial length of 32767, which is the max length
-                // for nvarchar and varchar in SQL Server, for the time being
-                return d.IsUnicode == true
-                    ? new(SqliteTypes.sql_nvarchar)
-                    {
-                        SqlTypeName = "nvarchar(32767)",
-                        Length = int.MaxValue,
-                    }
-                    : new(SqliteTypes.sql_varchar)
-                    {
-                        SqlTypeName = "varchar(32767)",
-                        Length = int.MaxValue,
-                    };
+                return TypeMappingHelpers.CreateLobType(
+                    d.IsUnicode == true ? SqliteTypes.sql_nvarchar : SqliteTypes.sql_varchar,
+                    d.IsUnicode.GetValueOrDefault(false));
             }
 
-            if (d.IsFixedLength == true)
-            {
-                return d.IsUnicode == true
-                    ? new(SqliteTypes.sql_nchar)
-                    {
-                        SqlTypeName = $"nchar({length})",
-                        Length = length,
-                    }
-                    : new(SqliteTypes.sql_char)
-                    {
-                        SqlTypeName = $"char({length})",
-                        Length = length,
-                    };
-            }
+            var sqlType = d.IsFixedLength == true
+                ? (d.IsUnicode == true ? SqliteTypes.sql_nchar : SqliteTypes.sql_char)
+                : (d.IsUnicode == true ? SqliteTypes.sql_nvarchar : SqliteTypes.sql_varchar);
 
-            return d.IsUnicode == true
-                ? new(SqliteTypes.sql_nvarchar)
-                {
-                    SqlTypeName = $"nvarchar({length})",
-                    Length = length,
-                }
-                : new(SqliteTypes.sql_varchar)
-                {
-                    SqlTypeName = $"varchar({length})",
-                    Length = length,
-                };
+            return TypeMappingHelpers.CreateStringType(
+                sqlType,
+                d.Length,
+                d.IsUnicode.GetValueOrDefault(false),
+                d.IsFixedLength.GetValueOrDefault(false));
         });
     }
 
@@ -345,7 +310,7 @@ public sealed class SqliteProviderTypeMap : DbProviderTypeMapBase<SqliteProvider
     {
         return new(d =>
         {
-            return new(SqliteTypes.sql_text);
+            return TypeMappingHelpers.CreateLobType(SqliteTypes.sql_text, isUnicode: false);
         });
     }
 
@@ -353,7 +318,7 @@ public sealed class SqliteProviderTypeMap : DbProviderTypeMapBase<SqliteProvider
     {
         return new(d =>
         {
-            return new(SqliteTypes.sql_text);
+            return TypeMappingHelpers.CreateJsonType(SqliteTypes.sql_text, isText: true);
         });
     }
 
@@ -364,17 +329,17 @@ public sealed class SqliteProviderTypeMap : DbProviderTypeMapBase<SqliteProvider
             switch (d.DotnetType)
             {
                 case Type t when t == typeof(DateTime):
-                    return new(SqliteTypes.sql_datetime);
+                    return TypeMappingHelpers.CreateSimpleType(SqliteTypes.sql_datetime);
                 case Type t when t == typeof(DateTimeOffset):
-                    return new(SqliteTypes.sql_datetime);
+                    return TypeMappingHelpers.CreateSimpleType(SqliteTypes.sql_datetime);
                 case Type t when t == typeof(TimeSpan):
-                    return new(SqliteTypes.sql_time);
+                    return TypeMappingHelpers.CreateSimpleType(SqliteTypes.sql_time);
                 case Type t when t == typeof(DateOnly):
-                    return new(SqliteTypes.sql_date);
+                    return TypeMappingHelpers.CreateSimpleType(SqliteTypes.sql_date);
                 case Type t when t == typeof(TimeOnly):
-                    return new(SqliteTypes.sql_time);
+                    return TypeMappingHelpers.CreateSimpleType(SqliteTypes.sql_time);
                 default:
-                    return new(SqliteTypes.sql_datetime);
+                    return TypeMappingHelpers.CreateSimpleType(SqliteTypes.sql_datetime);
             }
         });
     }
@@ -383,7 +348,7 @@ public sealed class SqliteProviderTypeMap : DbProviderTypeMapBase<SqliteProvider
     {
         return new(d =>
         {
-            return new(SqliteTypes.sql_blob);
+            return TypeMappingHelpers.CreateLobType(SqliteTypes.sql_blob, isUnicode: false);
         });
     }
 
@@ -391,7 +356,7 @@ public sealed class SqliteProviderTypeMap : DbProviderTypeMapBase<SqliteProvider
     {
         return new(d =>
         {
-            return new(SqliteTypes.sql_clob);
+            return TypeMappingHelpers.CreateLobType(SqliteTypes.sql_clob, isUnicode: false);
         });
     }
 
@@ -402,7 +367,7 @@ public sealed class SqliteProviderTypeMap : DbProviderTypeMapBase<SqliteProvider
     {
         return new(d =>
         {
-            return new(SqliteTypes.sql_varchar) { SqlTypeName = "varchar(128)", Length = 128 };
+            return TypeMappingHelpers.CreateEnumStringType(SqliteTypes.sql_varchar, isUnicode: false);
         });
     }
 
@@ -415,19 +380,15 @@ public sealed class SqliteProviderTypeMap : DbProviderTypeMapBase<SqliteProvider
     {
         return new(d =>
         {
-            var assemblyQualifiedName = d.DotnetType?.AssemblyQualifiedName;
-            if (string.IsNullOrWhiteSpace(assemblyQualifiedName))
+            var shortName = TypeMappingHelpers.GetAssemblyQualifiedShortName(d.DotnetType);
+            if (string.IsNullOrWhiteSpace(shortName))
             {
                 return null;
             }
 
-            var assemblyQualifiedNameParts = assemblyQualifiedName.Split(',');
-            var fullNameWithAssemblyName =
-                assemblyQualifiedNameParts[0] + ", " + assemblyQualifiedNameParts[1];
-
-            switch (fullNameWithAssemblyName)
+            switch (shortName)
             {
-                // NetTopologySuite types
+                // NetTopologySuite types - SQLite stores geometry as text (WKT format)
                 case "NetTopologySuite.Geometries.Geometry, NetTopologySuite":
                 case "NetTopologySuite.Geometries.Point, NetTopologySuite":
                 case "NetTopologySuite.Geometries.LineString, NetTopologySuite":
@@ -436,7 +397,7 @@ public sealed class SqliteProviderTypeMap : DbProviderTypeMapBase<SqliteProvider
                 case "NetTopologySuite.Geometries.MultiLineString, NetTopologySuite":
                 case "NetTopologySuite.Geometries.MultiPolygon, NetTopologySuite":
                 case "NetTopologySuite.Geometries.GeometryCollection, NetTopologySuite":
-                    return new(SqliteTypes.sql_text);
+                    return TypeMappingHelpers.CreateLobType(SqliteTypes.sql_text, isUnicode: false);
             }
 
             return null;

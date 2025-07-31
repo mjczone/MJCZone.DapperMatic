@@ -374,7 +374,7 @@ public sealed class PostgreSqlProviderTypeMap : DbProviderTypeMapBase<PostgreSql
     {
         return new(d =>
         {
-            return new(PostgreSqlTypes.sql_boolean) { Length = 1 };
+            return TypeMappingHelpers.CreateSimpleType(PostgreSqlTypes.sql_boolean);
         });
     }
 
@@ -385,36 +385,29 @@ public sealed class PostgreSqlProviderTypeMap : DbProviderTypeMapBase<PostgreSql
             switch (d.DotnetType)
             {
                 case Type t when t == typeof(byte):
-                    return new(PostgreSqlTypes.sql_smallint);
+                    return TypeMappingHelpers.CreateSimpleType(PostgreSqlTypes.sql_smallint);
                 case Type t when t == typeof(short):
-                    return new(PostgreSqlTypes.sql_smallint);
+                    return TypeMappingHelpers.CreateSimpleType(PostgreSqlTypes.sql_smallint);
                 case Type t when t == typeof(int):
-                    return new(PostgreSqlTypes.sql_int);
+                    return TypeMappingHelpers.CreateSimpleType(PostgreSqlTypes.sql_int);
                 case Type t when t == typeof(BigInteger) || t == typeof(long):
-                    return new(PostgreSqlTypes.sql_bigint);
+                    return TypeMappingHelpers.CreateSimpleType(PostgreSqlTypes.sql_bigint);
                 case Type t when t == typeof(sbyte):
-                    return new(PostgreSqlTypes.sql_smallint);
+                    return TypeMappingHelpers.CreateSimpleType(PostgreSqlTypes.sql_smallint);
                 case Type t when t == typeof(ushort):
-                    return new(PostgreSqlTypes.sql_int);
+                    return TypeMappingHelpers.CreateSimpleType(PostgreSqlTypes.sql_int);
                 case Type t when t == typeof(uint):
-                    return new(PostgreSqlTypes.sql_bigint);
+                    return TypeMappingHelpers.CreateSimpleType(PostgreSqlTypes.sql_bigint);
                 case Type t when t == typeof(ulong):
-                    return new(PostgreSqlTypes.sql_bigint);
+                    return TypeMappingHelpers.CreateSimpleType(PostgreSqlTypes.sql_bigint);
                 case Type t when t == typeof(float):
-                    return new(PostgreSqlTypes.sql_real);
+                    return TypeMappingHelpers.CreateSimpleType(PostgreSqlTypes.sql_real);
                 case Type t when t == typeof(double):
-                    return new(PostgreSqlTypes.sql_double_precision);
+                    return TypeMappingHelpers.CreateSimpleType(PostgreSqlTypes.sql_double_precision);
                 case Type t when t == typeof(decimal):
-                    var precision = d.Precision ?? 16;
-                    var scale = d.Scale ?? 4;
-                    return new(PostgreSqlTypes.sql_decimal)
-                    {
-                        SqlTypeName = $"decimal({precision},{scale})",
-                        Precision = precision,
-                        Scale = scale,
-                    };
+                    return TypeMappingHelpers.CreateDecimalType(PostgreSqlTypes.sql_decimal, d.Precision, d.Scale);
                 default:
-                    return new(PostgreSqlTypes.sql_int);
+                    return TypeMappingHelpers.CreateSimpleType(PostgreSqlTypes.sql_int);
             }
         });
     }
@@ -423,7 +416,7 @@ public sealed class PostgreSqlProviderTypeMap : DbProviderTypeMapBase<PostgreSql
     {
         return new(d =>
         {
-            return new(PostgreSqlTypes.sql_uuid);
+            return TypeMappingHelpers.CreateSimpleType(PostgreSqlTypes.sql_uuid);
         });
     }
 
@@ -431,35 +424,28 @@ public sealed class PostgreSqlProviderTypeMap : DbProviderTypeMapBase<PostgreSql
     {
         return new(d =>
         {
-            var length = d.Length.GetValueOrDefault(255);
-            if (length == int.MaxValue)
+            if (d.Length == TypeMappingDefaults.MaxLength)
             {
-                return new(PostgreSqlTypes.sql_text);
+                return TypeMappingHelpers.CreateLobType(PostgreSqlTypes.sql_text, isUnicode: false);
             }
-            if (d.IsFixedLength == true)
-            {
-                return new(PostgreSqlTypes.sql_char)
-                {
-                    SqlTypeName = $"char({length})",
-                    Length = length,
-                };
-            }
-            return new(PostgreSqlTypes.sql_varchar)
-            {
-                SqlTypeName = $"varchar({length})",
-                Length = length,
-            };
+
+            var sqlType = d.IsFixedLength == true ? PostgreSqlTypes.sql_char : PostgreSqlTypes.sql_varchar;
+            return TypeMappingHelpers.CreateStringType(
+                sqlType,
+                d.Length,
+                isUnicode: false,
+                d.IsFixedLength.GetValueOrDefault(false));
         });
     }
 
     private static DotnetTypeToSqlTypeConverter GetXmlToSqlTypeConverter()
     {
-        return new(d => new(PostgreSqlTypes.sql_xml));
+        return new(d => TypeMappingHelpers.CreateSimpleType(PostgreSqlTypes.sql_xml));
     }
 
     private static DotnetTypeToSqlTypeConverter GetJsonToSqlTypeConverter()
     {
-        return new(d => new(PostgreSqlTypes.sql_jsonb));
+        return new(d => TypeMappingHelpers.CreateJsonType(PostgreSqlTypes.sql_jsonb, isText: false));
     }
 
     private DotnetTypeToSqlTypeConverter GetDateTimeToSqlTypeConverter()
@@ -469,17 +455,17 @@ public sealed class PostgreSqlProviderTypeMap : DbProviderTypeMapBase<PostgreSql
             switch (d.DotnetType)
             {
                 case Type t when t == typeof(DateTime):
-                    return new(PostgreSqlTypes.sql_timestamp);
+                    return TypeMappingHelpers.CreateSimpleType(PostgreSqlTypes.sql_timestamp);
                 case Type t when t == typeof(DateTimeOffset):
-                    return new(PostgreSqlTypes.sql_timestamptz);
+                    return TypeMappingHelpers.CreateSimpleType(PostgreSqlTypes.sql_timestamptz);
                 case Type t when t == typeof(TimeSpan):
-                    return new(PostgreSqlTypes.sql_time);
+                    return TypeMappingHelpers.CreateSimpleType(PostgreSqlTypes.sql_time);
                 case Type t when t == typeof(DateOnly):
-                    return new(PostgreSqlTypes.sql_date);
+                    return TypeMappingHelpers.CreateSimpleType(PostgreSqlTypes.sql_date);
                 case Type t when t == typeof(TimeOnly):
-                    return new(PostgreSqlTypes.sql_timetz);
+                    return TypeMappingHelpers.CreateSimpleType(PostgreSqlTypes.sql_timetz);
                 default:
-                    return new(PostgreSqlTypes.sql_timestamp);
+                    return TypeMappingHelpers.CreateSimpleType(PostgreSqlTypes.sql_timestamp);
             }
         });
     }
@@ -488,7 +474,7 @@ public sealed class PostgreSqlProviderTypeMap : DbProviderTypeMapBase<PostgreSql
     {
         return new(d =>
         {
-            return new(PostgreSqlTypes.sql_bytea) { SqlTypeName = "bytea", Length = int.MaxValue };
+            return TypeMappingHelpers.CreateLobType(PostgreSqlTypes.sql_bytea, isUnicode: false);
         });
     }
 
@@ -496,7 +482,7 @@ public sealed class PostgreSqlProviderTypeMap : DbProviderTypeMapBase<PostgreSql
     {
         return new(d =>
         {
-            return new(PostgreSqlTypes.sql_jsonb);
+            return TypeMappingHelpers.CreateJsonType(PostgreSqlTypes.sql_jsonb, isText: false);
         });
     }
 
@@ -510,10 +496,10 @@ public sealed class PostgreSqlProviderTypeMap : DbProviderTypeMapBase<PostgreSql
                 || d.DotnetType == typeof(ImmutableDictionary<string, string>)
             )
             {
-                return new(PostgreSqlTypes.sql_hstore);
+                return TypeMappingHelpers.CreateSimpleType(PostgreSqlTypes.sql_hstore);
             }
 
-            return new(PostgreSqlTypes.sql_jsonb);
+            return TypeMappingHelpers.CreateJsonType(PostgreSqlTypes.sql_jsonb, isText: false);
         });
     }
 
@@ -521,7 +507,7 @@ public sealed class PostgreSqlProviderTypeMap : DbProviderTypeMapBase<PostgreSql
     {
         return new(d =>
         {
-            return new(PostgreSqlTypes.sql_varchar) { SqlTypeName = "varchar(128)", Length = 128 };
+            return TypeMappingHelpers.CreateEnumStringType(PostgreSqlTypes.sql_varchar, isUnicode: false);
         });
     }
 
@@ -535,66 +521,59 @@ public sealed class PostgreSqlProviderTypeMap : DbProviderTypeMapBase<PostgreSql
     {
         return new(d =>
         {
-            var assemblyQualifiedName = d.DotnetType?.AssemblyQualifiedName;
-            if (string.IsNullOrWhiteSpace(assemblyQualifiedName))
+            var shortName = TypeMappingHelpers.GetAssemblyQualifiedShortName(d.DotnetType);
+            if (string.IsNullOrWhiteSpace(shortName))
             {
                 return null;
             }
 
-            var assemblyQualifiedNameParts = assemblyQualifiedName.Split(',');
-            var fullNameWithAssemblyName =
-                assemblyQualifiedNameParts[0] + ", " + assemblyQualifiedNameParts[1];
-
-            switch (fullNameWithAssemblyName)
+            switch (shortName)
             {
-                // NetTopologySuite types
+                // NetTopologySuite types - PostgreSQL has specific geometry types
                 case "NetTopologySuite.Geometries.Geometry, NetTopologySuite":
-                    return new(PostgreSqlTypes.sql_geometry);
+                    return TypeMappingHelpers.CreateGeometryType(PostgreSqlTypes.sql_geometry);
                 case "NetTopologySuite.Geometries.Point, NetTopologySuite":
-                    return new(PostgreSqlTypes.sql_point);
+                    return TypeMappingHelpers.CreateGeometryType(PostgreSqlTypes.sql_point);
                 case "NetTopologySuite.Geometries.LineString, NetTopologySuite":
-                    return new(PostgreSqlTypes.sql_geometry);
+                    return TypeMappingHelpers.CreateGeometryType(PostgreSqlTypes.sql_geometry);
                 case "NetTopologySuite.Geometries.Polygon, NetTopologySuite":
-                    return new(PostgreSqlTypes.sql_polygon);
+                    return TypeMappingHelpers.CreateGeometryType(PostgreSqlTypes.sql_polygon);
                 case "NetTopologySuite.Geometries.MultiPoint, NetTopologySuite":
-                    return new(PostgreSqlTypes.sql_geometry);
                 case "NetTopologySuite.Geometries.MultiLineString, NetTopologySuite":
-                    return new(PostgreSqlTypes.sql_geometry);
                 case "NetTopologySuite.Geometries.MultiPolygon, NetTopologySuite":
-                    return new(PostgreSqlTypes.sql_geometry);
                 case "NetTopologySuite.Geometries.GeometryCollection, NetTopologySuite":
-                    return new(PostgreSqlTypes.sql_geometry);
-                // PostgreSQL types
+                    return TypeMappingHelpers.CreateGeometryType(PostgreSqlTypes.sql_geometry);
+                // PostgreSQL specific types
                 case "System.Net.NetworkInformation.PhysicalAddress, System.Net.NetworkInformation":
-                    return new(PostgreSqlTypes.sql_macaddr8);
+                    return TypeMappingHelpers.CreateSimpleType(PostgreSqlTypes.sql_macaddr8);
                 case "System.Net.IPAddress, System.Net.Primitives":
-                    return new(PostgreSqlTypes.sql_inet);
+                    return TypeMappingHelpers.CreateSimpleType(PostgreSqlTypes.sql_inet);
                 case "NpgsqlTypes.NpgsqlInet, Npgsql":
-                    return new(PostgreSqlTypes.sql_inet);
+                    return TypeMappingHelpers.CreateSimpleType(PostgreSqlTypes.sql_inet);
                 case "NpgsqlTypes.NpgsqlCidr, Npgsql":
-                    return new(PostgreSqlTypes.sql_cidr);
+                    return TypeMappingHelpers.CreateSimpleType(PostgreSqlTypes.sql_cidr);
                 case "NpgsqlTypes.NpgsqlPoint, Npgsql":
-                    return new(PostgreSqlTypes.sql_point);
+                    return TypeMappingHelpers.CreateGeometryType(PostgreSqlTypes.sql_point);
                 case "NpgsqlTypes.NpgsqlLSeg, Npgsql":
-                    return new(PostgreSqlTypes.sql_lseg);
+                    return TypeMappingHelpers.CreateSimpleType(PostgreSqlTypes.sql_lseg);
                 case "NpgsqlTypes.NpgsqlPath, Npgsql":
-                    return new(PostgreSqlTypes.sql_path);
+                    return TypeMappingHelpers.CreateSimpleType(PostgreSqlTypes.sql_path);
                 case "NpgsqlTypes.NpgsqlPolygon, Npgsql":
-                    return new(PostgreSqlTypes.sql_polygon);
+                    return TypeMappingHelpers.CreateGeometryType(PostgreSqlTypes.sql_polygon);
                 case "NpgsqlTypes.NpgsqlLine, Npgsql":
-                    return new(PostgreSqlTypes.sql_line);
+                    return TypeMappingHelpers.CreateSimpleType(PostgreSqlTypes.sql_line);
                 case "NpgsqlTypes.NpgsqlCircle, Npgsql":
-                    return new(PostgreSqlTypes.sql_circle);
+                    return TypeMappingHelpers.CreateSimpleType(PostgreSqlTypes.sql_circle);
                 case "NpgsqlTypes.NpgsqlBox, Npgsql":
-                    return new(PostgreSqlTypes.sql_box);
+                    return TypeMappingHelpers.CreateSimpleType(PostgreSqlTypes.sql_box);
                 case "NpgsqlTypes.NpgsqlInterval, Npgsql":
-                    return new(PostgreSqlTypes.sql_interval);
+                    return TypeMappingHelpers.CreateSimpleType(PostgreSqlTypes.sql_interval);
                 case "NpgsqlTypes.NpgsqlTid, Npgsql":
-                    return new(PostgreSqlTypes.sql_tid);
+                    return TypeMappingHelpers.CreateSimpleType(PostgreSqlTypes.sql_tid);
                 case "NpgsqlTypes.NpgsqlTsQuery, Npgsql":
-                    return new(PostgreSqlTypes.sql_tsquery);
+                    return TypeMappingHelpers.CreateSimpleType(PostgreSqlTypes.sql_tsquery);
                 case "NpgsqlTypes.NpgsqlTsVector, Npgsql":
-                    return new(PostgreSqlTypes.sql_tsvector);
+                    return TypeMappingHelpers.CreateSimpleType(PostgreSqlTypes.sql_tsvector);
             }
 
             return null;

@@ -284,7 +284,7 @@ namespace MJCZone.DapperMatic.Providers.MySql
         {
             return new(d =>
             {
-                return new(MySqlTypes.sql_bit) { Length = 1 };
+                return TypeMappingHelpers.CreateSimpleType(MySqlTypes.sql_bit);
             });
         }
 
@@ -299,36 +299,29 @@ namespace MJCZone.DapperMatic.Providers.MySql
                 switch (d.DotnetType)
                 {
                     case Type t when t == typeof(byte):
-                        return new(MySqlTypes.sql_tinyint);
+                        return TypeMappingHelpers.CreateSimpleType(MySqlTypes.sql_tinyint);
                     case Type t when t == typeof(sbyte):
-                        return new(MySqlTypes.sql_tinyint);
+                        return TypeMappingHelpers.CreateSimpleType(MySqlTypes.sql_tinyint);
                     case Type t when t == typeof(short):
-                        return new(MySqlTypes.sql_smallint);
+                        return TypeMappingHelpers.CreateSimpleType(MySqlTypes.sql_smallint);
                     case Type t when t == typeof(ushort):
-                        return new(MySqlTypes.sql_smallint);
+                        return TypeMappingHelpers.CreateSimpleType(MySqlTypes.sql_smallint);
                     case Type t when t == typeof(int):
-                        return new(MySqlTypes.sql_int);
+                        return TypeMappingHelpers.CreateSimpleType(MySqlTypes.sql_int);
                     case Type t when t == typeof(uint):
-                        return new(MySqlTypes.sql_int);
+                        return TypeMappingHelpers.CreateSimpleType(MySqlTypes.sql_int);
                     case Type t when t == typeof(BigInteger) || t == typeof(long):
-                        return new(MySqlTypes.sql_bigint);
+                        return TypeMappingHelpers.CreateSimpleType(MySqlTypes.sql_bigint);
                     case Type t when t == typeof(ulong):
-                        return new(MySqlTypes.sql_bigint);
+                        return TypeMappingHelpers.CreateSimpleType(MySqlTypes.sql_bigint);
                     case Type t when t == typeof(float):
-                        return new(MySqlTypes.sql_real);
+                        return TypeMappingHelpers.CreateSimpleType(MySqlTypes.sql_real);
                     case Type t when t == typeof(double):
-                        return new(MySqlTypes.sql_float);
+                        return TypeMappingHelpers.CreateSimpleType(MySqlTypes.sql_float);
                     case Type t when t == typeof(decimal):
-                        var precision = d.Precision ?? 16;
-                        var scale = d.Scale ?? 4;
-                        return new(MySqlTypes.sql_decimal)
-                        {
-                            SqlTypeName = $"decimal({precision},{scale})",
-                            Precision = precision,
-                            Scale = scale,
-                        };
+                        return TypeMappingHelpers.CreateDecimalType(MySqlTypes.sql_decimal, d.Precision, d.Scale);
                     default:
-                        return new(MySqlTypes.sql_int);
+                        return TypeMappingHelpers.CreateSimpleType(MySqlTypes.sql_int);
                 }
             });
         }
@@ -341,7 +334,7 @@ namespace MJCZone.DapperMatic.Providers.MySql
         {
             return new(d =>
             {
-                return new(MySqlTypes.sql_char) { Length = 36 };
+                return TypeMappingHelpers.CreateGuidStringType(MySqlTypes.sql_char, isUnicode: false, isFixedLength: true);
             });
         }
 
@@ -353,24 +346,17 @@ namespace MJCZone.DapperMatic.Providers.MySql
         {
             return new(d =>
             {
-                var length = d.Length.GetValueOrDefault(255);
-                if (length == int.MaxValue)
+                if (d.Length == TypeMappingDefaults.MaxLength)
                 {
-                    return new(MySqlTypes.sql_text);
+                    return TypeMappingHelpers.CreateLobType(MySqlTypes.sql_text, isUnicode: false);
                 }
-                if (d.IsFixedLength == true)
-                {
-                    return new(MySqlTypes.sql_char)
-                    {
-                        SqlTypeName = $"char({length})",
-                        Length = length,
-                    };
-                }
-                return new(MySqlTypes.sql_varchar)
-                {
-                    SqlTypeName = $"varchar({length})",
-                    Length = length,
-                };
+
+                var sqlType = d.IsFixedLength == true ? MySqlTypes.sql_char : MySqlTypes.sql_varchar;
+                return TypeMappingHelpers.CreateStringType(
+                    sqlType,
+                    d.Length,
+                    isUnicode: false,
+                    d.IsFixedLength.GetValueOrDefault(false));
             });
         }
 
@@ -380,7 +366,7 @@ namespace MJCZone.DapperMatic.Providers.MySql
         /// <returns>The XML to SQL type converter.</returns>
         private static DotnetTypeToSqlTypeConverter GetXmlToSqlTypeConverter()
         {
-            return new(d => new(MySqlTypes.sql_text));
+            return new(d => TypeMappingHelpers.CreateLobType(MySqlTypes.sql_text, isUnicode: false));
         }
 
         /// <summary>
@@ -389,7 +375,7 @@ namespace MJCZone.DapperMatic.Providers.MySql
         /// <returns>The JSON to SQL type converter.</returns>
         private static DotnetTypeToSqlTypeConverter GetJsonToSqlTypeConverter()
         {
-            return new(d => new(MySqlTypes.sql_json));
+            return new(d => TypeMappingHelpers.CreateJsonType(MySqlTypes.sql_json, isText: false));
         }
 
         /// <summary>
@@ -403,19 +389,15 @@ namespace MJCZone.DapperMatic.Providers.MySql
                 switch (d.DotnetType)
                 {
                     case Type t when t == typeof(TimeSpan):
-                        return new(MySqlTypes.sql_time);
+                        return TypeMappingHelpers.CreateSimpleType(MySqlTypes.sql_time);
                     case Type t when t == typeof(DateOnly):
-                        return new(MySqlTypes.sql_date);
+                        return TypeMappingHelpers.CreateSimpleType(MySqlTypes.sql_date);
                     case Type t when t == typeof(TimeOnly):
-                        return new(MySqlTypes.sql_time);
+                        return TypeMappingHelpers.CreateSimpleType(MySqlTypes.sql_time);
                     case Type t when t == typeof(DateTime) || t == typeof(DateTimeOffset):
                     default:
                         var precision = d.Length ?? d.Precision ?? 6;
-                        return new(MySqlTypes.sql_datetime)
-                        {
-                            SqlTypeName = $"datetime({precision})",
-                            Precision = precision,
-                        };
+                        return TypeMappingHelpers.CreateDateTimeType(MySqlTypes.sql_datetime, precision);
                 }
             });
         }
@@ -427,14 +409,13 @@ namespace MJCZone.DapperMatic.Providers.MySql
         private DotnetTypeToSqlTypeConverter GetByteArrayToSqlTypeConverter()
         {
             return new(d =>
-                d.IsFixedLength == true && d.Length.HasValue
-                    ? new(MySqlTypes.sql_binary)
-                    {
-                        SqlTypeName = $"binary({d.Length})",
-                        Length = d.Length,
-                    }
-                    : new(MySqlTypes.sql_blob)
-            );
+            {
+                if (d.IsFixedLength == true && d.Length.HasValue)
+                {
+                    return TypeMappingHelpers.CreateBinaryType(MySqlTypes.sql_binary, d.Length, isFixedLength: true);
+                }
+                return TypeMappingHelpers.CreateLobType(MySqlTypes.sql_blob, isUnicode: false);
+            });
         }
 
         /// <summary>
@@ -443,7 +424,7 @@ namespace MJCZone.DapperMatic.Providers.MySql
         /// <returns>The object to SQL type converter.</returns>
         private DotnetTypeToSqlTypeConverter GetObjectToSqlTypeConverter()
         {
-            return new(d => new(MySqlTypes.sql_json));
+            return new(d => TypeMappingHelpers.CreateJsonType(MySqlTypes.sql_json, isText: false));
         }
 
         /// <summary>
@@ -461,7 +442,7 @@ namespace MJCZone.DapperMatic.Providers.MySql
         {
             return new(d =>
             {
-                return new(MySqlTypes.sql_varchar) { SqlTypeName = "varchar(128)", Length = 128 };
+                return TypeMappingHelpers.CreateEnumStringType(MySqlTypes.sql_varchar, isUnicode: false);
             });
         }
 
@@ -487,40 +468,36 @@ namespace MJCZone.DapperMatic.Providers.MySql
         {
             return new(d =>
             {
-                var assemblyQualifiedName = d.DotnetType?.AssemblyQualifiedName;
-                if (string.IsNullOrWhiteSpace(assemblyQualifiedName))
+                var shortName = TypeMappingHelpers.GetAssemblyQualifiedShortName(d.DotnetType);
+                if (string.IsNullOrWhiteSpace(shortName))
                 {
                     return null;
                 }
 
-                var assemblyQualifiedNameParts = assemblyQualifiedName.Split(',');
-                var fullNameWithAssemblyName =
-                    assemblyQualifiedNameParts[0] + ", " + assemblyQualifiedNameParts[1];
-
-                switch (fullNameWithAssemblyName)
+                switch (shortName)
                 {
-                    // NetTopologySuite types
+                    // NetTopologySuite types - MySQL supports specific geometry types
                     case "NetTopologySuite.Geometries.Geometry, NetTopologySuite":
-                        return new(MySqlTypes.sql_geometry);
+                        return TypeMappingHelpers.CreateGeometryType(MySqlTypes.sql_geometry);
                     case "NetTopologySuite.Geometries.Point, NetTopologySuite":
-                        return new(MySqlTypes.sql_point);
+                        return TypeMappingHelpers.CreateGeometryType(MySqlTypes.sql_point);
                     case "NetTopologySuite.Geometries.LineString, NetTopologySuite":
-                        return new(MySqlTypes.sql_linestring);
+                        return TypeMappingHelpers.CreateGeometryType(MySqlTypes.sql_linestring);
                     case "NetTopologySuite.Geometries.Polygon, NetTopologySuite":
-                        return new(MySqlTypes.sql_polygon);
+                        return TypeMappingHelpers.CreateGeometryType(MySqlTypes.sql_polygon);
                     case "NetTopologySuite.Geometries.MultiPoint, NetTopologySuite":
-                        return new(MySqlTypes.sql_multipoint);
+                        return TypeMappingHelpers.CreateGeometryType(MySqlTypes.sql_multipoint);
                     case "NetTopologySuite.Geometries.MultiLineString, NetTopologySuite":
-                        return new(MySqlTypes.sql_multilinestring);
+                        return TypeMappingHelpers.CreateGeometryType(MySqlTypes.sql_multilinestring);
                     case "NetTopologySuite.Geometries.MultiPolygon, NetTopologySuite":
-                        return new(MySqlTypes.sql_multipolygon);
+                        return TypeMappingHelpers.CreateGeometryType(MySqlTypes.sql_multipolygon);
                     case "NetTopologySuite.Geometries.GeometryCollection, NetTopologySuite":
-                        return new(MySqlTypes.sql_geometrycollection);
+                        return TypeMappingHelpers.CreateGeometryType(MySqlTypes.sql_geometrycollection);
                     // MySQL types
                     case "MySql.Data.Types.MySqlGeometry, MySql.Data":
-                        return new(MySqlTypes.sql_geometry);
+                        return TypeMappingHelpers.CreateGeometryType(MySqlTypes.sql_geometry);
                     case "MySqlConnector.MySqlGeometry, MySqlConnector":
-                        return new(MySqlTypes.sql_geometry);
+                        return TypeMappingHelpers.CreateGeometryType(MySqlTypes.sql_geometry);
                 }
 
                 return null;

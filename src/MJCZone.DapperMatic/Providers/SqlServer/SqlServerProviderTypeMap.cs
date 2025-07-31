@@ -263,7 +263,7 @@ public sealed class SqlServerProviderTypeMap : DbProviderTypeMapBase<SqlServerPr
     {
         return new(d =>
         {
-            return new(SqlServerTypes.sql_uniqueidentifier) { Length = 36 };
+            return TypeMappingHelpers.CreateSimpleType(SqlServerTypes.sql_uniqueidentifier);
         });
     }
 
@@ -274,36 +274,29 @@ public sealed class SqlServerProviderTypeMap : DbProviderTypeMapBase<SqlServerPr
             switch (d.DotnetType)
             {
                 case Type t when t == typeof(byte):
-                    return new(SqlServerTypes.sql_tinyint);
+                    return TypeMappingHelpers.CreateSimpleType(SqlServerTypes.sql_tinyint);
                 case Type t when t == typeof(sbyte):
-                    return new(SqlServerTypes.sql_tinyint);
+                    return TypeMappingHelpers.CreateSimpleType(SqlServerTypes.sql_tinyint);
                 case Type t when t == typeof(short):
-                    return new(SqlServerTypes.sql_smallint);
+                    return TypeMappingHelpers.CreateSimpleType(SqlServerTypes.sql_smallint);
                 case Type t when t == typeof(ushort):
-                    return new(SqlServerTypes.sql_smallint);
+                    return TypeMappingHelpers.CreateSimpleType(SqlServerTypes.sql_smallint);
                 case Type t when t == typeof(int):
-                    return new(SqlServerTypes.sql_int);
+                    return TypeMappingHelpers.CreateSimpleType(SqlServerTypes.sql_int);
                 case Type t when t == typeof(uint):
-                    return new(SqlServerTypes.sql_int);
+                    return TypeMappingHelpers.CreateSimpleType(SqlServerTypes.sql_int);
                 case Type t when t == typeof(BigInteger) || t == typeof(long):
-                    return new(SqlServerTypes.sql_bigint);
+                    return TypeMappingHelpers.CreateSimpleType(SqlServerTypes.sql_bigint);
                 case Type t when t == typeof(ulong):
-                    return new(SqlServerTypes.sql_bigint);
+                    return TypeMappingHelpers.CreateSimpleType(SqlServerTypes.sql_bigint);
                 case Type t when t == typeof(float):
-                    return new(SqlServerTypes.sql_real);
+                    return TypeMappingHelpers.CreateSimpleType(SqlServerTypes.sql_real);
                 case Type t when t == typeof(double):
-                    return new(SqlServerTypes.sql_float);
+                    return TypeMappingHelpers.CreateSimpleType(SqlServerTypes.sql_float);
                 case Type t when t == typeof(decimal):
-                    var precision = d.Precision ?? 16;
-                    var scale = d.Scale ?? 4;
-                    return new(SqlServerTypes.sql_decimal)
-                    {
-                        SqlTypeName = $"decimal({precision},{scale})",
-                        Precision = precision,
-                        Scale = scale,
-                    };
+                    return TypeMappingHelpers.CreateDecimalType(SqlServerTypes.sql_decimal, d.Precision, d.Scale);
                 default:
-                    return new(SqlServerTypes.sql_int);
+                    return TypeMappingHelpers.CreateSimpleType(SqlServerTypes.sql_int);
             }
         });
     }
@@ -312,48 +305,15 @@ public sealed class SqlServerProviderTypeMap : DbProviderTypeMapBase<SqlServerPr
     {
         return new(d =>
         {
-            var length = d.Length.GetValueOrDefault(255);
-            if (length == int.MaxValue)
-            {
-                return d.IsUnicode == true
-                    ? new(SqlServerTypes.sql_nvarchar)
-                    {
-                        SqlTypeName = "nvarchar(max)",
-                        Length = int.MaxValue,
-                    }
-                    : new(SqlServerTypes.sql_varchar)
-                    {
-                        SqlTypeName = "varchar(max)",
-                        Length = int.MaxValue,
-                    };
-            }
+            var sqlType = d.IsFixedLength == true
+                ? (d.IsUnicode == true ? SqlServerTypes.sql_nchar : SqlServerTypes.sql_char)
+                : (d.IsUnicode == true ? SqlServerTypes.sql_nvarchar : SqlServerTypes.sql_varchar);
 
-            if (d.IsFixedLength == true)
-            {
-                return d.IsUnicode == true
-                    ? new(SqlServerTypes.sql_nchar)
-                    {
-                        SqlTypeName = $"nchar({length})",
-                        Length = length,
-                    }
-                    : new(SqlServerTypes.sql_char)
-                    {
-                        SqlTypeName = $"char({length})",
-                        Length = length,
-                    };
-            }
-
-            return d.IsUnicode == true
-                ? new(SqlServerTypes.sql_nvarchar)
-                {
-                    SqlTypeName = $"nvarchar({length})",
-                    Length = length,
-                }
-                : new(SqlServerTypes.sql_varchar)
-                {
-                    SqlTypeName = $"varchar({length})",
-                    Length = length,
-                };
+            return TypeMappingHelpers.CreateStringType(
+                sqlType,
+                d.Length,
+                d.IsUnicode.GetValueOrDefault(false),
+                d.IsFixedLength.GetValueOrDefault(false));
         });
     }
 
@@ -361,7 +321,7 @@ public sealed class SqlServerProviderTypeMap : DbProviderTypeMapBase<SqlServerPr
     {
         return new(d =>
         {
-            return new(SqlServerTypes.sql_xml);
+            return TypeMappingHelpers.CreateSimpleType(SqlServerTypes.sql_xml);
         });
     }
 
@@ -369,17 +329,8 @@ public sealed class SqlServerProviderTypeMap : DbProviderTypeMapBase<SqlServerPr
     {
         return new(d =>
         {
-            return d.IsUnicode == true
-                ? new(SqlServerTypes.sql_nvarchar)
-                {
-                    SqlTypeName = "nvarchar(max)",
-                    Length = int.MaxValue,
-                }
-                : new(SqlServerTypes.sql_varchar)
-                {
-                    SqlTypeName = "varchar(max)",
-                    Length = int.MaxValue,
-                };
+            var sqlType = d.IsUnicode == true ? "nvarchar(max)" : "varchar(max)";
+            return TypeMappingHelpers.CreateJsonType(sqlType, isText: true);
         });
     }
 
@@ -390,17 +341,17 @@ public sealed class SqlServerProviderTypeMap : DbProviderTypeMapBase<SqlServerPr
             switch (d.DotnetType)
             {
                 case Type t when t == typeof(DateTime):
-                    return new(SqlServerTypes.sql_datetime);
+                    return TypeMappingHelpers.CreateSimpleType(SqlServerTypes.sql_datetime);
                 case Type t when t == typeof(DateTimeOffset):
-                    return new(SqlServerTypes.sql_datetimeoffset);
+                    return TypeMappingHelpers.CreateSimpleType(SqlServerTypes.sql_datetimeoffset);
                 case Type t when t == typeof(TimeSpan):
-                    return new(SqlServerTypes.sql_time);
+                    return TypeMappingHelpers.CreateSimpleType(SqlServerTypes.sql_time);
                 case Type t when t == typeof(DateOnly):
-                    return new(SqlServerTypes.sql_date);
+                    return TypeMappingHelpers.CreateSimpleType(SqlServerTypes.sql_date);
                 case Type t when t == typeof(TimeOnly):
-                    return new(SqlServerTypes.sql_time);
+                    return TypeMappingHelpers.CreateSimpleType(SqlServerTypes.sql_time);
                 default:
-                    return new(SqlServerTypes.sql_datetime);
+                    return TypeMappingHelpers.CreateSimpleType(SqlServerTypes.sql_datetime);
             }
         });
     }
@@ -409,27 +360,11 @@ public sealed class SqlServerProviderTypeMap : DbProviderTypeMapBase<SqlServerPr
     {
         return new(d =>
         {
-            var length = d.Length ?? int.MaxValue;
-            if (length == int.MaxValue)
-            {
-                return new(SqlServerTypes.sql_varbinary)
-                {
-                    SqlTypeName = "varbinary(max)",
-                    Length = int.MaxValue,
-                };
-            }
-
-            return d.IsFixedLength == true
-                ? new(SqlServerTypes.sql_binary)
-                {
-                    SqlTypeName = $"binary({length})",
-                    Length = length,
-                }
-                : new(SqlServerTypes.sql_varbinary)
-                {
-                    SqlTypeName = $"varbinary({length})",
-                    Length = length,
-                };
+            var sqlType = d.IsFixedLength == true ? SqlServerTypes.sql_binary : SqlServerTypes.sql_varbinary;
+            return TypeMappingHelpers.CreateBinaryType(
+                sqlType,
+                d.Length,
+                d.IsFixedLength.GetValueOrDefault(false));
         });
     }
 
@@ -437,7 +372,7 @@ public sealed class SqlServerProviderTypeMap : DbProviderTypeMapBase<SqlServerPr
     {
         return new(d =>
         {
-            return new(SqlServerTypes.sql_variant);
+            return TypeMappingHelpers.CreateSimpleType(SqlServerTypes.sql_variant);
         });
     }
 
@@ -448,7 +383,7 @@ public sealed class SqlServerProviderTypeMap : DbProviderTypeMapBase<SqlServerPr
     {
         return new(d =>
         {
-            return new(SqlServerTypes.sql_varchar) { SqlTypeName = "varchar(128)", Length = 128 };
+            return TypeMappingHelpers.CreateEnumStringType(SqlServerTypes.sql_varchar);
         });
     }
 
@@ -461,21 +396,17 @@ public sealed class SqlServerProviderTypeMap : DbProviderTypeMapBase<SqlServerPr
     {
         return new(d =>
         {
-            var assemblyQualifiedName = d.DotnetType?.AssemblyQualifiedName;
-            if (string.IsNullOrWhiteSpace(assemblyQualifiedName))
+            var shortName = TypeMappingHelpers.GetAssemblyQualifiedShortName(d.DotnetType);
+            if (string.IsNullOrWhiteSpace(shortName))
             {
                 return null;
             }
 
-            var assemblyQualifiedNameParts = assemblyQualifiedName.Split(',');
-            var fullNameWithAssemblyName =
-                assemblyQualifiedNameParts[0] + ", " + assemblyQualifiedNameParts[1];
-
-            switch (fullNameWithAssemblyName)
+            switch (shortName)
             {
                 // NetTopologySuite types
                 case "NetTopologySuite.Geometries.Geometry, NetTopologySuite":
-                    return new(SqlServerTypes.sql_geometry);
+                    return TypeMappingHelpers.CreateGeometryType(SqlServerTypes.sql_geometry);
                 case "NetTopologySuite.Geometries.Point, NetTopologySuite":
                 case "NetTopologySuite.Geometries.LineString, NetTopologySuite":
                 case "NetTopologySuite.Geometries.Polygon, NetTopologySuite":
@@ -483,18 +414,14 @@ public sealed class SqlServerProviderTypeMap : DbProviderTypeMapBase<SqlServerPr
                 case "NetTopologySuite.Geometries.MultiLineString, NetTopologySuite":
                 case "NetTopologySuite.Geometries.MultiPolygon, NetTopologySuite":
                 case "NetTopologySuite.Geometries.GeometryCollection, NetTopologySuite":
-                    return new(SqlServerTypes.sql_nvarchar)
-                    {
-                        SqlTypeName = "nvarchar(max)",
-                        Length = int.MaxValue,
-                    };
+                    return TypeMappingHelpers.CreateLobType("nvarchar(max)", isUnicode: true);
                 // SQL Server types
                 case "Microsoft.SqlServer.Types.SqlGeometry, Microsoft.SqlServer.Types":
-                    return new(SqlServerTypes.sql_geometry);
+                    return TypeMappingHelpers.CreateGeometryType(SqlServerTypes.sql_geometry);
                 case "Microsoft.SqlServer.Types.SqlGeography, Microsoft.SqlServer.Types":
-                    return new(SqlServerTypes.sql_geography);
+                    return TypeMappingHelpers.CreateGeometryType(SqlServerTypes.sql_geography);
                 case "Microsoft.SqlServer.Types.SqlHierarchyId, Microsoft.SqlServer.Types":
-                    return new(SqlServerTypes.sql_hierarchyid);
+                    return TypeMappingHelpers.CreateSimpleType(SqlServerTypes.sql_hierarchyid);
             }
 
             return null;
