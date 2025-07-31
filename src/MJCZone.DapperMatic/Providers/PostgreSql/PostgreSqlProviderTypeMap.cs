@@ -82,12 +82,7 @@ public sealed class PostgreSqlProviderTypeMap : DbProviderTypeMapBase<PostgreSql
         // Json affinity
         RegisterConverterForTypes(
             jsonConverter,
-            typeof(JsonDocument),
-            typeof(JsonElement),
-            typeof(JsonArray),
-            typeof(JsonNode),
-            typeof(JsonObject),
-            typeof(JsonValue)
+            TypeMappingHelpers.GetStandardJsonTypes()
         );
 
         // DateTime affinity
@@ -418,7 +413,7 @@ public sealed class PostgreSqlProviderTypeMap : DbProviderTypeMapBase<PostgreSql
 
     private static DotnetTypeToSqlTypeConverter GetJsonToSqlTypeConverter()
     {
-        return new(d => TypeMappingHelpers.CreateJsonType(PostgreSqlTypes.sql_jsonb, isText: false));
+        return TypeMappingHelpers.CreateJsonConverter("postgresql");
     }
 
     private DotnetTypeToSqlTypeConverter GetDateTimeToSqlTypeConverter()
@@ -484,9 +479,8 @@ public sealed class PostgreSqlProviderTypeMap : DbProviderTypeMapBase<PostgreSql
         });
     }
 
-    // TODO: use native array types
     private DotnetTypeToSqlTypeConverter GetArrayToSqlTypeConverter() =>
-        GetJsonToSqlTypeConverter();
+        TypeMappingHelpers.CreateArrayConverter("postgresql");
 
     private DotnetTypeToSqlTypeConverter GetPocoToSqlTypeConverter() => GetJsonToSqlTypeConverter();
 

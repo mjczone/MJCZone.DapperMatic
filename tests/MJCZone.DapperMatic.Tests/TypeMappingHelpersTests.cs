@@ -1,3 +1,4 @@
+using MJCZone.DapperMatic.Converters;
 using MJCZone.DapperMatic.Providers;
 using Xunit.Abstractions;
 
@@ -529,5 +530,205 @@ public class TypeMappingHelpersTests : TestBase
         // Assert
         Assert.Equal(sqlServerLower.Length, sqlServerUpper.Length);
         Assert.Equal(sqlServerLower.Length, sqlServerMixed.Length);
+    }
+
+    [Fact]
+    public void GetStandardJsonTypes_ReturnsExpectedTypes()
+    {
+        // Act
+        var jsonTypes = TypeMappingHelpers.GetStandardJsonTypes();
+        
+        // Assert
+        Assert.NotNull(jsonTypes);
+        Assert.Equal(6, jsonTypes.Length);
+        
+        // Verify specific types are included
+        Assert.Contains(typeof(System.Text.Json.JsonDocument), jsonTypes);
+        Assert.Contains(typeof(System.Text.Json.JsonElement), jsonTypes);
+        Assert.Contains(typeof(System.Text.Json.Nodes.JsonArray), jsonTypes);
+        Assert.Contains(typeof(System.Text.Json.Nodes.JsonNode), jsonTypes);
+        Assert.Contains(typeof(System.Text.Json.Nodes.JsonObject), jsonTypes);
+        Assert.Contains(typeof(System.Text.Json.Nodes.JsonValue), jsonTypes);
+    }
+
+    [Fact]
+    public void CreateJsonConverter_ReturnsCorrectConverterForEachProvider()
+    {
+        // Test each provider
+        var providers = new[] { "mysql", "postgresql", "sqlserver", "sqlite", "unknown" };
+        
+        foreach (var provider in providers)
+        {
+            // Act
+            var converter = TypeMappingHelpers.CreateJsonConverter(provider);
+            
+            // Assert
+            Assert.NotNull(converter);
+            Assert.IsType<DotnetTypeToSqlTypeConverter>(converter);
+        }
+    }
+
+    [Fact]
+    public void CreateJsonConverter_CaseInsensitive()
+    {
+        // Act & Assert - should not throw exceptions
+        var mysqlLower = TypeMappingHelpers.CreateJsonConverter("mysql");
+        var mysqlUpper = TypeMappingHelpers.CreateJsonConverter("MYSQL");
+        var mysqlMixed = TypeMappingHelpers.CreateJsonConverter("MySQL");
+        
+        Assert.NotNull(mysqlLower);
+        Assert.NotNull(mysqlUpper);
+        Assert.NotNull(mysqlMixed);
+    }
+
+    [Fact]
+    public void CreateProviderOptimizedJsonType_ReturnsCorrectTypeForEachProvider()
+    {
+        // Test MySQL (native JSON)
+        var mysqlJson = TypeMappingHelpers.CreateProviderOptimizedJsonType("mysql");
+        Assert.NotNull(mysqlJson);
+        Assert.Equal("json", mysqlJson.SqlTypeName);
+        
+        // Test PostgreSQL (native JSONB)
+        var postgresJson = TypeMappingHelpers.CreateProviderOptimizedJsonType("postgresql");
+        Assert.NotNull(postgresJson);
+        Assert.Equal("jsonb", postgresJson.SqlTypeName);
+        
+        // Test SQL Server (text-based, non-Unicode)
+        var sqlServerJson = TypeMappingHelpers.CreateProviderOptimizedJsonType("sqlserver", isUnicode: false);
+        Assert.NotNull(sqlServerJson);
+        Assert.Equal("varchar(max)", sqlServerJson.SqlTypeName);
+        
+        // Test SQL Server (text-based, Unicode)
+        var sqlServerJsonUnicode = TypeMappingHelpers.CreateProviderOptimizedJsonType("sqlserver", isUnicode: true);
+        Assert.NotNull(sqlServerJsonUnicode);
+        Assert.Equal("nvarchar(max)", sqlServerJsonUnicode.SqlTypeName);
+        
+        // Test SQLite (text-based)
+        var sqliteJson = TypeMappingHelpers.CreateProviderOptimizedJsonType("sqlite");
+        Assert.NotNull(sqliteJson);
+        Assert.Equal("text", sqliteJson.SqlTypeName);
+        
+        // Test unknown provider (defaults to text)
+        var unknownJson = TypeMappingHelpers.CreateProviderOptimizedJsonType("unknown");
+        Assert.NotNull(unknownJson);
+        Assert.Equal("text", unknownJson.SqlTypeName);
+    }
+
+    [Fact]
+    public void CreateProviderOptimizedJsonType_CaseInsensitive()
+    {
+        // Act
+        var mysqlLower = TypeMappingHelpers.CreateProviderOptimizedJsonType("mysql");
+        var mysqlUpper = TypeMappingHelpers.CreateProviderOptimizedJsonType("MYSQL");
+        var mysqlMixed = TypeMappingHelpers.CreateProviderOptimizedJsonType("MySQL");
+        
+        // Assert
+        Assert.Equal(mysqlLower.SqlTypeName, mysqlUpper.SqlTypeName);
+        Assert.Equal(mysqlLower.SqlTypeName, mysqlMixed.SqlTypeName);
+    }
+
+    [Fact]
+    public void CreateNativeArrayType_ReturnsCorrectArrayType()
+    {
+        // Act
+        var intArrayType = TypeMappingHelpers.CreateNativeArrayType("integer");
+        var textArrayType = TypeMappingHelpers.CreateNativeArrayType("text");
+        
+        // Assert
+        Assert.NotNull(intArrayType);
+        Assert.Equal("integer[]", intArrayType.SqlTypeName);
+        
+        Assert.NotNull(textArrayType);
+        Assert.Equal("text[]", textArrayType.SqlTypeName);
+    }
+
+    [Fact]
+    public void CreateArrayConverter_PostgreSqlUsesNativeArrays()
+    {
+        // Act
+        var postgresConverter = TypeMappingHelpers.CreateArrayConverter("postgresql");
+        
+        // Assert
+        Assert.NotNull(postgresConverter);
+        Assert.IsType<DotnetTypeToSqlTypeConverter>(postgresConverter);
+    }
+
+    [Fact]
+    public void CreateArrayConverter_OtherProvidersFallBackToJson()
+    {
+        // Test other providers fall back to JSON
+        var providers = new[] { "mysql", "sqlserver", "sqlite", "unknown" };
+        
+        foreach (var provider in providers)
+        {
+            // Act
+            var converter = TypeMappingHelpers.CreateArrayConverter(provider);
+            
+            // Assert
+            Assert.NotNull(converter);
+            Assert.IsType<DotnetTypeToSqlTypeConverter>(converter);
+        }
+    }
+
+    [Theory]
+    [InlineData(typeof(bool), "boolean")]
+    [InlineData(typeof(short), "smallint")]
+    [InlineData(typeof(int), "integer")]
+    [InlineData(typeof(long), "bigint")]
+    [InlineData(typeof(float), "real")]
+    [InlineData(typeof(double), "double precision")]
+    [InlineData(typeof(decimal), "numeric")]
+    [InlineData(typeof(string), "text")]
+    [InlineData(typeof(char), "char")]
+    [InlineData(typeof(DateTime), "timestamp")]
+    [InlineData(typeof(DateTimeOffset), "timestamptz")]
+    [InlineData(typeof(TimeSpan), "interval")]
+    [InlineData(typeof(DateOnly), "date")]
+    [InlineData(typeof(TimeOnly), "time")]
+    [InlineData(typeof(Guid), "uuid")]
+    public void GetPostgreSqlArrayTypeName_ReturnsMappedType(Type elementType, string expectedSqlType)
+    {
+        // Act
+        var result = TypeMappingHelpers.GetPostgreSqlArrayTypeName(elementType);
+        
+        // Assert
+        Assert.Equal(expectedSqlType, result);
+    }
+
+    [Fact]
+    public void GetPostgreSqlArrayTypeName_WithUnsupportedType_ReturnsNull()
+    {
+        // Act
+        var result = TypeMappingHelpers.GetPostgreSqlArrayTypeName(typeof(object));
+        
+        // Assert
+        Assert.Null(result);
+    }
+
+    [Fact]
+    public void GetPostgreSqlArrayTypeName_WithNull_ReturnsNull()
+    {
+        // Act
+        var result = TypeMappingHelpers.GetPostgreSqlArrayTypeName(null);
+        
+        // Assert
+        Assert.Null(result);
+    }
+
+    [Theory]
+    [InlineData("postgresql", true)]
+    [InlineData("POSTGRESQL", true)]
+    [InlineData("mysql", false)]
+    [InlineData("sqlserver", false)]
+    [InlineData("sqlite", false)]
+    [InlineData("unknown", false)]
+    public void SupportsNativeArrays_ReturnsCorrectResult(string provider, bool expected)
+    {
+        // Act
+        var result = TypeMappingHelpers.SupportsNativeArrays(provider);
+        
+        // Assert
+        Assert.Equal(expected, result);
     }
 }

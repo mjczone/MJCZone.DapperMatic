@@ -50,11 +50,11 @@ This is MJCZone.DapperMatic - a C# library providing IDbConnection extension met
 - ✅ **Step 1**: Constants & Helpers - Create shared defaults and helper methods
 - ✅ **Step 2**: Refactor SQL Server Provider - Use new helpers in existing provider  
 - ✅ **Step 3**: Refactor Other Providers - Apply changes to MySQL, PostgreSQL, SQLite
-- ⏳ **Step 4**: Extract Base Converters - Move common conversion logic to base classes
-- ⏳ **Step 5**: Standardize Geometry - Unify NetTopologySuite handling across providers
-- ⏳ **Step 6**: Native Array Support - Implement array handling where available (PostgreSQL)
-- ⏳ **Step 7**: Unify JSON Handling - Standardize JSON type strategies
-- ⏳ **Step 8**: Consistency Testing - Add comprehensive type mapping tests
+- ✅ **Step 5**: Standardize Geometry - Unify NetTopologySuite handling across providers
+- ✅ **Step 6**: Unify JSON Handling - Standardize JSON type strategies  
+- ⏳ **Step 7**: Native Array Support - Implement array handling where available (PostgreSQL)
+- ⏳ **Step 8**: Extract Base Converters - Move common conversion logic to base classes
+- ⏳ **Step 9**: Consistency Testing - Add comprehensive type mapping tests
 
 ### Current Todo List
 1. ✅ Analyze current type mapping inconsistencies in detail
@@ -65,13 +65,13 @@ This is MJCZone.DapperMatic - a C# library providing IDbConnection extension met
 6. ✅ Refactor MySQL provider to use TypeMappingHelpers
 7. ✅ Refactor PostgreSQL provider to use TypeMappingHelpers
 8. ✅ Refactor SQLite provider to use TypeMappingHelpers
-9. ⏳ Standardize geometry type handling across providers
-10. ⏳ Implement native array support where available
-11. ⏳ Unify JSON type handling strategies
+9. ✅ Standardize geometry type handling across providers
+10. ✅ Unify JSON type handling strategies  
+11. ⏳ Implement native array support where available
 12. ⏳ Extract shared conversion logic to base classes
 13. ⏳ Add tests for type mapping consistency
 
-**Next Session**: Begin Step 4 - Extract shared conversion logic to base classes
+**Next Session**: Begin Step 7 - Implement native array support where available (PostgreSQL)
 
 ### Step 2 Completed (2025-01-31)
 Successfully refactored SQL Server provider to use TypeMappingHelpers:

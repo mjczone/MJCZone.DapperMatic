@@ -78,12 +78,7 @@ public sealed class SqliteProviderTypeMap : DbProviderTypeMapBase<SqliteProvider
         // Json affinity
         RegisterConverterForTypes(
             jsonConverter,
-            typeof(JsonDocument),
-            typeof(JsonElement),
-            typeof(JsonArray),
-            typeof(JsonNode),
-            typeof(JsonObject),
-            typeof(JsonValue)
+            TypeMappingHelpers.GetStandardJsonTypes()
         );
 
         // DateTime affinity
@@ -307,10 +302,7 @@ public sealed class SqliteProviderTypeMap : DbProviderTypeMapBase<SqliteProvider
 
     private static DotnetTypeToSqlTypeConverter GetJsonToSqlTypeConverter()
     {
-        return new(d =>
-        {
-            return TypeMappingHelpers.CreateJsonType(SqliteTypes.sql_text, isText: true);
-        });
+        return TypeMappingHelpers.CreateJsonConverter("sqlite");
     }
 
     private DotnetTypeToSqlTypeConverter GetDateTimeToSqlTypeConverter()

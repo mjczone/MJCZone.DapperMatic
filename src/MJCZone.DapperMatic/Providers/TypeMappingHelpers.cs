@@ -1,3 +1,5 @@
+using MJCZone.DapperMatic.Converters;
+
 namespace MJCZone.DapperMatic.Providers;
 
 /// <summary>
@@ -471,5 +473,143 @@ public static class TypeMappingHelpers
             "sqlite" => standardTypes, // SQLite only supports NetTopologySuite types
             _ => standardTypes,
         };
+    }
+
+    /// <summary>
+    /// Gets the standard System.Text.Json types that should be registered for JSON handling.
+    /// This provides a consistent set of JSON types across all providers.
+    /// </summary>
+    /// <returns>An array of System.Text.Json types.</returns>
+    public static Type[] GetStandardJsonTypes()
+    {
+        return new[]
+        {
+            typeof(System.Text.Json.JsonDocument),
+            typeof(System.Text.Json.JsonElement),
+            typeof(System.Text.Json.Nodes.JsonArray),
+            typeof(System.Text.Json.Nodes.JsonNode),
+            typeof(System.Text.Json.Nodes.JsonObject),
+            typeof(System.Text.Json.Nodes.JsonValue),
+        };
+    }
+
+    /// <summary>
+    /// Creates a standardized JSON type converter for a specific provider.
+    /// This handles the different JSON storage strategies across providers.
+    /// Note: This method should be used by individual providers who can provide their specific type constants.
+    /// </summary>
+    /// <param name="provider">The database provider name.</param>
+    /// <returns>A DotnetTypeToSqlTypeConverter configured for the provider's JSON strategy.</returns>
+    public static DotnetTypeToSqlTypeConverter CreateJsonConverter(string provider)
+    {
+        return provider.ToLowerInvariant() switch
+        {
+            "mysql" => new DotnetTypeToSqlTypeConverter(d => CreateJsonType("json", isText: false)),
+            "postgresql" => new DotnetTypeToSqlTypeConverter(d => CreateJsonType("jsonb", isText: false)),
+            "sqlserver" => new DotnetTypeToSqlTypeConverter(d =>
+            {
+                var sqlType = d.IsUnicode == true ? "nvarchar(max)" : "varchar(max)";
+                return CreateJsonType(sqlType, isText: true);
+            }),
+            "sqlite" => new DotnetTypeToSqlTypeConverter(d => CreateJsonType("text", isText: true)),
+            _ => new DotnetTypeToSqlTypeConverter(d => CreateJsonType("text", isText: true)) // Default to text storage
+        };
+    }
+
+    /// <summary>
+    /// Creates an enhanced JSON type descriptor with provider-specific optimizations.
+    /// </summary>
+    /// <param name="provider">The database provider name.</param>
+    /// <param name="isUnicode">Whether to use Unicode storage for text-based JSON (relevant for SQL Server/SQLite).</param>
+    /// <returns>A SqlTypeDescriptor optimized for the provider's JSON capabilities.</returns>
+    public static SqlTypeDescriptor CreateProviderOptimizedJsonType(string provider, bool isUnicode = false)
+    {
+        return provider.ToLowerInvariant() switch
+        {
+            "mysql" => CreateJsonType("json", isText: false),
+            "postgresql" => CreateJsonType("jsonb", isText: false), // jsonb is preferred over json in PostgreSQL
+            "sqlserver" => CreateJsonType(isUnicode ? "nvarchar(max)" : "varchar(max)", isText: true),
+            "sqlite" => CreateJsonType("text", isText: true),
+            _ => CreateJsonType("text", isText: true)
+        };
+    }
+
+    /// <summary>
+    /// Creates a native array type descriptor for PostgreSQL.
+    /// </summary>
+    /// <param name="elementSqlType">The SQL type of the array element (e.g., "integer", "text").</param>
+    /// <returns>A SqlTypeDescriptor configured for PostgreSQL native array storage.</returns>
+    public static SqlTypeDescriptor CreateNativeArrayType(string elementSqlType)
+    {
+        return new SqlTypeDescriptor($"{elementSqlType}[]");
+    }
+
+    /// <summary>
+    /// Creates a standardized array converter that uses native arrays for PostgreSQL
+    /// and falls back to JSON for other providers.
+    /// </summary>
+    /// <param name="provider">The database provider name.</param>
+    /// <returns>A DotnetTypeToSqlTypeConverter configured for the provider's array strategy.</returns>
+    public static DotnetTypeToSqlTypeConverter CreateArrayConverter(string provider)
+    {
+        return provider.ToLowerInvariant() switch
+        {
+            "postgresql" => new DotnetTypeToSqlTypeConverter(d =>
+            {
+                if (d.DotnetType?.IsArray == true)
+                {
+                    var elementType = d.DotnetType.GetElementType();
+                    var arrayTypeName = GetPostgreSqlArrayTypeName(elementType);
+                    return arrayTypeName != null ? CreateNativeArrayType(arrayTypeName) : null;
+                }
+                return null;
+            }),
+            // Other providers fall back to JSON
+            _ => CreateJsonConverter(provider)
+        };
+    }
+
+    /// <summary>
+    /// Maps .NET array element types to PostgreSQL array type names.
+    /// </summary>
+    /// <param name="elementType">The .NET element type.</param>
+    /// <returns>The PostgreSQL array type name, or null if not supported.</returns>
+    public static string? GetPostgreSqlArrayTypeName(Type? elementType)
+    {
+        if (elementType == null)
+        {
+            return null;
+        }
+
+        return elementType switch
+        {
+            Type t when t == typeof(bool) => "boolean",
+            Type t when t == typeof(short) => "smallint",
+            Type t when t == typeof(int) => "integer",
+            Type t when t == typeof(long) => "bigint",
+            Type t when t == typeof(float) => "real",
+            Type t when t == typeof(double) => "double precision",
+            Type t when t == typeof(decimal) => "numeric",
+            Type t when t == typeof(string) => "text",
+            Type t when t == typeof(char) => "char",
+            Type t when t == typeof(byte[]) => "bytea",
+            Type t when t == typeof(DateTime) => "timestamp",
+            Type t when t == typeof(DateTimeOffset) => "timestamptz",
+            Type t when t == typeof(TimeSpan) => "interval",
+            Type t when t == typeof(DateOnly) => "date",
+            Type t when t == typeof(TimeOnly) => "time",
+            Type t when t == typeof(Guid) => "uuid",
+            _ => null // Unsupported type
+        };
+    }
+
+    /// <summary>
+    /// Determines if a provider supports native array types.
+    /// </summary>
+    /// <param name="provider">The database provider name.</param>
+    /// <returns>True if the provider supports native arrays.</returns>
+    public static bool SupportsNativeArrays(string provider)
+    {
+        return string.Equals(provider, "postgresql", StringComparison.OrdinalIgnoreCase);
     }
 }

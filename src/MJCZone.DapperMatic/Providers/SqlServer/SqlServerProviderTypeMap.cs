@@ -78,12 +78,7 @@ public sealed class SqlServerProviderTypeMap : DbProviderTypeMapBase<SqlServerPr
         // Json affinity
         RegisterConverterForTypes(
             jsonConverter,
-            typeof(JsonDocument),
-            typeof(JsonElement),
-            typeof(JsonArray),
-            typeof(JsonNode),
-            typeof(JsonObject),
-            typeof(JsonValue)
+            TypeMappingHelpers.GetStandardJsonTypes()
         );
 
         // DateTime affinity
@@ -314,11 +309,7 @@ public sealed class SqlServerProviderTypeMap : DbProviderTypeMapBase<SqlServerPr
 
     private static DotnetTypeToSqlTypeConverter GetJsonToSqlTypeConverter()
     {
-        return new(d =>
-        {
-            var sqlType = d.IsUnicode == true ? "nvarchar(max)" : "varchar(max)";
-            return TypeMappingHelpers.CreateJsonType(sqlType, isText: true);
-        });
+        return TypeMappingHelpers.CreateJsonConverter("sqlserver");
     }
 
     private DotnetTypeToSqlTypeConverter GetDateTimeToSqlTypeConverter()

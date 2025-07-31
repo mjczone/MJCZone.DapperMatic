@@ -82,12 +82,7 @@ namespace MJCZone.DapperMatic.Providers.MySql
             // Json affinity
             RegisterConverterForTypes(
                 jsonConverter,
-                typeof(JsonDocument),
-                typeof(JsonElement),
-                typeof(JsonArray),
-                typeof(JsonNode),
-                typeof(JsonObject),
-                typeof(JsonValue)
+                TypeMappingHelpers.GetStandardJsonTypes()
             );
 
             // DateTime affinity
@@ -363,7 +358,7 @@ namespace MJCZone.DapperMatic.Providers.MySql
         /// <returns>The JSON to SQL type converter.</returns>
         private static DotnetTypeToSqlTypeConverter GetJsonToSqlTypeConverter()
         {
-            return new(d => TypeMappingHelpers.CreateJsonType(MySqlTypes.sql_json, isText: false));
+            return TypeMappingHelpers.CreateJsonConverter("mysql");
         }
 
         /// <summary>
