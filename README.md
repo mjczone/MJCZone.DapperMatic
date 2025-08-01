@@ -13,6 +13,7 @@ DapperMatic extends `IDbConnection` with intuitive extension methods for DDL (Da
 - **🎯 Model-First Approach** - Define schemas using strongly-typed C# classes (`DmTable`, `DmColumn`, etc.)
 - **📝 Data Annotations Support** - Use familiar `[Table]`, `[Key]` attributes or advanced `[DmColumn]` attributes
 - **🔄 Cross-Database Support** - SQL Server, MySQL/MariaDB, PostgreSQL, SQLite with consistent API
+- **🔍 Schema Reverse Engineering** - Extract complete database schemas including tables, views, constraints, and indexes
 - **🛡️ SQL Injection Protected** - Comprehensive validation prevents malicious SQL injection attacks
 - **⚡ Dapper Integration** - Built on top of Dapper for high-performance data access
 - **🧪 Extensively Tested** - 500+ tests covering all providers and edge cases
@@ -137,6 +138,110 @@ await connection.CreateForeignKeyConstraintIfNotExistsAsync("dbo", "Orders",
     "FK_Orders_Users", new[] { "UserId" }, "dbo", "Users", new[] { "Id" });
 ```
 
+### Schema Reverse Engineering
+
+DapperMatic provides comprehensive capabilities to extract and analyze existing database schemas. This is essential for tools that need to understand current database structure, perform schema comparisons, or generate code from existing databases.
+
+```csharp
+// Extract complete table definition with all metadata
+var existingTable = await connection.GetTableAsync("dbo", "Users");
+if (existingTable != null)
+{
+    Console.WriteLine($"Table: {existingTable.SchemaName}.{existingTable.TableName}");
+    
+    // Access all columns with detailed metadata
+    foreach (var column in existingTable.Columns)
+    {
+        Console.WriteLine($"  {column.ColumnName}: {column.DotnetType}");
+        Console.WriteLine($"    Nullable: {column.IsNullable}");
+        Console.WriteLine($"    Primary Key: {column.IsPrimaryKey}");
+        Console.WriteLine($"    Auto Increment: {column.IsAutoIncrement}");
+        Console.WriteLine($"    Unique: {column.IsUnique}");
+        
+        if (column.IsForeignKey)
+        {
+            Console.WriteLine($"    References: {column.ReferencedTableName}.{column.ReferencedColumnName}");
+        }
+    }
+    
+    // Access constraints
+    if (existingTable.PrimaryKeyConstraint != null)
+    {
+        var pkColumns = string.Join(", ", existingTable.PrimaryKeyConstraint.Columns.Select(c => c.ColumnName));
+        Console.WriteLine($"  Primary Key: {pkColumns}");
+    }
+    
+    // Access foreign key constraints
+    foreach (var fk in existingTable.ForeignKeyConstraints)
+    {
+        Console.WriteLine($"  FK {fk.ConstraintName}: {string.Join(", ", fk.Columns.Select(c => c.ColumnName))} -> {fk.ReferencedSchemaName}.{fk.ReferencedTableName}");
+    }
+    
+    // Access indexes
+    foreach (var index in existingTable.Indexes)
+    {
+        var indexColumns = string.Join(", ", index.Columns.Select(c => $"{c.ColumnName} {(c.IsDescending ? "DESC" : "ASC")}"));
+        Console.WriteLine($"  Index {index.IndexName}: {indexColumns} (Unique: {index.IsUnique})");
+    }
+}
+
+// Get all tables in a schema
+var allTables = await connection.GetTablesAsync("dbo");
+Console.WriteLine($"Found {allTables.Count} tables in schema 'dbo'");
+
+// Get table names only (lightweight operation)
+var tableNames = await connection.GetTableNamesAsync("dbo");
+foreach (var tableName in tableNames)
+{
+    Console.WriteLine($"Table: {tableName}");
+}
+
+// Extract view definitions
+var salesView = await connection.GetViewAsync("dbo", "MonthlySales");
+if (salesView != null)
+{
+    Console.WriteLine($"View Definition:\n{salesView.Definition}");
+}
+
+// Get all views
+var allViews = await connection.GetViewsAsync("dbo");
+
+// Extract individual column metadata
+var emailColumn = await connection.GetColumnAsync("dbo", "Users", "Email");
+if (emailColumn != null)
+{
+    Console.WriteLine($"Email column type: {emailColumn.DotnetType}");
+    Console.WriteLine($"Max length: {emailColumn.Length}");
+    Console.WriteLine($"Is unique: {emailColumn.IsUnique}");
+}
+
+// Get all columns for a table
+var userColumns = await connection.GetColumnsAsync("dbo", "Users");
+
+// Extract constraint information
+var foreignKeys = await connection.GetForeignKeyConstraintsAsync("dbo", "Orders");
+var checkConstraints = await connection.GetCheckConstraintsAsync("dbo", "Users");
+var uniqueConstraints = await connection.GetUniqueConstraintsAsync("dbo", "Products");
+
+// Get index information
+var userIndexes = await connection.GetIndexesAsync("dbo", "Users");
+var emailIndex = await connection.GetIndexAsync("dbo", "Users", "IX_Users_Email");
+
+// List all schemas in the database
+var schemas = await connection.GetSchemaNamesAsync();
+Console.WriteLine($"Available schemas: {string.Join(", ", schemas)}");
+
+// Generate C# class from existing table
+var existingUsersTable = await connection.GetTableAsync("dbo", "Users");
+if (existingUsersTable != null)
+{
+    // You can use the table definition to generate corresponding C# classes
+    // or compare with your model definitions for schema validation
+    var modelTable = DmTableFactory.GetTable<User>();
+    // Compare existingUsersTable with modelTable for differences
+}
+```
+
 ## 🗄️ Supported Database Providers
 
 | Provider | Versions Tested | Connection Type | Notes |
@@ -180,6 +285,13 @@ await connection.CreateForeignKeyConstraintIfNotExistsAsync("dbo", "Orders",
 - ✅ Cross-schema operations
 - ✅ Provider compatibility handling
 
+### Schema Reverse Engineering
+- ✅ Extract complete table definitions with all metadata
+- ✅ Retrieve columns, constraints, indexes, and relationships
+- ✅ Analyze views and their SQL definitions
+- ✅ Query existing schema structure and constraints
+- ✅ Generate C# models from existing database tables
+
 ## 🔧 Advanced Features
 
 ### Type Mapping
@@ -220,6 +332,7 @@ var version = await connection.GetDatabaseVersionAsync();
 | **Learning Curve** | 🟢 Minimal | 🟡 Moderate | 🟡 Moderate |
 | **Schema Focus** | ✅ DDL operations | ❌ Entity operations | ✅ Migration scripts |
 | **Runtime Schema Changes** | ✅ Dynamic | ❌ Requires migrations | ❌ Requires migrations |
+| **Reverse Engineering** | ✅ Full schema extraction | ✅ Scaffold from database | ❌ No reverse engineering |
 | **Size** | 📦 Lightweight | 📦 Full framework | 📦 Migration-focused |
 
 ### When to Choose DapperMatic
@@ -230,6 +343,9 @@ var version = await connection.GetDatabaseVersionAsync();
 - Multi-tenant applications with varying schemas
 - Tools that generate database schemas from models
 - APIs that manage database structures programmatically
+- Schema analysis and documentation tools
+- Database migration and comparison utilities
+- Code generators that create models from existing databases
 - Developers who prefer data annotations over fluent APIs
 
 ❌ **Consider alternatives for:**
@@ -239,7 +355,9 @@ var version = await connection.GetDatabaseVersionAsync();
 
 ## 📚 Dependencies
 
-This library uses [Dapper](https://github.com/DapperLib/Dapper) for data access operations. We use a version range (`[2.1.35,3.0.0)`) to ensure compatibility with your application's Dapper version while maintaining functionality.
+This library requires **.NET 8.0 or later** and uses [Dapper](https://github.com/DapperLib/Dapper) for data access operations. We use a version range (`[2.1.35,3.0.0)`) to ensure compatibility with your application's Dapper version while maintaining functionality.
+
+**Framework Requirements**: .NET 8.0+ (compatible with .NET 8 and .NET 9 applications)
 
 **Supported Dapper Versions**: 2.1.35 through 2.1.66+ (any 2.1.x version)
 
