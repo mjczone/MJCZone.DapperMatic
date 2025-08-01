@@ -18,7 +18,7 @@ namespace MJCZone.DapperMatic.Providers.SqlServer;
 /// <summary>
 /// Provides a type map for SQL Server, mapping .NET types to SQL Server types and vice versa.
 /// </summary>
-public sealed class SqlServerProviderTypeMap : StandardTypeMapBase<SqlServerProviderTypeMap>
+public sealed class SqlServerProviderTypeMap : DbProviderTypeMapBase<SqlServerProviderTypeMap>
 {
     /// <inheritdoc/>
     protected override IProviderTypeMapping GetProviderTypeMapping()

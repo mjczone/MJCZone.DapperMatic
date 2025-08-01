@@ -20,7 +20,7 @@ namespace MJCZone.DapperMatic.Providers.MySql
     /// https://stackoverflow.com/questions/67101765/c-sharp-mysql-dapper-mysqlgeometry
     /// ...
     /// </remarks>
-    public sealed class MySqlProviderTypeMap : StandardTypeMapBase<MySqlProviderTypeMap>
+    public sealed class MySqlProviderTypeMap : DbProviderTypeMapBase<MySqlProviderTypeMap>
     {
         /// <inheritdoc/>
         protected override IProviderTypeMapping GetProviderTypeMapping()

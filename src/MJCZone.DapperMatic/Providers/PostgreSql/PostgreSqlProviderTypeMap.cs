@@ -21,7 +21,7 @@ namespace MJCZone.DapperMatic.Providers.PostgreSql;
 /// https://www.npgsql.org/doc/types/basic.html#read-mappings
 /// https://www.npgsql.org/doc/types/basic.html#write-mappings.
 /// </remarks>
-public sealed class PostgreSqlProviderTypeMap : StandardTypeMapBase<PostgreSqlProviderTypeMap>
+public sealed class PostgreSqlProviderTypeMap : DbProviderTypeMapBase<PostgreSqlProviderTypeMap>
 {
     /// <inheritdoc />
     protected override IProviderTypeMapping GetProviderTypeMapping() => new PostgreSqlTypeMapping();

@@ -18,7 +18,7 @@ namespace MJCZone.DapperMatic.Providers.Sqlite;
 /// See:
 /// https://www.sqlite.org/datatype3.html.
 /// </remarks>
-public sealed class SqliteProviderTypeMap : StandardTypeMapBase<SqliteProviderTypeMap>
+public sealed class SqliteProviderTypeMap : DbProviderTypeMapBase<SqliteProviderTypeMap>
 {
     /// <inheritdoc/>
     protected override IProviderTypeMapping GetProviderTypeMapping()
