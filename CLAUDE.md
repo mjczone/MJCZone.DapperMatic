@@ -38,56 +38,64 @@ This is MJCZone.DapperMatic - a C# library providing IDbConnection extension met
   - Comprehensive test coverage with 33 test methods
   - Foundation supports: decimal types, string types, GUID/enum storage, geometry types, LOB types, arrays, datetime precision, and type inspection utilities
 
+- **Dapper Dependency Elimination (2025-08-01)**: Planned major refactoring to remove Dapper dependency
+  - Analysis shows minimal Dapper usage: only 3 methods (`QueryAsync<T>`, `ExecuteScalarAsync<T>`, `ExecuteAsync`)
+  - Benefits: Reduced dependencies, smaller package size (~200KB savings), better control, potential performance gains
+  - Implementation: Replace abstract methods in `DatabaseMethodsBase.cs` with raw ADO.NET implementations
+  - Maintains existing provider pattern and extension method API
+  - Estimated effort: 50-100 lines of replacement code
+
 ## Code Style Guidelines
 
 - Use trailing comma in multi-line initializers
 
-## Type Mapping Consolidation Plan
+## Major Refactoring Projects
+
+### Type Mapping Consolidation (Completed 2025-01-31)
 
 **Goal**: Eliminate ~3000+ lines of duplicated type mapping code across providers while maintaining consistency.
 
-### Progress Tracking
+**Status**: ✅ **COMPLETED** - All 491 tests passing across all database providers.
+
+**Progress Tracking:**
 - ✅ **Step 1**: Constants & Helpers - Create shared defaults and helper methods
 - ✅ **Step 2**: Refactor SQL Server Provider - Use new helpers in existing provider  
 - ✅ **Step 3**: Refactor Other Providers - Apply changes to MySQL, PostgreSQL, SQLite
+- ✅ **Step 4**: Extract Base Converters - Move common conversion logic to base classes
 - ✅ **Step 5**: Standardize Geometry - Unify NetTopologySuite handling across providers
 - ✅ **Step 6**: Unify JSON Handling - Standardize JSON type strategies  
 - ✅ **Step 7**: Native Array Support - Implement array handling where available (PostgreSQL)
-- ✅ **Step 8**: Extract Base Converters - Move common conversion logic to base classes
-- ⏳ **Step 9**: Consistency Testing - Add comprehensive type mapping tests
+- ✅ **Step 8**: Fix MySQL datetime precision issue (default to precision 6)
+- ✅ **Step 9**: Consistency Testing - Add comprehensive type mapping tests
 
-### Current Todo List
-1. ✅ Analyze current type mapping inconsistencies in detail
-2. ✅ Design unified type mapping strategy  
-3. ✅ Create base type mapping consolidation framework
-4. ✅ Analyze provider implementations for additional helper method needs
-5. ✅ Refactor SQL Server provider to use TypeMappingHelpers
-6. ✅ Refactor MySQL provider to use TypeMappingHelpers
-7. ✅ Refactor PostgreSQL provider to use TypeMappingHelpers
-8. ✅ Refactor SQLite provider to use TypeMappingHelpers
-9. ✅ Standardize geometry type handling across providers
-10. ✅ Unify JSON type handling strategies  
-11. ✅ Implement native array support where available (PostgreSQL)
-12. ✅ Extract shared conversion logic to base classes
-13. ✅ Fix MySQL datetime precision issue (default to precision 6)
-14. ⏳ Add tests for type mapping consistency
+### Dapper Dependency Elimination (Planned)
 
-**Status**: Type mapping consolidation complete! All 491 tests passing.
+**Goal**: Remove Dapper dependency to reduce external dependencies and package size while maintaining API compatibility.
 
-### Type Mapping Consolidation Completed (2025-01-31)
+**Status**: 📋 **PLANNED** - Analysis complete, ready for implementation.
+
+**Implementation Plan:**
+1. Replace 3 abstract methods in `DatabaseMethodsBase.cs` with raw ADO.NET implementations
+2. Maintain existing provider pattern and extension method API
+3. Preserve all current functionality and test compatibility
+4. Update package references and documentation
+
+## Type Mapping Consolidation - Implementation Details
 
 **Major Achievement**: Successfully consolidated ~3000+ lines of duplicated type mapping code across all database providers.
 
 **Key Components Added:**
-- `StandardTypeMapBase<T>` - Abstract base class providing shared converter registration and type creation logic
+- `DbProviderTypeMapBase<T>` - Abstract base class providing shared converter registration and type creation logic
 - `IProviderTypeMapping` - Interface defining provider-specific type configuration (constants, methods)
 - Provider-specific configuration classes: `SqlServerTypeMapping`, `MySqlTypeMapping`, `PostgreSqlTypeMapping`, `SqliteTypeMapping`
+- `TypeMappingDefaults.cs` - Shared constants (string lengths, precision/scale defaults)
+- `TypeMappingHelpers.cs` - 14 helper methods for consistent type creation
 
-**Major Refactoring:**
-- **SQL Server Provider**: Refactored to use StandardTypeMapBase, preserving SQL Server-specific datetime behavior
-- **MySQL Provider**: Refactored to use StandardTypeMapBase, fixed datetime precision issue (now defaults to precision 6)
-- **PostgreSQL Provider**: Refactored to use StandardTypeMapBase, preserved range types, arrays, and hstore functionality  
-- **SQLite Provider**: Refactored to use StandardTypeMapBase, maintained SQLite's text-based geometry storage
+**Major Provider Refactoring:**
+- **SQL Server Provider**: Refactored to use DbProviderTypeMapBase, preserving SQL Server-specific datetime behavior
+- **MySQL Provider**: Refactored to use DbProviderTypeMapBase, fixed datetime precision issue (now defaults to precision 6)
+- **PostgreSQL Provider**: Refactored to use DbProviderTypeMapBase, preserved range types, arrays, and hstore functionality  
+- **SQLite Provider**: Refactored to use DbProviderTypeMapBase, maintained SQLite's text-based geometry storage
 
 **Native Array Support:**
 - Implemented comprehensive PostgreSQL native array support for bidirectional type mapping
@@ -105,43 +113,3 @@ This is MJCZone.DapperMatic - a C# library providing IDbConnection extension met
 - All 491 tests passing across all database providers
 - No functional regressions during refactoring
 - Enhanced maintainability and consistency
-
-### Step 2 Completed (2025-01-31)
-Successfully refactored SQL Server provider to use TypeMappingHelpers:
-- Replaced 13 converter methods with helper calls
-- Reduced code duplication in numeric, string, datetime, binary, and geometry converters
-- Used `CreateSimpleType()`, `CreateDecimalType()`, `CreateStringType()`, `CreateBinaryType()`, `CreateJsonType()`, `CreateGeometryType()`, `CreateLobType()`, and `CreateEnumStringType()`
-- Improved geometry handling using `GetAssemblyQualifiedShortName()` helper
-- All tests pass - no functional changes, only code consolidation
-
-### Step 3 Completed (2025-01-31)
-Successfully refactored MySQL, PostgreSQL, and SQLite providers to use TypeMappingHelpers:
-
-**MySQL Provider Refactoring:**
-- Refactored all converter methods to use TypeMappingHelpers
-- Standardized decimal type handling with `CreateDecimalType()`
-- Used `CreateGuidStringType()` for consistent GUID storage as fixed-length strings
-- Applied `CreateLobType()` for text/blob types and `CreateJsonType()` for native JSON support
-- Enhanced geometry handling with specific MySQL geometry types using `CreateGeometryType()`
-- Improved enum handling with `CreateEnumStringType()`
-
-**PostgreSQL Provider Refactoring:**
-- Refactored text, datetime, enumerable, and geometry converters
-- Applied `CreateStringType()` and `CreateLobType()` for text handling with proper max length support
-- Used `CreateSimpleType()` for datetime types (timestamp, timestamptz, time, date)
-- Enhanced HStore support for string dictionaries vs JSONB for other collections
-- Standardized geometry handling for both NetTopologySuite and PostgreSQL-specific types
-- Used `GetAssemblyQualifiedShortName()` helper for consistent type identification
-
-**SQLite Provider Refactoring:**
-- Completed refactoring of numeric, text, datetime, and geometry converters
-- Applied `CreateDecimalType()` for decimal types with proper precision/scale
-- Used `CreateStringType()` and `CreateLobType()` for text types, handling SQLite's max length limitations
-- Standardized datetime types with `CreateSimpleType()`
-- Enhanced geometry handling for NetTopologySuite types stored as text (WKT format)
-
-**Results:**
-- All 426 tests pass across all providers
-- Significant code reduction and standardization achieved
-- Consistent type creation patterns now used across all four database providers
-- Improved maintainability and reduced duplication

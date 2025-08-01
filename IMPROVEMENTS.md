@@ -35,7 +35,8 @@
 ### Technical Debt
 
 - **✅ Consolidate Auto-increment Detection**: ~~Create unified auto-increment detection strategy across providers~~ **COMPLETED** - Standardized auto-increment detection implemented across all providers
-- **Consolidate Type Mapping**: Create unified type mapping strategy across providers  
+- **✅ Consolidate Type Mapping**: ~~Create unified type mapping strategy across providers~~ **COMPLETED** - Successfully consolidated ~3000+ lines of duplicated type mapping code using DbProviderTypeMapBase<T> and TypeMappingHelpers  
+- **Eliminate Dapper Dependency**: Replace minimal Dapper usage (3 methods) with raw ADO.NET to reduce dependencies and package size
 - **SQL Injection Prevention**: Audit all SQL generation for proper parameterization
 - **Connection String Handling**: Remove or secure test connection strings in data folder
 
