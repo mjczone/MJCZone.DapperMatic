@@ -253,10 +253,26 @@ if (existingUsersTable != null)
 
 ## 🎯 Core Capabilities
 
+### Database Discovery & Reverse Engineering
+- ✅ Extract complete table definitions with all metadata
+- ✅ Retrieve individual columns, constraints, indexes, and relationships
+- ✅ Discover and analyze view definitions and SQL
+- ✅ Enumerate all database schemas and objects
+- ✅ Query existing database structure across all providers
+- ✅ Generate C# models from existing database tables
+- ✅ Provider-specific metadata extraction (auto-increment detection, data types, etc.)
+
+### Schema Operations
+- ✅ Create and manage database schemas
+- ✅ Cross-schema operations
+- ✅ Provider compatibility handling
+- ✅ Schema existence checking
+
 ### Table Operations
 - ✅ Create, drop, rename, and modify tables
 - ✅ Check table existence and retrieve metadata
 - ✅ Support for temporary tables
+- ✅ Truncate tables with data preservation options
 
 ### Column Management
 - ✅ Add, drop, rename, and modify columns
@@ -271,7 +287,7 @@ if (existingUsersTable != null)
 - ✅ Check constraints with expression validation
 - ✅ Default constraints
 
-### Index Management
+### Index Management  
 - ✅ Create and drop indexes
 - ✅ Unique and composite indexes
 - ✅ Provider-specific optimizations
@@ -279,18 +295,6 @@ if (existingUsersTable != null)
 ### View Operations
 - ✅ Create, drop, and manage views
 - ✅ Secure view definition validation
-
-### Schema Management
-- ✅ Create and manage database schemas
-- ✅ Cross-schema operations
-- ✅ Provider compatibility handling
-
-### Schema Reverse Engineering
-- ✅ Extract complete table definitions with all metadata
-- ✅ Retrieve columns, constraints, indexes, and relationships
-- ✅ Analyze views and their SQL definitions
-- ✅ Query existing schema structure and constraints
-- ✅ Generate C# models from existing database tables
 
 ## 🔧 Advanced Features
 
@@ -381,7 +385,7 @@ We welcome contributions! Please see our [Contributing Guidelines](CONTRIBUTING.
 
 ## 🏗️ Project Status
 
-- **Stability**: Production ready
+- **Stability**: Pre-Release Stable
 - **Maintenance**: Actively maintained
 - **Testing**: 500+ automated tests across all providers
 - **Security**: SQL injection protected with comprehensive validation
