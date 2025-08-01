@@ -12,15 +12,15 @@
     <RepositoryUrl>https://github.com/mjczone/MJCZone.DapperMatic/</RepositoryUrl>
 
     <Version>0.0.1</Version>
-    <Summary>Additional database extensions (leveraging Dapper).</Summary>
-    <Description>Additional database extensions (leveraging Dapper).</Description>
+    <Summary>IDbConnection extension methods for DDL operations across multiple database providers.</Summary>
+    <Description>Provides extension methods for IDbConnection to perform DDL operations (tables, columns, indexes, etc.) across SQL Server, MySQL/MariaDB, PostgreSQL, and SQLite. Model-first approach with provider-agnostic schema management.</Description>
 
     <RootNamespace>MJCZone.DapperMatic</RootNamespace>
     <AssemblyName>MJCZone.DapperMatic</AssemblyName>
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="Dapper" Version="2.1.35" />
+    <PackageReference Include="Dapper" Version="[2.1.35,3.0.0)" />
   </ItemGroup>
 
   <ItemGroup>
