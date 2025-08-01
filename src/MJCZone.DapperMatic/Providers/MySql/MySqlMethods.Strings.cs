@@ -1,5 +1,6 @@
 using System.Diagnostics.CodeAnalysis;
 using MJCZone.DapperMatic.Models;
+using MJCZone.DapperMatic.Security;
 
 namespace MJCZone.DapperMatic.Providers.MySql;
 
@@ -85,6 +86,8 @@ public partial class MySqlMethods
         string defaultExpression
     )
     {
+        SqlExpressionValidator.ValidateDefaultExpression(defaultExpression, nameof(defaultExpression));
+
         defaultExpression = defaultExpression.Trim();
         var addParentheses =
             defaultExpression.Contains(' ', StringComparison.OrdinalIgnoreCase)

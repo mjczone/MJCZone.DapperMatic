@@ -46,9 +46,19 @@ This is MJCZone.DapperMatic - a C# library providing IDbConnection extension met
   - **Learning**: Library's core value is schema management, not reimplementing data access - focus engineering effort accordingly
   - **Solution**: Version range prevents conflicts while maintaining API stability and feature access
 
+- **SQL Injection Prevention (2025-08-01)**: Comprehensive security hardening to prevent SQL injection attacks
+  - **Security Audit**: Identified critical vulnerabilities in view definitions, check constraints, and default expressions
+  - **Implementation**: Created `SqlExpressionValidator` class with expression validation for all user-provided SQL code
+  - **Protection Scope**: View definitions, check constraint expressions, default constraint expressions, and comment injection
+  - **Validation Features**: Expression length limits, dangerous pattern detection, comment stripping, multi-statement prevention
+  - **Security Testing**: Added 26 comprehensive security tests covering various attack vectors and edge cases
+  - **Balance**: Maintains legitimate SQL functionality while blocking malicious injection attempts
+  - **Coverage**: All database providers (SQL Server, MySQL, PostgreSQL, SQLite) protected consistently
+
 ## Code Style Guidelines
 
 - Use trailing comma in multi-line initializers
+- Code should not contain trailing whitespace
 
 ## Major Refactoring Projects
 

@@ -1,5 +1,6 @@
 using System.Text;
 using MJCZone.DapperMatic.Models;
+using MJCZone.DapperMatic.Security;
 
 namespace MJCZone.DapperMatic.Providers.Base;
 
@@ -503,6 +504,8 @@ public abstract partial class DatabaseMethodsBase
         string defaultExpression
     )
     {
+        SqlExpressionValidator.ValidateDefaultExpression(defaultExpression, nameof(defaultExpression));
+
         defaultExpression = defaultExpression.Trim();
         var addParentheses =
             defaultExpression.Contains(' ', StringComparison.OrdinalIgnoreCase)
@@ -529,6 +532,7 @@ public abstract partial class DatabaseMethodsBase
         out bool useTableConstraint
     )
     {
+        SqlExpressionValidator.ValidateCheckExpression(checkExpression, nameof(checkExpression));
         useTableConstraint = false;
         return $"CONSTRAINT {NormalizeName(constraintName)} CHECK ({checkExpression})";
     }
@@ -614,6 +618,8 @@ public abstract partial class DatabaseMethodsBase
     /// <returns>A string representing the CHECK constraint clause for use in SQL inline statements, or an empty string if no check condition is specified.</returns>
     protected virtual string SqlInlineCheckTableConstraint(DmTable table, DmCheckConstraint check)
     {
+        SqlExpressionValidator.ValidateCheckExpression(check.Expression, nameof(check.Expression));
+
         var ckConstraintName = !string.IsNullOrWhiteSpace(check.ConstraintName)
             ? check.ConstraintName
             : string.IsNullOrWhiteSpace(check.ColumnName)
@@ -724,6 +730,8 @@ public abstract partial class DatabaseMethodsBase
         string expression
     )
     {
+        SqlExpressionValidator.ValidateCheckExpression(expression, nameof(expression));
+
         if (expression.Trim().StartsWith('(') && expression.Trim().EndsWith(')'))
         {
             expression = expression.Trim().Substring(1, expression.Length - 2);
@@ -1019,6 +1027,7 @@ public abstract partial class DatabaseMethodsBase
     /// <returns>A SQL statement that creates a new view with the given name and definition in the specified schema.</returns>
     protected virtual string SqlCreateView(string? schemaName, string viewName, string definition)
     {
+        SqlExpressionValidator.ValidateViewDefinition(definition, nameof(definition));
         return $"CREATE VIEW {GetSchemaQualifiedIdentifierName(schemaName, viewName)} AS {definition}";
     }
 
