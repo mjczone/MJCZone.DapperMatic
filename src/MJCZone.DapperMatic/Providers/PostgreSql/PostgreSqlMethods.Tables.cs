@@ -417,6 +417,7 @@ public partial class PostgreSqlMethods
                     ?.i;
 
                 var dotnetTypeDescriptor = GetDotnetTypeFromSqlType(
+                    !string.IsNullOrWhiteSpace(tableColumn.data_type_ext) &&
                     tableColumn.data_type.Length < tableColumn.data_type_ext.Length
                         ? tableColumn.data_type_ext
                         : tableColumn.data_type
@@ -484,6 +485,12 @@ public partial class PostgreSqlMethods
                     foreignKeyConstraint?.OnDelete,
                     foreignKeyConstraint?.OnUpdate
                 );
+
+                // Apply standardized auto-increment detection
+                column.IsAutoIncrement = DetermineIsAutoIncrement(
+                    column,
+                    tableColumn.is_identity,
+                    tableColumn.data_type_ext ?? tableColumn.data_type);
 
                 columns.Add(column);
             }

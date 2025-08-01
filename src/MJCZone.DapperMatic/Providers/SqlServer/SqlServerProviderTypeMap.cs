@@ -7,6 +7,7 @@ using System.Text.Json;
 using System.Text.Json.Nodes;
 using System.Xml.Linq;
 using MJCZone.DapperMatic.Converters;
+using MJCZone.DapperMatic.Providers.Base;
 
 namespace MJCZone.DapperMatic.Providers.SqlServer;
 
@@ -20,148 +21,44 @@ namespace MJCZone.DapperMatic.Providers.SqlServer;
 public sealed class SqlServerProviderTypeMap : DbProviderTypeMapBase<SqlServerProviderTypeMap>
 {
     /// <inheritdoc/>
+    protected override IProviderTypeMapping GetProviderTypeMapping()
+    {
+        return new SqlServerTypeMapping();
+    }
+
+    /// <inheritdoc/>
+    protected override string GetProviderName()
+    {
+        return "sqlserver";
+    }
+
+    /// <inheritdoc/>
     protected override void RegisterDotnetTypeToSqlTypeConverters()
     {
-        var booleanConverter = GetBooleanToSqlTypeConverter();
-        var numericConverter = GetNumbericToSqlTypeConverter();
-        var guidConverter = GetGuidToSqlTypeConverter();
-        var textConverter = GetTextToSqlTypeConverter();
-        var xmlConverter = GetXmlToSqlTypeConverter();
-        var jsonConverter = GetJsonToSqlTypeConverter();
-        var dateTimeConverter = GetDateTimeToSqlTypeConverter();
-        var byteArrayConverter = GetByteArrayToSqlTypeConverter();
-        var objectConverter = GetObjectToSqlTypeConverter();
-        var enumerableConverter = GetEnumerableToSqlTypeConverter();
-        var enumConverter = GetEnumToSqlTypeConverter();
-        var arrayConverter = GetArrayToSqlTypeConverter();
-        var pocoConverter = GetPocoToSqlTypeConverter();
-        var geometricConverter = GetGeometricToSqlTypeConverter();
+        // Use the standardized registration from base class
+        RegisterStandardDotnetTypeToSqlTypeConverters();
+    }
 
-        // Boolean affinity
-        RegisterConverter<bool>(booleanConverter);
-
-        // Numeric affinity
-        RegisterConverterForTypes(
-            numericConverter,
-            typeof(byte),
-            typeof(short),
-            typeof(int),
-            typeof(BigInteger),
-            typeof(long),
-            typeof(sbyte),
-            typeof(ushort),
-            typeof(uint),
-            typeof(ulong),
-            typeof(decimal),
-            typeof(float),
-            typeof(double)
-        );
-
-        // Guid affinity
-        RegisterConverter<Guid>(guidConverter);
-
-        // Text affinity
-        RegisterConverterForTypes(
-            textConverter,
-            typeof(string),
-            typeof(char),
-            typeof(char[]),
-            typeof(MemoryStream),
-            typeof(ReadOnlyMemory<byte>[]),
-            typeof(Stream),
-            typeof(TextReader)
-        );
-
-        // Xml affinity
-        RegisterConverterForTypes(xmlConverter, typeof(XDocument), typeof(XElement));
-
-        // Json affinity
-        RegisterConverterForTypes(
-            jsonConverter,
-            typeof(JsonDocument),
-            typeof(JsonElement),
-            typeof(JsonArray),
-            typeof(JsonNode),
-            typeof(JsonObject),
-            typeof(JsonValue)
-        );
-
-        // DateTime affinity
-        RegisterConverterForTypes(
-            dateTimeConverter,
-            typeof(DateTime),
-            typeof(DateTimeOffset),
-            typeof(TimeSpan),
-            typeof(DateOnly),
-            typeof(TimeOnly)
-        );
-
-        // Binary affinity
-        RegisterConverterForTypes(
-            byteArrayConverter,
-            typeof(byte[]),
-            typeof(ReadOnlyMemory<byte>),
-            typeof(Memory<byte>),
-            typeof(Stream),
-            typeof(BinaryReader),
-            typeof(BitArray),
-            typeof(BitVector32)
-        );
-
-        // Object affinity
-        RegisterConverter<object>(objectConverter);
-
-        // Enumerable affinity
-        RegisterConverterForTypes(
-            enumerableConverter,
-            typeof(ImmutableDictionary<string, string>),
-            typeof(Dictionary<string, string>),
-            typeof(IDictionary<string, string>),
-            typeof(Dictionary<string, object>),
-            typeof(IDictionary<string, object>),
-            typeof(HashSet<string>),
-            typeof(List<string>),
-            typeof(IList<string>),
-            typeof(HashSet<>),
-            typeof(ISet<>),
-            typeof(Dictionary<,>),
-            typeof(IDictionary<,>),
-            typeof(List<>),
-            typeof(IList<>),
-            typeof(Collection<>),
-            typeof(IReadOnlyCollection<>),
-            typeof(IReadOnlySet<>),
-            typeof(ICollection<>),
-            typeof(IEnumerable<>)
-        );
-
-        // Enums (uses a placeholder to easily locate it)
-        RegisterConverter<InternalEnumTypePlaceholder>(enumConverter);
-
-        // Arrays (uses a placeholder to easily locate it)
-        RegisterConverter<InternalArrayTypePlaceholder>(arrayConverter);
-
-        // Poco (uses a placeholder to easily locate it)
-        RegisterConverter<InternalPocoTypePlaceholder>(pocoConverter);
-
-        // Geometry types (support the NetTopologySuite types)
-        RegisterConverterForTypes(
-            geometricConverter,
-            // always register the NetTopologySuite types, as they provide
-            // a good way to handle geometry types across database providers
-            Type.GetType("NetTopologySuite.Geometries.Geometry, NetTopologySuite"),
-            Type.GetType("NetTopologySuite.Geometries.Point, NetTopologySuite"),
-            Type.GetType("NetTopologySuite.Geometries.LineString, NetTopologySuite"),
-            Type.GetType("NetTopologySuite.Geometries.Polygon, NetTopologySuite"),
-            Type.GetType("NetTopologySuite.Geometries.MultiPoint, NetTopologySuite"),
-            Type.GetType("NetTopologySuite.Geometries.MultiLineString, NetTopologySuite"),
-            Type.GetType("NetTopologySuite.Geometries.MultiPolygon, NetTopologySuite"),
-            Type.GetType("NetTopologySuite.Geometries.GeometryCollection, NetTopologySuite"),
-            // also register the SQL Server types
-            Type.GetType("Microsoft.SqlServer.Types.SqlGeometry, Microsoft.SqlServer.Types"),
-            Type.GetType("Microsoft.SqlServer.Types.SqlGeography, Microsoft.SqlServer.Types"),
-            Type.GetType("Microsoft.SqlServer.Types.SqlHierarchyId, Microsoft.SqlServer.Types")
-        );
+    /// <inheritdoc/>
+    protected override SqlTypeDescriptor? CreateGeometryTypeForShortName(string shortName)
+    {
+        return shortName switch
+        {
+            // NetTopologySuite types
+            "NetTopologySuite.Geometries.Geometry, NetTopologySuite" => TypeMappingHelpers.CreateGeometryType(SqlServerTypes.sql_geometry),
+            "NetTopologySuite.Geometries.Point, NetTopologySuite" or
+            "NetTopologySuite.Geometries.LineString, NetTopologySuite" or
+            "NetTopologySuite.Geometries.Polygon, NetTopologySuite" or
+            "NetTopologySuite.Geometries.MultiPoint, NetTopologySuite" or
+            "NetTopologySuite.Geometries.MultiLineString, NetTopologySuite" or
+            "NetTopologySuite.Geometries.MultiPolygon, NetTopologySuite" or
+            "NetTopologySuite.Geometries.GeometryCollection, NetTopologySuite" => TypeMappingHelpers.CreateLobType("nvarchar(max)", isUnicode: true),
+            // SQL Server types
+            "Microsoft.SqlServer.Types.SqlGeometry, Microsoft.SqlServer.Types" => TypeMappingHelpers.CreateGeometryType(SqlServerTypes.sql_geometry),
+            "Microsoft.SqlServer.Types.SqlGeography, Microsoft.SqlServer.Types" => TypeMappingHelpers.CreateGeometryType(SqlServerTypes.sql_geography),
+            "Microsoft.SqlServer.Types.SqlHierarchyId, Microsoft.SqlServer.Types" => TypeMappingHelpers.CreateSimpleType(SqlServerTypes.sql_hierarchyid),
+            _ => null
+        };
     }
 
     /// <inheritdoc/>
@@ -249,259 +146,31 @@ public sealed class SqlServerProviderTypeMap : DbProviderTypeMapBase<SqlServerPr
         );
     }
 
-    #region DotnetTypeToSqlTypeConverters
+    #region Custom Provider-Specific Converters (Override base if needed)
 
-    private static DotnetTypeToSqlTypeConverter GetBooleanToSqlTypeConverter()
+    /// <summary>
+    /// Gets the DateTime to SQL type converter with SQL Server specific defaults.
+    /// SQL Server uses datetime instead of datetime2 for DateTime by default in the original implementation.
+    /// This overrides the base implementation to maintain backward compatibility.
+    /// </summary>
+    /// <returns>DateTime to SQL type converter with SQL Server specific behavior.</returns>
+    protected override DotnetTypeToSqlTypeConverter GetDateTimeToSqlTypeConverter()
     {
-        return new(d =>
+        return new DotnetTypeToSqlTypeConverter(d =>
         {
-            return new(SqlServerTypes.sql_bit) { Length = 1 };
-        });
-    }
-
-    private static DotnetTypeToSqlTypeConverter GetGuidToSqlTypeConverter()
-    {
-        return new(d =>
-        {
-            return new(SqlServerTypes.sql_uniqueidentifier) { Length = 36 };
-        });
-    }
-
-    private static DotnetTypeToSqlTypeConverter GetNumbericToSqlTypeConverter()
-    {
-        return new(d =>
-        {
-            switch (d.DotnetType)
+            return d.DotnetType switch
             {
-                case Type t when t == typeof(byte):
-                    return new(SqlServerTypes.sql_tinyint);
-                case Type t when t == typeof(sbyte):
-                    return new(SqlServerTypes.sql_tinyint);
-                case Type t when t == typeof(short):
-                    return new(SqlServerTypes.sql_smallint);
-                case Type t when t == typeof(ushort):
-                    return new(SqlServerTypes.sql_smallint);
-                case Type t when t == typeof(int):
-                    return new(SqlServerTypes.sql_int);
-                case Type t when t == typeof(uint):
-                    return new(SqlServerTypes.sql_int);
-                case Type t when t == typeof(BigInteger) || t == typeof(long):
-                    return new(SqlServerTypes.sql_bigint);
-                case Type t when t == typeof(ulong):
-                    return new(SqlServerTypes.sql_bigint);
-                case Type t when t == typeof(float):
-                    return new(SqlServerTypes.sql_real);
-                case Type t when t == typeof(double):
-                    return new(SqlServerTypes.sql_float);
-                case Type t when t == typeof(decimal):
-                    var precision = d.Precision ?? 16;
-                    var scale = d.Scale ?? 4;
-                    return new(SqlServerTypes.sql_decimal)
-                    {
-                        SqlTypeName = $"decimal({precision},{scale})",
-                        Precision = precision,
-                        Scale = scale,
-                    };
-                default:
-                    return new(SqlServerTypes.sql_int);
-            }
+                Type t when t == typeof(DateTime) => TypeMappingHelpers.CreateSimpleType(SqlServerTypes.sql_datetime),
+                Type t when t == typeof(DateTimeOffset) => TypeMappingHelpers.CreateSimpleType(SqlServerTypes.sql_datetimeoffset),
+                Type t when t == typeof(TimeSpan) => TypeMappingHelpers.CreateSimpleType(SqlServerTypes.sql_time),
+                Type t when t == typeof(DateOnly) => TypeMappingHelpers.CreateSimpleType(SqlServerTypes.sql_date),
+                Type t when t == typeof(TimeOnly) => TypeMappingHelpers.CreateSimpleType(SqlServerTypes.sql_time),
+                _ => TypeMappingHelpers.CreateSimpleType(SqlServerTypes.sql_datetime),
+            };
         });
     }
 
-    private static DotnetTypeToSqlTypeConverter GetTextToSqlTypeConverter()
-    {
-        return new(d =>
-        {
-            var length = d.Length.GetValueOrDefault(255);
-            if (length == int.MaxValue)
-            {
-                return d.IsUnicode == true
-                    ? new(SqlServerTypes.sql_nvarchar)
-                    {
-                        SqlTypeName = "nvarchar(max)",
-                        Length = int.MaxValue,
-                    }
-                    : new(SqlServerTypes.sql_varchar)
-                    {
-                        SqlTypeName = "varchar(max)",
-                        Length = int.MaxValue,
-                    };
-            }
-
-            if (d.IsFixedLength == true)
-            {
-                return d.IsUnicode == true
-                    ? new(SqlServerTypes.sql_nchar)
-                    {
-                        SqlTypeName = $"nchar({length})",
-                        Length = length,
-                    }
-                    : new(SqlServerTypes.sql_char)
-                    {
-                        SqlTypeName = $"char({length})",
-                        Length = length,
-                    };
-            }
-
-            return d.IsUnicode == true
-                ? new(SqlServerTypes.sql_nvarchar)
-                {
-                    SqlTypeName = $"nvarchar({length})",
-                    Length = length,
-                }
-                : new(SqlServerTypes.sql_varchar)
-                {
-                    SqlTypeName = $"varchar({length})",
-                    Length = length,
-                };
-        });
-    }
-
-    private static DotnetTypeToSqlTypeConverter GetXmlToSqlTypeConverter()
-    {
-        return new(d =>
-        {
-            return new(SqlServerTypes.sql_xml);
-        });
-    }
-
-    private static DotnetTypeToSqlTypeConverter GetJsonToSqlTypeConverter()
-    {
-        return new(d =>
-        {
-            return d.IsUnicode == true
-                ? new(SqlServerTypes.sql_nvarchar)
-                {
-                    SqlTypeName = "nvarchar(max)",
-                    Length = int.MaxValue,
-                }
-                : new(SqlServerTypes.sql_varchar)
-                {
-                    SqlTypeName = "varchar(max)",
-                    Length = int.MaxValue,
-                };
-        });
-    }
-
-    private DotnetTypeToSqlTypeConverter GetDateTimeToSqlTypeConverter()
-    {
-        return new(d =>
-        {
-            switch (d.DotnetType)
-            {
-                case Type t when t == typeof(DateTime):
-                    return new(SqlServerTypes.sql_datetime);
-                case Type t when t == typeof(DateTimeOffset):
-                    return new(SqlServerTypes.sql_datetimeoffset);
-                case Type t when t == typeof(TimeSpan):
-                    return new(SqlServerTypes.sql_time);
-                case Type t when t == typeof(DateOnly):
-                    return new(SqlServerTypes.sql_date);
-                case Type t when t == typeof(TimeOnly):
-                    return new(SqlServerTypes.sql_time);
-                default:
-                    return new(SqlServerTypes.sql_datetime);
-            }
-        });
-    }
-
-    private DotnetTypeToSqlTypeConverter GetByteArrayToSqlTypeConverter()
-    {
-        return new(d =>
-        {
-            var length = d.Length ?? int.MaxValue;
-            if (length == int.MaxValue)
-            {
-                return new(SqlServerTypes.sql_varbinary)
-                {
-                    SqlTypeName = "varbinary(max)",
-                    Length = int.MaxValue,
-                };
-            }
-
-            return d.IsFixedLength == true
-                ? new(SqlServerTypes.sql_binary)
-                {
-                    SqlTypeName = $"binary({length})",
-                    Length = length,
-                }
-                : new(SqlServerTypes.sql_varbinary)
-                {
-                    SqlTypeName = $"varbinary({length})",
-                    Length = length,
-                };
-        });
-    }
-
-    private DotnetTypeToSqlTypeConverter GetObjectToSqlTypeConverter()
-    {
-        return new(d =>
-        {
-            return new(SqlServerTypes.sql_variant);
-        });
-    }
-
-    private DotnetTypeToSqlTypeConverter GetEnumerableToSqlTypeConverter() =>
-        GetJsonToSqlTypeConverter();
-
-    private DotnetTypeToSqlTypeConverter GetEnumToSqlTypeConverter()
-    {
-        return new(d =>
-        {
-            return new(SqlServerTypes.sql_varchar) { SqlTypeName = "varchar(128)", Length = 128 };
-        });
-    }
-
-    private DotnetTypeToSqlTypeConverter GetArrayToSqlTypeConverter() =>
-        GetJsonToSqlTypeConverter();
-
-    private DotnetTypeToSqlTypeConverter GetPocoToSqlTypeConverter() => GetJsonToSqlTypeConverter();
-
-    private DotnetTypeToSqlTypeConverter GetGeometricToSqlTypeConverter()
-    {
-        return new(d =>
-        {
-            var assemblyQualifiedName = d.DotnetType?.AssemblyQualifiedName;
-            if (string.IsNullOrWhiteSpace(assemblyQualifiedName))
-            {
-                return null;
-            }
-
-            var assemblyQualifiedNameParts = assemblyQualifiedName.Split(',');
-            var fullNameWithAssemblyName =
-                assemblyQualifiedNameParts[0] + ", " + assemblyQualifiedNameParts[1];
-
-            switch (fullNameWithAssemblyName)
-            {
-                // NetTopologySuite types
-                case "NetTopologySuite.Geometries.Geometry, NetTopologySuite":
-                    return new(SqlServerTypes.sql_geometry);
-                case "NetTopologySuite.Geometries.Point, NetTopologySuite":
-                case "NetTopologySuite.Geometries.LineString, NetTopologySuite":
-                case "NetTopologySuite.Geometries.Polygon, NetTopologySuite":
-                case "NetTopologySuite.Geometries.MultiPoint, NetTopologySuite":
-                case "NetTopologySuite.Geometries.MultiLineString, NetTopologySuite":
-                case "NetTopologySuite.Geometries.MultiPolygon, NetTopologySuite":
-                case "NetTopologySuite.Geometries.GeometryCollection, NetTopologySuite":
-                    return new(SqlServerTypes.sql_nvarchar)
-                    {
-                        SqlTypeName = "nvarchar(max)",
-                        Length = int.MaxValue,
-                    };
-                // SQL Server types
-                case "Microsoft.SqlServer.Types.SqlGeometry, Microsoft.SqlServer.Types":
-                    return new(SqlServerTypes.sql_geometry);
-                case "Microsoft.SqlServer.Types.SqlGeography, Microsoft.SqlServer.Types":
-                    return new(SqlServerTypes.sql_geography);
-                case "Microsoft.SqlServer.Types.SqlHierarchyId, Microsoft.SqlServer.Types":
-                    return new(SqlServerTypes.sql_hierarchyid);
-            }
-
-            return null;
-        });
-    }
-
-    #endregion // DotnetTypeToSqlTypeConverters
+    #endregion // Custom Provider-Specific Converters
 
     #region SqlTypeToDotnetTypeConverters
 
