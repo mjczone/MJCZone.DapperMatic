@@ -21,7 +21,8 @@ internal static partial class TypeInfoExtensions
                         constructor.GetUniqueName(),  // Use unique name for URL
                         MemberTypes.Constructor,
                         symbols.FindBy(constructor),
-                        parent.Self))
+                        parent.Self,
+                        constructor))  // Pass reflection member for fallback
                 .ToList();
     
     public static List<MemberDescription> PopulateFields(this TypeInfo typeInfo, TypeDescription parent, ImmutableArray<IFieldSymbol>? symbols, AccessLevel accessLevel)
@@ -34,7 +35,8 @@ internal static partial class TypeInfoExtensions
                         field.Name, 
                         MemberTypes.Field,
                         symbols.FindBy(field),
-                        parent.Self))
+                        parent.Self,
+                        field))  // Pass reflection member for fallback
                 .ToList();
     
     public static List<MemberDescription> PopulateMethods(this TypeInfo typeInfo, TypeDescription parent, ImmutableArray<IMethodSymbol>? symbols, AccessLevel accessLevel)
@@ -48,7 +50,8 @@ internal static partial class TypeInfoExtensions
                         method.GetUniqueName(),  // Pass unique name separately for URL
                         MemberTypes.Method,
                         symbols.FindBy(method),
-                        parent.Self))
+                        parent.Self,
+                        method))  // Pass reflection member for fallback
                 .ToList();
     
     public static List<MemberDescription> PopulateProperties(this TypeInfo typeInfo, TypeDescription parent, ImmutableArray<IPropertySymbol>? symbols, AccessLevel accessLevel)
@@ -61,7 +64,8 @@ internal static partial class TypeInfoExtensions
                         property.Name, 
                         MemberTypes.Property, 
                         symbols.FindBy(property),
-                        parent.Self))
+                        parent.Self,
+                        property))  // Pass reflection member for fallback
                 .ToList();
     
     public static List<MemberDescription> PopulateEvents(this TypeInfo typeInfo, TypeDescription parent, ImmutableArray<IEventSymbol>? symbols, AccessLevel accessLevel)
@@ -74,7 +78,8 @@ internal static partial class TypeInfoExtensions
                         @event.Name, 
                         MemberTypes.Event,
                         symbols.FindBy(@event),
-                        parent.Self))
+                        parent.Self,
+                        @event))  // Pass reflection member for fallback
                 .ToList();
 
     public static List<EnumMemberDescription> PopulateEnumMembers(this TypeInfo typeInfo, TypeDescription parent, ImmutableArray<ISymbol>? symbols)

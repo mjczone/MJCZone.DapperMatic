@@ -21,7 +21,7 @@ internal partial class DescriptionHelper
             var memberData = members.FirstOrDefault(m => m.Name == memberDescription.CommentId);
             if (memberData is null) continue;
             
-            memberDescription.FillBy(memberData);
+            memberDescription.FillBy(memberData, memberDescription.Symbol);
         }
     }
     

@@ -4,8 +4,9 @@
   "version": "1.0.0",
   "description": "Documentation for MJCZone.DapperMatic",
   "scripts": {
-    "docs:dev": "vitepress dev",
-    "docs:build": "vitepress build",
+    "generate-api": "node scripts/generate-api-docs.js",
+    "docs:dev": "npm run generate-api && vitepress dev",
+    "docs:build": "npm run generate-api && vitepress build",
     "docs:preview": "vitepress preview"
   },
   "devDependencies": {

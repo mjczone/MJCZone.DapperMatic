@@ -1,5 +1,6 @@
 using Akov.NetDocsProcessor.Output;
 using Akov.NetDocsProcessor.Xml;
+using Microsoft.CodeAnalysis;
 
 namespace Akov.NetDocsProcessor.Extensions;
 
@@ -29,6 +30,35 @@ internal static class XmlMemberElementExtensions
                 .ToList();
 
             member.Returns = xmlMember.Returns?.InnerXml;
+        }
+    }
+    
+    public static void FillBy(this IXmlMemberBaseElement element, XmlMember xmlMember, ISymbol? symbol)
+    {
+        // First, fill with XML information
+        element.FillBy(xmlMember);
+        
+        // Then, enhance parameter information with type data from symbol
+        if (element is IXmlMemberElement member && symbol != null)
+        {
+            var symbolParameters = symbol.GetParameterTypes();
+            if (symbolParameters != null && member.Parameters != null)
+            {
+                // Merge type information from symbol with XML comment text
+                foreach (var parameter in member.Parameters)
+                {
+                    var symbolParam = symbolParameters.FirstOrDefault(p => p.Name == parameter.Name);
+                    if (symbolParam != null)
+                    {
+                        parameter.Type = symbolParam.Type;
+                    }
+                }
+            }
+            else if (symbolParameters != null && member.Parameters == null)
+            {
+                // If no XML parameters but symbol has parameters, create them with type info only
+                member.Parameters = symbolParameters;
+            }
         }
     }
 }

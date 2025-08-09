@@ -147,4 +147,14 @@ public class TypeDescription : IXmlMemberBaseElement
     /// The list of the related references.
     /// </summary>
     public List<PageInfo>? SeeAlso { get; set; }
+    
+    /// <summary>
+    /// The base type (for classes) or null if inherits from System.Object.
+    /// </summary>
+    public PageInfo? BaseType { get; set; }
+    
+    /// <summary>
+    /// The list of implemented interfaces.
+    /// </summary>
+    public List<PageInfo>? ImplementedInterfaces { get; set; }
 }

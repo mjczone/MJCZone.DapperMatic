@@ -19,6 +19,12 @@ docs/reference/
 _site
 _pdf
 
+# VitePress generated API documentation and build output
+docs-vitepress/api/**/*.md
+!docs-vitepress/api/.gitkeep
+docs-vitepress/.vitepress/dist/
+docs-vitepress/.vitepress/cache/
+
 # User-specific files (MonoDevelop/Xamarin Studio)
 *.userprefs
 
