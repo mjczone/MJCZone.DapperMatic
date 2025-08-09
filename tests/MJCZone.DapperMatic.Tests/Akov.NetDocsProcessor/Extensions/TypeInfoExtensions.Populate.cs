@@ -17,7 +17,8 @@ internal static partial class TypeInfoExtensions
                 .OnlyVisible(accessLevel)
                 .Select(constructor => 
                     DescriptionHelper.CreateMember(
-                        constructor.GetUniqueName(), 
+                        constructor.DeclaringType?.Name ?? "Constructor",  // Use type name for constructor display
+                        constructor.GetUniqueName(),  // Use unique name for URL
                         MemberTypes.Constructor,
                         symbols.FindBy(constructor),
                         parent.Self))
@@ -43,7 +44,8 @@ internal static partial class TypeInfoExtensions
                 .OnlyVisible(accessLevel)
                 .Select(method => 
                     DescriptionHelper.CreateMember(
-                        method.GetUniqueName(), 
+                        method.Name,  // Use actual method name, not unique name
+                        method.GetUniqueName(),  // Pass unique name separately for URL
                         MemberTypes.Method,
                         symbols.FindBy(method),
                         parent.Self))
@@ -90,30 +92,51 @@ internal static partial class TypeInfoExtensions
     private static ConstructorInfo[] GetTypeConstructors(this TypeInfo typeInfo)
         => typeInfo
             .GetConstructors(BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Static | BindingFlags.Instance)
-            .Where(m => m.DeclaringType == typeInfo)
+            .Where(m => IsMethodBelongingToType(m.DeclaringType, typeInfo))
             .ToArray();
 
     private static FieldInfo[] GetTypeFields(this TypeInfo typeInfo)
         => typeInfo
             .GetFields(BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Static | BindingFlags.Instance)
-            .Where(p => p.DeclaringType == typeInfo)
+            .Where(p => IsMethodBelongingToType(p.DeclaringType, typeInfo))
             .ToArray();
     
     private static MethodInfo[] GetTypeMethods(this TypeInfo typeInfo)
         => typeInfo
             .GetMethods(BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Static | BindingFlags.Instance)
-            .Where(m => m.DeclaringType == typeInfo && !m.IsSpecialName && !m.IsDefined(typeof(System.Runtime.CompilerServices.CompilerGeneratedAttribute), false))
+            .Where(m => IsMethodBelongingToType(m.DeclaringType, typeInfo) && !m.IsSpecialName && !m.IsDefined(typeof(System.Runtime.CompilerServices.CompilerGeneratedAttribute), false))
             .ToArray();
 
     private static PropertyInfo[] GetTypeProperties(this TypeInfo typeInfo)
         => typeInfo
             .GetProperties(BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Static | BindingFlags.Instance)
-            .Where(p => p.DeclaringType == typeInfo)
+            .Where(p => IsMethodBelongingToType(p.DeclaringType, typeInfo))
             .ToArray();
 
     private static EventInfo[] GetTypeEvents(this TypeInfo typeInfo)
         => typeInfo
             .GetEvents(BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Static | BindingFlags.Instance)
-            .Where(e => e.DeclaringType == typeInfo)
+            .Where(e => IsMethodBelongingToType(e.DeclaringType, typeInfo))
             .ToArray();
+
+    /// <summary>
+    /// Determines whether a member's declaring type belongs to the specified type.
+    /// This handles both regular classes and generic base classes.
+    /// </summary>
+    /// <param name="declaringType">The declaring type of the member.</param>
+    /// <param name="typeInfo">The type we're checking against.</param>
+    /// <returns>True if the member belongs to the type; otherwise, false.</returns>
+    private static bool IsMethodBelongingToType(Type? declaringType, TypeInfo typeInfo)
+    {
+        if (declaringType == null) return false;
+        
+        // Direct match - for regular classes
+        if (declaringType == typeInfo) return true;
+        
+        // For generic base classes, check if the declaring type is assignable from the type
+        // This handles cases where methods are inherited from generic base classes
+        if (declaringType.IsAssignableFrom(typeInfo)) return true;
+        
+        return false;
+    }
 }
