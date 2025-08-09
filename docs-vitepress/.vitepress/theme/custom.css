@@ -1,0 +1,28 @@
+/* Custom styles for DapperMatic documentation */
+
+:root {
+  --vp-home-hero-name-color: transparent;
+  --vp-home-hero-name-background: -webkit-linear-gradient(120deg, #bd34fe 30%, #41d1ff);
+}
+
+/* API Browser specific styles */
+.api-browser code {
+  background-color: var(--vp-c-bg-soft);
+  padding: 0.125rem 0.25rem;
+  border-radius: 3px;
+  font-size: 0.875em;
+}
+
+/* Improve code block appearance */
+.vp-doc pre {
+  background-color: var(--vp-c-bg-soft);
+}
+
+/* Custom warning boxes for provider notes */
+.warning {
+  padding: 1rem;
+  margin: 1rem 0;
+  border-radius: 4px;
+  border-left: 4px solid var(--vp-c-warning);
+  background-color: var(--vp-c-warning-soft);
+}
