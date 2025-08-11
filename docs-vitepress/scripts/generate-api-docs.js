@@ -210,7 +210,7 @@ function createDisplayName(namespaceName, assemblyName) {
   // If the namespace starts with the assembly name, replace it with a shorter identifier
   if (namespaceName.startsWith(assemblyName + ".")) {
     const remainder = namespaceName.slice(assemblyName.length + 1);
-    return remainder;
+    return `📦 / ${remainder}`;
   }
 
   // Otherwise, use the full namespace name
@@ -222,14 +222,14 @@ function createTypeLink(typeName, assemblyName, documentedTypes) {
   if (!typeName || isPrimitiveType(typeName)) {
     return typeName;
   }
-  
+
   // Reuse the same logic as inheritance links
   const foundTypeKey = findDocumentedTypeKey(typeName, documentedTypes);
   if (foundTypeKey) {
     const typeUrl = `/api/${sanitizeUrlName(assemblyName)}/${foundTypeKey}`;
     return `[${typeName}](${typeUrl})`;
   }
-  
+
   return typeName;
 }
 
@@ -238,40 +238,40 @@ function extractParameterTypes(commentId) {
   if (!commentId || commentId === "NOT FOUND") {
     return [];
   }
-  
+
   // Find the parameters part: everything after the first '(' and before the last ')'
-  const paramStart = commentId.indexOf('(');
-  const paramEnd = commentId.lastIndexOf(')');
+  const paramStart = commentId.indexOf("(");
+  const paramEnd = commentId.lastIndexOf(")");
   if (paramStart === -1 || paramEnd === -1 || paramEnd <= paramStart) {
     return [];
   }
-  
+
   const paramString = commentId.substring(paramStart + 1, paramEnd);
   if (!paramString.trim()) {
     return [];
   }
-  
-  return paramString.split(',').map(p => {
+
+  return paramString.split(",").map((p) => {
     let type = p.trim();
     // Remove ref (@) and out (&) indicators
-    if (type.endsWith('@') || type.endsWith('&')) {
+    if (type.endsWith("@") || type.endsWith("&")) {
       type = type.slice(0, -1);
     }
     // Remove namespace prefixes to get clean type names
-    const parts = type.split('.');
+    const parts = type.split(".");
     let cleanType = parts[parts.length - 1];
-    
+
     // Handle some common type mappings
-    if (cleanType === 'String') cleanType = 'string';
-    else if (cleanType === 'Int32') cleanType = 'int';
-    else if (cleanType === 'Boolean') cleanType = 'bool';
-    else if (cleanType === 'Double') cleanType = 'double';
-    else if (cleanType === 'Single') cleanType = 'float';
-    else if (cleanType === 'Int64') cleanType = 'long';
-    else if (cleanType === 'Int16') cleanType = 'short';
-    else if (cleanType === 'Byte') cleanType = 'byte';
-    else if (cleanType === 'Object') cleanType = 'object';
-    
+    if (cleanType === "String") cleanType = "string";
+    else if (cleanType === "Int32") cleanType = "int";
+    else if (cleanType === "Boolean") cleanType = "bool";
+    else if (cleanType === "Double") cleanType = "double";
+    else if (cleanType === "Single") cleanType = "float";
+    else if (cleanType === "Int64") cleanType = "long";
+    else if (cleanType === "Int16") cleanType = "short";
+    else if (cleanType === "Byte") cleanType = "byte";
+    else if (cleanType === "Object") cleanType = "object";
+
     return cleanType;
   });
 }
@@ -279,10 +279,10 @@ function extractParameterTypes(commentId) {
 // Generate method signature
 function getMethodSignature(method) {
   const params = method.parameters || [];
-  
+
   // Extract parameter types from commentId if available
   const parameterTypes = extractParameterTypes(method.commentId);
-  
+
   const paramStr = params
     .map((p, index) => {
       // Use extracted type from commentId if available, otherwise fallback to p.type or "object"
@@ -324,7 +324,7 @@ function generateTypeMarkdown(
     if (type.baseType) {
       const baseTypeKey = sanitizeInheritanceUrl(type.baseType.url);
       // Extract just the type name for the generic lookup
-      const typeNameOnly = baseTypeKey.split('/').pop();
+      const typeNameOnly = baseTypeKey.split("/").pop();
       const foundTypeKey = findDocumentedTypeKey(typeNameOnly, documentedTypes);
       if (foundTypeKey) {
         const baseUrl = `/api/${sanitizeUrlName(assemblyName)}/${foundTypeKey}`;
@@ -339,8 +339,11 @@ function generateTypeMarkdown(
       for (const iface of type.implementedInterfaces) {
         const ifaceTypeKey = sanitizeInheritanceUrl(iface.url);
         // Extract just the type name for the generic lookup
-        const ifaceTypeNameOnly = ifaceTypeKey.split('/').pop();
-        const foundIfaceKey = findDocumentedTypeKey(ifaceTypeNameOnly, documentedTypes);
+        const ifaceTypeNameOnly = ifaceTypeKey.split("/").pop();
+        const foundIfaceKey = findDocumentedTypeKey(
+          ifaceTypeNameOnly,
+          documentedTypes
+        );
         if (foundIfaceKey) {
           const ifaceUrl = `/api/${sanitizeUrlName(
             assemblyName
@@ -420,7 +423,7 @@ function generateTypeMarkdown(
       }
       // Extract parameter types from constructor's commentId
       const ctorParamTypes = extractParameterTypes(ctor.commentId);
-      
+
       markdown += `\`\`\`csharp\n${type.name}(${(ctor.parameters || [])
         .map((p, index) => {
           const paramType = ctorParamTypes[index] || p.type || "object";
@@ -430,13 +433,17 @@ function generateTypeMarkdown(
 
       if (ctor.parameters && ctor.parameters.length > 0) {
         markdown += `#### Parameters\n\n`;
-        
+
         // Extract parameter types from commentId
         const parameterTypes = extractParameterTypes(ctor.commentId);
-        
+
         ctor.parameters.forEach((param, index) => {
           const paramType = parameterTypes[index] || param.type || "object";
-          const typeLink = createTypeLink(paramType, assemblyName, documentedTypes);
+          const typeLink = createTypeLink(
+            paramType,
+            assemblyName,
+            documentedTypes
+          );
           markdown += `- **${param.name}** (${typeLink}) - ${
             param.text || "No description"
           }\n`;
@@ -477,13 +484,17 @@ function generateTypeMarkdown(
 
       if (method.parameters && method.parameters.length > 0) {
         markdown += `#### Parameters\n\n`;
-        
+
         // Extract parameter types from commentId
         const parameterTypes = extractParameterTypes(method.commentId);
-        
+
         method.parameters.forEach((param, index) => {
           const paramType = parameterTypes[index] || param.type || "object";
-          const typeLink = createTypeLink(paramType, assemblyName, documentedTypes);
+          const typeLink = createTypeLink(
+            paramType,
+            assemblyName,
+            documentedTypes
+          );
           markdown += `- **${param.name}** (${typeLink}) - ${
             param.text || "No description"
           }\n`;

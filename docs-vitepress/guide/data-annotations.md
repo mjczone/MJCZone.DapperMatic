@@ -4,12 +4,373 @@ DapperMatic provides comprehensive data annotation attributes that allow you to 
 
 ## Overview
 
-Data annotations provide a declarative way to define your database schema using attributes. This approach offers several benefits:
+Data annotations provide a declarative way to define your database schema using attributes. Here's how they work with DapperMatic's factory methods:
+
+### Table Generation Example
+
+```csharp
+[DmTable("dbo", "app_users")]
+[DmIndex(columnNames: new[] { "Email" }, isUnique: true, indexName: "IX_Users_Email")]
+public class User
+{
+    [DmColumn("user_id", isPrimaryKey: true, isAutoIncrement: true)]
+    public int Id { get; set; }
+
+    [DmColumn("email", length: 200, isNullable: false)]
+    public string Email { get; set; }
+
+    [DmColumn("full_name", length: 100, isNullable: false)]
+    public string FullName { get; set; }
+
+    [DmColumn("created_at", defaultExpression: "GETDATE()", isNullable: false)]
+    public DateTime CreatedAt { get; set; }
+}
+
+// Generate a DmTable from the annotated class
+DmTable userTable = DmTableFactory.GetTable(typeof(User));
+
+// Create the table in your database
+await connection.CreateTableIfNotExistsAsync("dbo", userTable);
+```
+
+### View Generation Example
+
+```csharp
+[DmView(@"
+    SELECT 
+        u.user_id,
+        u.email,
+        u.full_name,
+        COUNT(o.order_id) as OrderCount
+    FROM {0}.app_users u
+    LEFT JOIN {0}.orders o ON u.user_id = o.user_id
+    WHERE u.created_at >= DATEADD(month, -1, GETDATE())
+    GROUP BY u.user_id, u.email, u.full_name",
+    schemaName: "dbo",
+    viewName: "vw_recent_users")]
+public class RecentUserSummary
+{
+    public int UserId { get; set; }
+    public string Email { get; set; }
+    public string FullName { get; set; }
+    public int OrderCount { get; set; }
+}
+
+// Generate a DmView from the annotated class
+DmView recentUsersView = DmViewFactory.GetView(typeof(RecentUserSummary));
+
+// Create the view in your database
+await connection.CreateViewIfNotExistsAsync("dbo", recentUsersView);
+```
+
+### Why Use Annotations?
+
+This approach offers several key benefits:
 
 - **Code-first development** - Define schema alongside your domain models
 - **Type safety** - Compile-time validation of your schema definitions
 - **Maintainability** - Schema and code stay in sync
 - **IntelliSense support** - Full IDE support with parameter hints
+- **Automatic generation** - Factory methods convert your classes into DapperMatic models
+- **Database creation** - Generated models work directly with DapperMatic's DDL methods
+
+## Getting Started Without Annotations
+
+DapperMatic can work with plain C# classes (POCOs) without any annotations using its built-in convention-based mapping. Let's start with a simple example:
+
+```csharp
+// A plain C# class without any annotations
+public class Customer
+{
+    public int Id { get; set; }
+    public string Name { get; set; }
+    public string Email { get; set; }
+    public DateTime CreatedAt { get; set; }
+    public bool IsActive { get; set; }
+}
+
+// Generate a DmTable from the plain class
+DmTable table = DmTableFactory.GetTable(typeof(Customer));
+
+// What DapperMatic infers by convention:
+// - Table name: "Customer" (class name)
+// - Column names: "Id", "Name", "Email", "CreatedAt", "IsActive" (property names)
+// - Data types: Mapped from C# types (int → INT, string → NVARCHAR, etc.)
+// - Nullability: Reference types nullable, value types not nullable
+// - Primary key: "Id" property (by convention)
+// - Auto-increment: "Id" property if it's an integer type
+```
+
+This works great for simple scenarios, but you might want more control over your database schema. Here's where annotations become valuable:
+
+### Why Use Annotations?
+
+**1. Explicit Control Over Naming**
+```csharp
+// Without annotations - uses C# naming
+public class Customer  // → "Customer" table
+{
+    public string Name { get; set; }  // → "Name" column
+}
+
+// With annotations - uses database naming conventions
+[DmTable("dbo", "customers")]  // → "dbo.customers" table
+public class Customer
+{
+    [DmColumn("customer_name")]  // → "customer_name" column
+    public string Name { get; set; }
+}
+```
+
+**2. Precise Data Type Specifications**
+```csharp
+// Without annotations - uses default mappings
+public string Email { get; set; }  // → NVARCHAR(MAX) or similar
+
+// With annotations - precise control
+[DmColumn(length: 200, isNullable: false)]  // → NVARCHAR(200) NOT NULL
+public string Email { get; set; }
+```
+
+**3. Database Constraints and Relationships**
+```csharp
+// Without annotations - basic table structure only
+public class Order
+{
+    public int Id { get; set; }
+    public int CustomerId { get; set; }  // Just a column
+    public decimal Total { get; set; }
+}
+
+// With annotations - full constraint definitions
+public class Order
+{
+    [DmColumn(isPrimaryKey: true, isAutoIncrement: true)]
+    public int Id { get; set; }
+
+    [DmForeignKeyConstraint(typeof(Customer), new[] { "Id" }, 
+                           constraintName: "FK_Orders_Customers")]
+    public int CustomerId { get; set; }
+
+    [DmColumn(precision: 10, scale: 2)]
+    [DmCheckConstraint("CK_Orders_Total_Positive", "Total > 0")]
+    public decimal Total { get; set; }
+}
+```
+
+**4. Performance Optimizations**
+```csharp
+// Without annotations - no indexes created
+public class Customer
+{
+    public string Email { get; set; }  // No index
+}
+
+// With annotations - strategic indexing
+public class Customer
+{
+    [DmIndex(isUnique: true, indexName: "IX_Customers_Email")]
+    public string Email { get; set; }  // Unique index for fast lookups
+}
+```
+
+The key insight is that **annotations make your intentions explicit** to both DapperMatic and future developers. They bridge the gap between your C# domain model and the precise database schema you need in production.
+
+## Supported Standard Annotations
+
+DapperMatic recognizes and supports many well-known .NET annotations, making it easy to work with existing codebases and popular ORMs. This allows for gradual migration and interoperability.
+
+### System.ComponentModel.DataAnnotations
+
+DapperMatic understands these standard .NET validation and schema attributes:
+
+```csharp
+public class Product
+{
+    [Key]  // Recognized as primary key
+    public int Id { get; set; }
+
+    [Required]  // Makes column NOT NULL
+    [StringLength(100)]  // Sets column length to 100
+    public string Name { get; set; }
+
+    [MaxLength(500)]  // Alternative to StringLength
+    public string? Description { get; set; }
+
+    // Both StringLength and MaxLength are supported for setting column lengths
+}
+```
+
+**Supported Attributes:**
+- `[Key]` - Marks property as primary key
+- `[Required]` - Makes column non-nullable (overrides C# nullability)
+- `[StringLength(length)]` - Sets maximum string length
+- `[MaxLength(length)]` - Alternative way to set maximum length
+
+### System.ComponentModel.DataAnnotations.Schema
+
+Entity Framework attributes are also recognized:
+
+```csharp
+[Table("products", Schema = "catalog")]  // Table name and schema
+public class Product
+{
+    [Column("product_id")]  // Column name mapping
+    public int Id { get; set; }
+
+    [Column("product_name")]
+    public string Name { get; set; }
+
+    [ForeignKey(nameof(Category))]  // Basic foreign key support
+    public int CategoryId { get; set; }
+
+    [NotMapped]  // Exclude from database mapping
+    public string ComputedValue => $"{Name} - {Id}";
+
+    [InverseProperty("Products")]  // Navigation property hint
+    public Category Category { get; set; }
+}
+```
+
+**Supported Attributes:**
+- `[Table(name, Schema = "schema")]` - Specifies table name and schema
+- `[Column("column_name")]` - Maps property to specific column name
+- `[ForeignKey("reference")]` - Defines foreign key relationships
+- `[NotMapped]` - Excludes properties from database mapping
+- `[InverseProperty("property")]` - Provides navigation hints
+
+### Microsoft.EntityFrameworkCore Attributes
+
+Modern Entity Framework Core annotations are supported:
+
+```csharp
+public class User
+{
+    // EF Core Index attribute support
+    [Index(IsUnique = true, Name = "IX_Users_Email")]
+    public string Email { get; set; }
+}
+```
+
+**Supported Attributes:**
+- `[Index]` - Creates database indexes with unique and naming options
+
+### ServiceStack.OrmLite Attributes
+
+DapperMatic recognizes ServiceStack annotations for easy migration:
+
+```csharp
+// ServiceStack style annotations (referenced by name, not directly)
+[Alias("app_users")]  // Table name mapping
+[Schema("dbo")]       // Schema specification
+public class User
+{
+    [PrimaryKey]      // Primary key designation
+    [Alias("user_id")] // Column name mapping
+    public int Id { get; set; }
+
+    [Required]        // Non-nullable column
+    [Alias("username")]
+    public string Name { get; set; }
+
+    [Ignore]          // Exclude from mapping
+    public string TempValue { get; set; }
+}
+```
+
+**Supported Attributes (by reflection):**
+- `[Alias("name")]` - Maps to table or column names
+- `[Schema("name")]` - Specifies database schema
+- `[PrimaryKey]` - Marks primary key columns
+- `[Required]` - Makes columns non-nullable
+- `[Ignore]` - Excludes properties from mapping
+
+### Mixed Framework Example
+
+You can use multiple annotation styles together - DapperMatic will recognize them all:
+
+```csharp
+using System.ComponentModel.DataAnnotations;
+using System.ComponentModel.DataAnnotations.Schema;
+
+[Table("orders", Schema = "sales")]  // EF Core style
+public class Order
+{
+    [Key]  // Standard .NET
+    [DmColumn(isAutoIncrement: true)]  // DapperMatic specific
+    public int Id { get; set; }
+
+    [Required]  // Standard .NET  
+    [StringLength(50)]  // Standard .NET
+    [DmIndex(indexName: "IX_Orders_OrderNumber")]  // DapperMatic specific
+    public string OrderNumber { get; set; }
+
+    [Column("customer_id")]  // EF Core
+    [ForeignKey(nameof(Customer))]  // EF Core
+    [DmForeignKeyConstraint(typeof(Customer), new[] { "Id" })]  // DapperMatic specific
+    public int CustomerId { get; set; }
+
+    [NotMapped]  // EF Core
+    public Customer Customer { get; set; }
+}
+```
+
+### Why Support Multiple Annotation Styles?
+
+**1. Migration Path**
+```csharp
+// Start with existing EF Core model
+[Table("users")]
+public class User
+{
+    [Key]
+    public int Id { get; set; }
+    
+    [Required]
+    [StringLength(100)]
+    public string Name { get; set; }
+}
+
+// Gradually add DapperMatic-specific features
+[Table("users")]
+[DmCheckConstraint("CK_Users_Name_NotEmpty", "LEN(Name) > 0")]  // Add business rules
+public class User
+{
+    [Key]
+    [DmColumn(isAutoIncrement: true)]  // More explicit control
+    public int Id { get; set; }
+    
+    [Required]
+    [StringLength(100)]
+    [DmIndex(isUnique: true)]  // Add performance optimizations
+    public string Name { get; set; }
+}
+```
+
+**2. Team Flexibility**
+Teams can use familiar annotations while gaining DapperMatic's DDL capabilities.
+
+**3. Existing Codebase Integration**
+Works with established Entity Framework, ServiceStack, or plain .NET models.
+
+### Annotation Precedence
+
+When multiple annotations specify the same information, DapperMatic follows this precedence:
+
+1. **DapperMatic-specific attributes** (highest priority)
+2. **Entity Framework attributes**
+3. **Standard .NET attributes**
+4. **ServiceStack attributes** (lowest priority)
+5. **Convention-based mapping** (fallback)
+
+```csharp
+public class Example
+{
+    [Column("ef_name")]           // EF Core: "ef_name"
+    [DmColumn("dm_name")]         // DapperMatic: "dm_name" (wins)
+    public string Name { get; set; }  // Result: column named "dm_name"
+}
+```
 
 ## Table and View Annotations
 

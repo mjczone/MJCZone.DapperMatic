@@ -4,9 +4,9 @@
 
 - .NET 8.0 or later
 - A supported database:
-  - SQL Server 2019+
-  - MySQL 8.0+ / MariaDB 10.5+
-  - PostgreSQL 12+
+  - SQL Server 2017+, 2019, 2022
+  - MySQL 5.7+, 8.4, 9.0 / MariaDB 10.11+, 11.1
+  - PostgreSQL 15+, 16+ (with optional PostGIS extension support)
   - SQLite 3.35+
 
 ## Install via NuGet
@@ -33,11 +33,17 @@ You'll also need the appropriate database provider package:
 
 ::: code-group
 ```bash [SQL Server]
+# Recommended
 dotnet add package Microsoft.Data.SqlClient
+# Alternative
+dotnet add package System.Data.SqlClient
 ```
 
 ```bash [MySQL]
+# Recommended
 dotnet add package MySqlConnector
+# Alternative
+dotnet add package MySql.Data
 ```
 
 ```bash [PostgreSQL]
@@ -45,7 +51,10 @@ dotnet add package Npgsql
 ```
 
 ```bash [SQLite]
+# Recommended
 dotnet add package Microsoft.Data.Sqlite
+# Alternative
+dotnet add package System.Data.SQLite
 ```
 :::
 

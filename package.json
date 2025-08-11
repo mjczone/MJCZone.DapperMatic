@@ -5,7 +5,7 @@
   "main": "index.js",
   "scripts": {
     "build": "dotnet build",
-    "docs": "npx serve ./docs/",
+    "docs": "dotnet test --filter \"Can_generate_docs\" && npx serve ./docs/",
     "test": "dotnet test"
   },
   "keywords": [],
