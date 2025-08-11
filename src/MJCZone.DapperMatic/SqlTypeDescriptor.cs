@@ -3,8 +3,7 @@ using System.Text;
 namespace MJCZone.DapperMatic;
 
 /// <summary>
-/// A descriptor for a SQL type that breaks up the SQL type name into its useful parts,
-/// including the base type name, the complete SQL type name, and the numbers extracted from the SQL type name.
+/// A descriptor for a SQL type that breaks up the SQL type name into its useful parts, including the base type name, the complete SQL type name, and the numbers extracted from the SQL type name.
 /// </summary>
 public class SqlTypeDescriptor
 {

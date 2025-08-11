@@ -68,6 +68,20 @@ internal static class SymbolExtensions
         return null;
     }
     
+    public static List<Output.ParameterInfo>? GetParameterTypes(this ISymbol symbol)
+    {
+        if (symbol.Kind != SymbolKind.Method) return null;
+        
+        var method = (IMethodSymbol)symbol;
+        if (method.Parameters.Length == 0) return null;
+        
+        return method.Parameters.Select(parameter => new Output.ParameterInfo
+        {
+            Name = parameter.Name,
+            Type = parameter.Type.ToString()?.WithoutNamespaces().GetNullableTypeName().GetTypeAliasOrName()
+        }).ToList();
+    }
+    
     public static string? GetShortName(this ISymbol symbol)
     {
         switch (symbol.Kind)

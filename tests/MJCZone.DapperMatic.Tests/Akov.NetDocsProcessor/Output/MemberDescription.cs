@@ -1,7 +1,9 @@
 using System.Text;
+using System.Text.Json.Serialization;
 using Akov.NetDocsProcessor.Common;
 using Akov.NetDocsProcessor.Extensions;
 using Akov.NetDocsProcessor.Input;
+using Microsoft.CodeAnalysis;
 
 namespace Akov.NetDocsProcessor.Output;
 
@@ -126,6 +128,12 @@ public class MemberDescription : IXmlMemberElement
     /// The list of the related references.
     /// </summary>
     public List<PageInfo>? SeeAlso { get; set; }
+    
+    /// <summary>
+    /// The Roslyn symbol for this member (used for enhanced type information).
+    /// </summary>
+    [JsonIgnore]
+    public ISymbol? Symbol { get; set; }
 
     public override string ToString()
     {
