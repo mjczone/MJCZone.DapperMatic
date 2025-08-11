@@ -5,6 +5,8 @@ export default defineConfig({
   description:
     "IDbConnection extension methods for DDL operations across multiple database providers",
 
+  markdown: { theme: { light: "github-light", dark: "github-dark" } },
+
   themeConfig: {
     logo: "/favicon.ico",
 
@@ -90,64 +92,64 @@ export default defineConfig({
       ],
       "/api/": [
         {
-          "text": "API Reference",
-          "items": [
+          text: "API Reference",
+          items: [
             {
-              "text": "Overview",
-              "link": "/api/"
+              text: "Overview",
+              link: "/api/",
             },
             {
-              "text": "MJCZone.DapperMatic",
-              "link": "/api/mjczone.dappermatic/",
-              "items": [
+              text: "MJCZone.DapperMatic",
+              link: "/api/mjczone.dappermatic/",
+              items: [
                 {
-                  "text": "📦 Root",
-                  "link": "/api/mjczone.dappermatic/mjczone.dappermatic/"
+                  text: "📦 Root",
+                  link: "/api/mjczone.dappermatic/mjczone.dappermatic/",
                 },
                 {
-                  "text": "Providers",
-                  "link": "/api/mjczone.dappermatic/mjczone.dappermatic.providers/"
+                  text: "📦 / Providers",
+                  link: "/api/mjczone.dappermatic/mjczone.dappermatic.providers/",
                 },
                 {
-                  "text": "Providers.SqlServer",
-                  "link": "/api/mjczone.dappermatic/mjczone.dappermatic.providers.sqlserver/"
+                  text: "📦 / Providers.SqlServer",
+                  link: "/api/mjczone.dappermatic/mjczone.dappermatic.providers.sqlserver/",
                 },
                 {
-                  "text": "Providers.Sqlite",
-                  "link": "/api/mjczone.dappermatic/mjczone.dappermatic.providers.sqlite/"
+                  text: "📦 / Providers.Sqlite",
+                  link: "/api/mjczone.dappermatic/mjczone.dappermatic.providers.sqlite/",
                 },
                 {
-                  "text": "Providers.PostgreSql",
-                  "link": "/api/mjczone.dappermatic/mjczone.dappermatic.providers.postgresql/"
+                  text: "📦 / Providers.PostgreSql",
+                  link: "/api/mjczone.dappermatic/mjczone.dappermatic.providers.postgresql/",
                 },
                 {
-                  "text": "Providers.MySql",
-                  "link": "/api/mjczone.dappermatic/mjczone.dappermatic.providers.mysql/"
+                  text: "📦 / Providers.MySql",
+                  link: "/api/mjczone.dappermatic/mjczone.dappermatic.providers.mysql/",
                 },
                 {
-                  "text": "Providers.Base",
-                  "link": "/api/mjczone.dappermatic/mjczone.dappermatic.providers.base/"
+                  text: "📦 / Providers.Base",
+                  link: "/api/mjczone.dappermatic/mjczone.dappermatic.providers.base/",
                 },
                 {
-                  "text": "Models",
-                  "link": "/api/mjczone.dappermatic/mjczone.dappermatic.models/"
+                  text: "📦 / Models",
+                  link: "/api/mjczone.dappermatic/mjczone.dappermatic.models/",
                 },
                 {
-                  "text": "Interfaces",
-                  "link": "/api/mjczone.dappermatic/mjczone.dappermatic.interfaces/"
+                  text: "📦 / Interfaces",
+                  link: "/api/mjczone.dappermatic/mjczone.dappermatic.interfaces/",
                 },
                 {
-                  "text": "DataAnnotations",
-                  "link": "/api/mjczone.dappermatic/mjczone.dappermatic.dataannotations/"
+                  text: "📦 / DataAnnotations",
+                  link: "/api/mjczone.dappermatic/mjczone.dappermatic.dataannotations/",
                 },
                 {
-                  "text": "Converters",
-                  "link": "/api/mjczone.dappermatic/mjczone.dappermatic.converters/"
-                }
-              ]
-            }
-          ]
-        }
+                  text: "📦 / Converters",
+                  link: "/api/mjczone.dappermatic/mjczone.dappermatic.converters/",
+                },
+              ],
+            },
+          ],
+        },
       ],
     },
 

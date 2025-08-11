@@ -5,7 +5,7 @@ import { fileURLToPath } from "url";
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-const packagesDir = path.join(__dirname, "../public/packages");
+const packagesDir = path.join(__dirname, "../packages");
 const apiOutputDir = path.join(__dirname, "../api");
 
 // Ensure output directory exists

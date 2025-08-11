@@ -336,6 +336,7 @@
   --q-light: var(--q-grey-1);
   --q-white: #fff;
   --q-black: #000;
+  --q-code-block: #161618;
 }
 
 :root {
@@ -417,6 +418,7 @@
     var(--q-deep-purple-5) 30%,
     var(--q-blue-10)
   );
+  /* --vp-code-block-bg: var(--q-blue-grey-10); */
 }
 .dark {
   --vp-home-hero-name-background: -webkit-linear-gradient(
@@ -424,20 +426,21 @@
     var(--q-deep-purple-3) 30%,
     var(--q-blue-10)
   );
+  /* --vp-code-block-bg: var(--q-code-block); */
 }
 
 /* API Browser specific styles */
-.api-browser code {
+/* .api-browser code {
   background-color: var(--vp-c-bg-soft);
   padding: 0.125rem 0.25rem;
   border-radius: 3px;
   font-size: 0.875em;
-}
+} */
 
 /* Improve code block appearance */
-.vp-doc pre {
+/* .vp-doc pre {
   background-color: var(--vp-c-bg-soft);
-}
+} */
 
 /* Custom warning boxes for provider notes */
 .warning {
