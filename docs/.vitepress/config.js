@@ -4,6 +4,9 @@ export default defineConfig({
   title: "DapperMatic",
   description:
     "IDbConnection extension methods for DDL operations across multiple database providers",
+  
+  base: "/MJCZone.DapperMatic/",
+  ignoreDeadLinks: true,
 
   markdown: { theme: { light: "github-light", dark: "github-dark" } },
 
