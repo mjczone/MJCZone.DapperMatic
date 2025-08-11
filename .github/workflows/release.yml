@@ -33,8 +33,23 @@ jobs:
       - name: Build docs assets
         run: |
           dotnet test --configuration Release /p:Version=${VERSION_NUMBER} --filter "MJCZone.DapperMatic.Tests.TestOutputDocs" --no-build
-          # replace VERSION_NUMBER in docs/docs.config.json with ${VERSION_NUMBER}
-          sed -i "s/VERSION_NUMBER/${VERSION_NUMBER}/g" docs/docs.config.json
+          # replace VERSION_NUMBER in docs/index.md with ${VERSION_NUMBER}
+          sed -i "s/VERSION_NUMBER/${VERSION_NUMBER}/g" docs/index.md
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'npm'
+          cache-dependency-path: docs/package-lock.json
+
+      - name: Install VitePress dependencies
+        working-directory: docs
+        run: npm ci
+
+      - name: Build VitePress documentation
+        working-directory: docs
+        run: npm run docs:build
 
       - name: Pack
         run: dotnet pack --configuration Release /p:Version=${VERSION_NUMBER} --no-build --output nupkgs
@@ -49,7 +64,7 @@ jobs:
       - name: Upload Pages Artifact
         uses: actions/upload-pages-artifact@v3
         with:
-          path: docs/
+          path: docs/.vitepress/dist
 
   # Deploy to Github Packages Repository
   deploy-github-packages:
