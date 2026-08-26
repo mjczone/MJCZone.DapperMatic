@@ -12,7 +12,7 @@
     <Description>Provides ASP.NET Core Web API endpoints and middleware for database schema management using DapperMatic. Includes endpoints for tables, columns, indexes, constraints, and views across SQL Server, MySQL/MariaDB, PostgreSQL, and SQLite.</Description>
     <RootNamespace>MJCZone.DapperMatic.AspNetCore</RootNamespace>
     <AssemblyName>MJCZone.DapperMatic.AspNetCore</AssemblyName>
-    <TargetFramework>net8.0</TargetFramework>
+    <TargetFramework>net10.0</TargetFramework>
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
     <DisableImplicitAspNetCoreAnalyzers>true</DisableImplicitAspNetCoreAnalyzers>
@@ -24,13 +24,15 @@
     <Company>MJCZone Inc.</Company>
   </PropertyGroup>
   <ItemGroup>
+    <!-- ASP.NET Core types for a class library using the non-Web SDK -->
+    <FrameworkReference Include="Microsoft.AspNetCore.App" />
+  </ItemGroup>
+  <ItemGroup>
     <PackageReference Include="JsonFlatFileDataStore" Version="2.4.2" />
-    <!-- v10.x has breaking source generator changes, keep upper bound -->
-    <PackageReference Include="Microsoft.AspNetCore.OpenApi" Version="[8.0.20,10.0)" />
     <PackageReference Include="MySQL.Data" Version="9.4.0" />
     <PackageReference Include="MySqlConnector" Version="2.4.0" />
     <PackageReference Include="Microsoft.Data.SqlClient" Version="6.1.2" />
-    <PackageReference Include="Microsoft.Data.Sqlite" Version="9.0.9" />
+    <PackageReference Include="Microsoft.Data.Sqlite" Version="10.0.11" />
     <PackageReference Include="NetTopologySuite" Version="2.6.0" />
     <PackageReference Include="Npgsql" Version="9.0.4" />
     <PackageReference Include="System.Data.SqlClient" Version="4.9.0" />

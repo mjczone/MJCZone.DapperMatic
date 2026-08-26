@@ -96,6 +96,7 @@ export default defineConfig({
             { text: "Security & Authentication", link: "/guide/web-api/security" },
             { text: "Endpoints Overview", link: "/guide/web-api/endpoints" },
             { text: "Integration Examples", link: "/guide/web-api/examples" },
+            { text: "OpenAPI Integration", link: "/guide/web-api/openapi-compatibility" },
           ],
         },
         {

@@ -18,13 +18,37 @@ DapperMatic Web API provides comprehensive REST endpoints for database schema ma
 
 1. **Built-in Documentation API Browser**: Navigate to [/api-browser/](/api-browser/) in this documentation
 
-2. **Add Swagger to Your Application** (optional): Install the Swashbuckle NuGet package to enable interactive API documentation in your application:
+2. **Add an API reference to your own application** (optional). DapperMatic describes its
+   endpoints using standard ASP.NET Core metadata and ships **no OpenAPI dependency of its own**,
+   so any OpenAPI stack picks them up.
+
+   **Recommended — ASP.NET Core 10's built-in generator with the Scalar UI:**
    ```bash
-   dotnet add package Swashbuckle.AspNetCore
+   dotnet add package Microsoft.AspNetCore.OpenApi
+   dotnet add package Scalar.AspNetCore
    ```
-   Then configure it in your application:
    ```csharp
-   builder.Services.AddEndpointsApiExplorer();
+   builder.Services.AddOpenApi();
+
+   var app = builder.Build();
+
+   app.MapOpenApi();
+   app.MapScalarApiReference();
+
+   app.UseRouting();
+   app.UseDapperMatic();
+   ```
+   Once configured, you can access:
+   - **Scalar UI**: Navigate to `/scalar` in your running application
+   - **OpenAPI Specification**: Available at `/openapi/v1.json`
+
+   Keep `Microsoft.AspNetCore.OpenApi` on the major version matching your target framework
+   (`10.x` for `net10.0`). See [OpenAPI Integration](/guide/web-api/openapi-compatibility) for
+   generating the spec at build time instead of serving it.
+
+   **Already using Swashbuckle?** That keeps working — any version. Because DapperMatic
+   references no OpenAPI package, there is no version for it to conflict with:
+   ```csharp
    builder.Services.AddSwaggerGen();
 
    var app = builder.Build();
@@ -32,9 +56,6 @@ DapperMatic Web API provides comprehensive REST endpoints for database schema ma
    app.UseSwagger();
    app.UseSwaggerUI();
    ```
-   Once configured, you can access:
-   - **Swagger UI**: Navigate to `/swagger` in your running application
-   - **OpenAPI Specification**: Available at `/swagger/v1/swagger.json`
 
 ## Base URL Structure
 

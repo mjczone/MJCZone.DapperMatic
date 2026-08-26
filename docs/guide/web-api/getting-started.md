@@ -68,7 +68,7 @@ Your application now has DapperMatic REST endpoints available at:
 
 ### 4. Explore the API
 
-Navigate to `/swagger` in your application to see the interactive OpenAPI documentation, or use the [REST API browser](/api-browser/) to explore all available endpoints.
+Wire up an OpenAPI UI to explore the endpoints interactively — see [Accessing API Documentation](/guide/web-api/endpoints#accessing-api-documentation) for the two-line setup using ASP.NET Core's built-in generator and Scalar. You can also use the [REST API browser](/api-browser/) here in the docs to explore every endpoint without running anything.
 
 ## Example Usage
 

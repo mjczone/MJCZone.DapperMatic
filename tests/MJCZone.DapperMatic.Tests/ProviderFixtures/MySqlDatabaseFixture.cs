@@ -32,8 +32,7 @@ public class MySql_57_DatabaseFixture : MySqlDatabaseFixture
 
 public abstract class MySqlDatabaseFixture(string imageName) : DatabaseFixtureBase<MySqlContainer>
 {
-    private readonly MySqlContainer _container = new MySqlBuilder()
-        .WithImage(imageName)
+    private readonly MySqlContainer _container = new MySqlBuilder(imageName)
         .WithPassword("Strong_password_123!")
         .WithAutoRemove(true)
         .WithCleanUp(true)

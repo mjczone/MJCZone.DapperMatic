@@ -55,7 +55,7 @@ dotnet add package MJCZone.DapperMatic.AspNetCore
 
 ### Prerequisites
 
-- **.NET 8.0** or later
+- **.NET 10.0** or later
 
 ---
 
