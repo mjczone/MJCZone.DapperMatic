@@ -689,15 +689,23 @@ public static class TypeMappingHelpers
     /// Supported delimiters: comma ',' and semicolon ';'.
     /// Braces '{', '}' and brackets '[', ']' are optional wrappers and will be trimmed.</param>
     /// <returns>A dictionary mapping DbProviderType to SQL type name, or empty dictionary if input is null/empty.</returns>
+    /// <remarks>
+    /// A lone type name carrying no "provider:" prefix maps to <see cref="DbProviderType.Other"/>, which means
+    /// "any provider that recognises this type". An unprefixed fragment appearing alongside prefixed entries is
+    /// treated as malformed and dropped.
+    /// </remarks>
     /// <example>
     /// Examples:
     /// - "{mysql:decimal(10,2),sqlserver:decimal(12,4)}" → {MySql: "decimal(10,2)", SqlServer: "decimal(12,4)"}.
     /// - "{postgresql:integer[],mysql:json}" → {PostgreSql: "integer[]", MySql: "json"}.
     /// - "{sqlserver:money,mysql:decimal(19,4)}" → {SqlServer: "money", MySql: "decimal(19,4)"}.
+    /// - "jsonb" → {Other: "jsonb"} (applies to any provider that recognises "jsonb").
+    /// - "{mysql:int,jsonb}" → {MySql: "int"} ("jsonb" dropped as a malformed fragment).
     /// </example>
     public static Dictionary<DbProviderType, string> ParseProviderDataTypes(string? providerDataType)
     {
         var result = new Dictionary<DbProviderType, string>();
+        string? bareTypeName = null;
 
         if (string.IsNullOrWhiteSpace(providerDataType))
         {
@@ -715,7 +723,16 @@ public static class TypeMappingHelpers
             var colonIndex = provider.IndexOf(':', StringComparison.Ordinal);
             if (colonIndex == -1)
             {
-                continue; // Skip entries without a colon
+                // An entry with no provider prefix is only meaningful when it is the ONLY entry
+                // (e.g. "jsonb"), in which case it means "any provider that recognises this type".
+                // Alongside provider-prefixed entries it is a malformed fragment, so it is dropped.
+                var candidate = provider.Trim();
+                if (!string.IsNullOrWhiteSpace(candidate))
+                {
+                    bareTypeName ??= candidate;
+                }
+
+                continue;
             }
 
             var providerName = provider[..colonIndex].Trim();
@@ -759,6 +776,12 @@ public static class TypeMappingHelpers
             {
                 result[providerType.Value] = typeName;
             }
+        }
+
+        // A lone, unprefixed type name applies to any provider that recognises it.
+        if (result.Count == 0 && !string.IsNullOrWhiteSpace(bareTypeName))
+        {
+            result[DbProviderType.Other] = bareTypeName;
         }
 
         return result;

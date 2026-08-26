@@ -680,6 +680,12 @@ public static class DmTableFactory
                 }
             }
         }
+        else if (cpa != null && !string.IsNullOrWhiteSpace(cpa.ConstraintName) && primaryKey != null)
+        {
+            // The class-level attribute only names the constraint; the columns were already
+            // collected from the property-level primary key attributes above.
+            primaryKey.ConstraintName = cpa.ConstraintName;
+        }
 
         if (primaryKey != null && string.IsNullOrWhiteSpace(primaryKey.ConstraintName))
         {

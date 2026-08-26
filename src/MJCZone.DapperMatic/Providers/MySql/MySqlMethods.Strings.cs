@@ -55,11 +55,13 @@ public partial class MySqlMethods
     /// </summary>
     /// <param name="column">The column definition.</param>
     /// <param name="constraintName">The constraint name.</param>
+    /// <param name="columnType">The already-resolved SQL data type for the column.</param>
     /// <param name="useTableConstraint">Indicates whether to use table constraint.</param>
     /// <returns>The SQL string for inline primary key column constraint.</returns>
     protected override string SqlInlinePrimaryKeyColumnConstraint(
         DmColumn column,
         string constraintName,
+        string columnType,
         out bool useTableConstraint
     )
     {
@@ -67,15 +69,16 @@ public partial class MySqlMethods
         return column.IsAutoIncrement ? "AUTO_INCREMENT" : string.Empty;
 
         // the following code doesn't work because MySQL doesn't allow named constraints in the column definition
-        // return $"CONSTRAINT {NormalizeName(constraintName)} {(column.IsAutoIncrement ? $"{SqlInlinePrimaryKeyAutoIncrementColumnConstraint(column)} " : string.Empty)}PRIMARY KEY".Trim();
+        // return $"CONSTRAINT {NormalizeName(constraintName)} {(column.IsAutoIncrement ? $"{SqlInlinePrimaryKeyAutoIncrementColumnConstraint(column, columnType)} " : string.Empty)}PRIMARY KEY".Trim();
     }
 
     /// <summary>
     /// Generates the SQL string for inline primary key auto-increment column constraint.
     /// </summary>
     /// <param name="column">The column definition.</param>
+    /// <param name="columnType">The already-resolved SQL data type for the column.</param>
     /// <returns>The SQL string for inline primary key auto-increment column constraint.</returns>
-    protected override string SqlInlinePrimaryKeyAutoIncrementColumnConstraint(DmColumn column)
+    protected override string SqlInlinePrimaryKeyAutoIncrementColumnConstraint(DmColumn column, string columnType)
     {
         return "AUTO_INCREMENT";
     }

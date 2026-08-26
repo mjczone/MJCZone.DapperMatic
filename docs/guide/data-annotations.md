@@ -486,11 +486,13 @@ public class Product
 
 **Key Parameters:**
 - `columnName` - Database column name
-- `providerDataType` - Specific database type (e.g., "nvarchar(100)")
+- `providerDataType` - Specific database type, e.g. `"nvarchar(100)"` or
+  `"{sqlserver:nvarchar(100),postgresql:varchar(100)}"` (see
+  [Provider-Specific Data Types](#provider-specific-data-types))
 - `length` - Maximum length for strings/binary data
 - `precision` - Total digits for numeric types
 - `scale` - Decimal places for numeric types
-- `isNullable` - Whether column allows NULL
+- `isNullable` - Whether column allows NULL (**defaults to `false`** - see the note below)
 - `isPrimaryKey` - Whether column is part of primary key
 - `isAutoIncrement` - Whether column auto-increments
 - `isUnique` - Whether column has unique constraint
@@ -501,6 +503,24 @@ public class Product
 - `referencedTableName` - Referenced table for foreign keys
 - `referencedColumnName` - Referenced column for foreign keys
 - `onDelete` / `onUpdate` - Foreign key actions
+
+::: warning `isNullable` defaults to `false`
+Once you put a `[DmColumn]` attribute on a property, nullability comes from the attribute, **not**
+from the .NET type - and `isNullable` defaults to `false`. A nullable property therefore becomes a
+`NOT NULL` column unless you say otherwise:
+
+```csharp
+public string? Description { get; set; }                        // nullable column
+
+[DmColumn("description", length: 500)]
+public string? Description { get; set; }                        // NOT NULL - the attribute wins
+
+[DmColumn("description", length: 500, isNullable: true)]
+public string? Description { get; set; }                        // nullable, as intended
+```
+
+Nullability is only inferred from the .NET type when a property has no `[DmColumn]` attribute at all.
+:::
 
 ### Provider-Specific Data Types
 
@@ -525,6 +545,44 @@ public class Document
     public Guid DocumentId { get; set; }
 }
 ```
+
+#### Type names without a provider prefix
+
+If your application only ever targets one database, you can skip the `{provider:...}` wrapper and
+give a plain type name:
+
+```csharp
+public class Document
+{
+    // Applies to any provider that recognises "jsonb" -- in practice, PostgreSQL.
+    [DmColumn("metadata", providerDataType: "jsonb")]
+    public Dictionary<string, string> Metadata { get; set; } = new();
+}
+```
+
+A bare type name means **"use this type on any provider that recognises it"**. Providers that do
+not know the type fall back to inferring one from the .NET type, so a bare name never produces
+invalid DDL on a provider it was not written for. For example, `providerDataType: "nvarchar"`
+yields `nvarchar` on SQL Server and SQLite, but an inferred `character varying` on PostgreSQL,
+which has no `nvarchar` type.
+
+Two rules keep this from misfiring:
+
+- **It must be the only entry.** An unprefixed fragment sitting alongside prefixed entries -- as in
+  `"{mysql:int,jsonb,sqlserver:int}"` -- is treated as a malformed fragment and ignored, because it
+  is far more likely to be a typo than an intentional default.
+- **Inline parameters must be numeric.** `"varchar(100)"` and `"decimal(10,2)"` are honoured, but
+  `"nvarchar(max)"` is not, because `max` is SQL Server syntax that other providers reject even
+  though they recognise `nvarchar`. Supply provider-specific parameter syntax through the explicit
+  `{provider:type}` form, or use the `length`, `precision` and `scale` parameters instead.
+
+Prefer the explicit `{provider:type}` form for models that genuinely run against more than one
+database -- it is the only way to guarantee a particular type on a particular provider, and it is
+never second-guessed against the provider's type registry.
+
+Note that a malformed entry such as `{postgresql=jsonb}` (using `=` instead of `:`) parses as a
+single bare type name that no provider recognises, so it is silently inferred rather than reported
+as an error.
 
 ### DmIgnoreAttribute
 
@@ -568,7 +626,23 @@ public class UserRole
     public int UserId { get; set; }
     public int RoleId { get; set; }
 }
+
+// Naming a primary key that is declared on the columns themselves.
+// Supplying only a constraint name at the class level names whichever
+// primary key the column attributes already describe.
+[DmPrimaryKeyConstraint(constraintName: "PK_Accounts")]
+public class Account
+{
+    [DmColumn("id", isPrimaryKey: true)]
+    public int Id { get; set; }
+}
 ```
+
+::: warning MySQL and MariaDB ignore primary key constraint names
+MySQL and MariaDB always name the primary key `PRIMARY` and discard any name you supply - this is a
+server limitation, not a DapperMatic one. Your name is honoured on SQL Server, PostgreSQL and SQLite;
+on MySQL and MariaDB, reading the table back reports a generated `pk_{table}_{columns}` name instead.
+:::
 
 ### DmForeignKeyConstraintAttribute
 
@@ -623,6 +697,19 @@ public class User
     public string FirstName { get; set; }
     public string LastName { get; set; }
     public DateTime DateOfBirth { get; set; }
+}
+```
+
+A unique constraint does **not** make its columns `NOT NULL`. A nullable column stays nullable when it
+takes part in one, matching SQL semantics - PostgreSQL, MySQL and SQLite permit many NULLs in a unique
+column, and SQL Server permits one:
+
+```csharp
+[DmUniqueConstraint(new[] { "phone_number" }, "UQ_Users_Phone")]
+public class User
+{
+    [DmColumn("phone_number", length: 20, isNullable: true)]
+    public string? PhoneNumber { get; set; }   // remains nullable
 }
 ```
 

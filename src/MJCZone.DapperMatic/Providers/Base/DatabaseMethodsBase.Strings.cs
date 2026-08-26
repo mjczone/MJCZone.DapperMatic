@@ -167,9 +167,13 @@ public abstract partial class DatabaseMethodsBase
 
         var sql = new StringBuilder();
 
+        // Resolve the column type once and pass it to the methods that need it. It deliberately is not
+        // stored on the column: DmColumn instances come from a process-wide DmTableFactory cache.
+        var columnType = SqlColumnType(column, dbVersion);
+
         sql.Append($"{SqlInlineColumnNameAndType(column, dbVersion)}");
 
-        sql.Append($" {SqlInlineColumnNullable(column)}");
+        sql.Append($" {SqlInlineColumnNullable(column, columnType)}");
 
         // Only add the primary key here if the primary key is a single column key
         // and doesn't already exist in the existing table constraints
@@ -185,8 +189,16 @@ public abstract partial class DatabaseMethodsBase
             )
         )
         {
-            var pkConstraintName = DbProviderUtils.GeneratePrimaryKeyConstraintName(tableName, columnName);
-            var pkInlineSql = SqlInlinePrimaryKeyColumnConstraint(column, pkConstraintName, out var useTableConstraint);
+            // Honour a constraint name supplied by the model; only generate one when none was given.
+            var pkConstraintName = !string.IsNullOrWhiteSpace(tpkc?.ConstraintName)
+                ? tpkc!.ConstraintName
+                : DbProviderUtils.GeneratePrimaryKeyConstraintName(tableName, columnName);
+            var pkInlineSql = SqlInlinePrimaryKeyColumnConstraint(
+                column,
+                pkConstraintName,
+                columnType,
+                out var useTableConstraint
+            );
             if (!string.IsNullOrWhiteSpace(pkInlineSql))
             {
                 sql.Append($" {pkInlineSql}");
@@ -360,14 +372,35 @@ public abstract partial class DatabaseMethodsBase
     }
 
     /// <summary>
-    /// Generates a string representing a column name and its data type for use in SQL inline statements (e.g., CREATE TABLE or ALTER TABLE).
+    /// Resolves the SQL data type for a column, without mutating the column.
     /// </summary>
     /// <param name="column">The DmColumn object containing the column details.</param>
     /// <param name="dbVersion">The database version. Used to determine the data type syntax for compatibility with different DBMS versions.</param>
-    /// <returns>A string representing the column name and its data type, suitable for use in SQL inline statements.</returns>
-    protected virtual string SqlInlineColumnNameAndType(DmColumn column, Version dbVersion)
+    /// <returns>The SQL data type for the column.</returns>
+    /// <remarks>
+    /// This must stay free of side effects. <see cref="DmTableFactory"/> caches one <see cref="DmTable"/> per
+    /// .NET type, so a column reached here is shared process-wide; writing the resolved type back onto it
+    /// corrupts <see cref="DmColumn.ProviderDataTypes"/> when two providers render the same model concurrently.
+    /// The resolved type is threaded through <see cref="SqlInlineColumnDefinition"/> to the methods that need
+    /// it instead.
+    /// </remarks>
+    protected virtual string SqlColumnType(DmColumn column, Version dbVersion)
     {
         var columnType = column.GetProviderDataType(ProviderType);
+
+        if (string.IsNullOrWhiteSpace(columnType))
+        {
+            // A bare type name with no provider prefix (e.g. "jsonb" rather than "{postgresql:jsonb}")
+            // is stored against DbProviderType.Other and applies to any provider that recognises it.
+            // This lets single-database models use a plain type name, while cross-provider models keep
+            // working because providers that do not know the type fall through to .NET type inference.
+            var anyProviderDataType = column.GetProviderDataType(DbProviderType.Other);
+            if (!string.IsNullOrWhiteSpace(anyProviderDataType) && IsUsableAnyProviderDataType(anyProviderDataType))
+            {
+                columnType = anyProviderDataType;
+            }
+        }
+
         if (string.IsNullOrWhiteSpace(columnType))
         {
             // if no provider type is set, we need to infer it from the .NET type
@@ -452,20 +485,32 @@ public abstract partial class DatabaseMethodsBase
             );
         }
 
-        // set the type on the column so that it can be used in other methods
-        column.SetProviderDataType(ProviderType, columnType);
+        return columnType;
+    }
 
-        return $"{NormalizeName(column.ColumnName)} {columnType}";
+    /// <summary>
+    /// Generates a string representing a column name and its data type for use in SQL inline statements (e.g., CREATE TABLE or ALTER TABLE).
+    /// </summary>
+    /// <param name="column">The DmColumn object containing the column details.</param>
+    /// <param name="dbVersion">The database version. Used to determine the data type syntax for compatibility with different DBMS versions.</param>
+    /// <returns>A string representing the column name and its data type, suitable for use in SQL inline statements.</returns>
+    protected virtual string SqlInlineColumnNameAndType(DmColumn column, Version dbVersion)
+    {
+        return $"{NormalizeName(column.ColumnName)} {SqlColumnType(column, dbVersion)}";
     }
 
     /// <summary>
     /// Generates a string representing the NULLability clause for a column (e.g., NOT NULL or NULL).
     /// </summary>
     /// <param name="column">The DmColumn object containing the column details, including its Nullable property.</param>
+    /// <param name="columnType">The already-resolved SQL data type for the column.</param>
     /// <returns>A string representing the NULLability clause for use in SQL inline statements, or an empty string if not specified.</returns>
-    protected virtual string SqlInlineColumnNullable(DmColumn column)
+    protected virtual string SqlInlineColumnNullable(DmColumn column, string columnType)
     {
-        return column.IsNullable && !column.IsUnique && !column.IsPrimaryKey ? " NULL" : " NOT NULL";
+        // A UNIQUE constraint does not imply NOT NULL. All supported providers permit NULLs in a
+        // unique column (PostgreSQL, MySQL and SQLite allow many; SQL Server allows one), so only
+        // primary key membership forces NOT NULL here.
+        return column.IsNullable && !column.IsPrimaryKey ? " NULL" : " NOT NULL";
     }
 
     /// <summary>
@@ -473,6 +518,7 @@ public abstract partial class DatabaseMethodsBase
     /// </summary>
     /// <param name="column">The DmColumn object containing the column details.</param>
     /// <param name="constraintName">The desired name for the PRIMARY KEY constraint. If null, a default name will be generated.</param>
+    /// <param name="columnType">The already-resolved SQL data type for the column.</param>
     /// <param name="useTableConstraint">
     ///     Output parameter indicating whether to use TABLE CONSTRAINT syntax (true) or inline the constraint within the column definition (false).
     ///     The method determines which syntax to use based on the database provider.
@@ -481,19 +527,21 @@ public abstract partial class DatabaseMethodsBase
     protected virtual string SqlInlinePrimaryKeyColumnConstraint(
         DmColumn column,
         string constraintName,
+        string columnType,
         out bool useTableConstraint
     )
     {
         useTableConstraint = false;
-        return $"CONSTRAINT {NormalizeName(constraintName)} PRIMARY KEY {(column.IsAutoIncrement ? SqlInlinePrimaryKeyAutoIncrementColumnConstraint(column) : string.Empty)}".Trim();
+        return $"CONSTRAINT {NormalizeName(constraintName)} PRIMARY KEY {(column.IsAutoIncrement ? SqlInlinePrimaryKeyAutoIncrementColumnConstraint(column, columnType) : string.Empty)}".Trim();
     }
 
     /// <summary>
     /// Generates a string representing both a PRIMARY KEY and AUTOINCREMENT constraint clauses for a specific column in SQL inline statements.
     /// </summary>
     /// <param name="column">The DmColumn object containing the column details, which must have an Identity property set to true.</param>
+    /// <param name="columnType">The already-resolved SQL data type for the column.</param>
     /// <returns>A string representing both the PRIMARY KEY and AUTOINCREMENT constraint clauses for use in SQL inline statements. If the column does not support identity or autoincrement, an empty string is returned.</returns>
-    protected virtual string SqlInlinePrimaryKeyAutoIncrementColumnConstraint(DmColumn column)
+    protected virtual string SqlInlinePrimaryKeyAutoIncrementColumnConstraint(DmColumn column, string columnType)
     {
         return "IDENTITY(1,1)";
     }
@@ -1118,4 +1166,42 @@ public abstract partial class DatabaseMethodsBase
         return !string.IsNullOrEmpty(functionPart) && functionPart.All(c => char.IsLetterOrDigit(c) || c == '_');
     }
     #endregion // View Strings
+
+    /// <summary>
+    /// Determines whether an unprefixed ("any provider") data type can safely be used by this provider.
+    /// </summary>
+    /// <param name="anyProviderDataType">The unprefixed data type name, optionally parameterized.</param>
+    /// <returns><c>true</c> when this provider recognizes the type and can accept its parameters.</returns>
+    /// <remarks>
+    /// The base type name must appear in this provider's data type registry, and any inline parameters
+    /// must be numeric. That second rule keeps provider-specific parameter syntax such as SQL Server's
+    /// <c>nvarchar(max)</c> from leaking into providers that recognize <c>nvarchar</c> but not <c>max</c>.
+    /// Use the explicit <c>{provider:type}</c> form to force such a type onto a particular provider.
+    /// </remarks>
+    private bool IsUsableAnyProviderDataType(string anyProviderDataType)
+    {
+        var descriptor = new SqlTypeDescriptor(anyProviderDataType);
+
+        if (GetDataTypeRegistry().GetDataTypeByName(descriptor.BaseTypeName) == null)
+        {
+            return false;
+        }
+
+        var openParenIndex = anyProviderDataType.IndexOf('(', StringComparison.Ordinal);
+        if (openParenIndex == -1)
+        {
+            return true;
+        }
+
+        var closeParenIndex = anyProviderDataType.LastIndexOf(')');
+        if (closeParenIndex <= openParenIndex)
+        {
+            return false;
+        }
+
+        var parameters = anyProviderDataType[(openParenIndex + 1)..closeParenIndex];
+        return parameters
+            .Split(',')
+            .All(parameter => int.TryParse(parameter.Trim(), out _));
+    }
 }
